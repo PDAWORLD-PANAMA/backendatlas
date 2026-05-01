@@ -121,7 +121,6 @@ app.get("/api/dashboard", async (req, res) => {
 });
 
 // 🔥 IMPORTAR MODELO
-const EmpresaConfig = require('./models/EmpresaConfig');
 
 // ============================================================================
 // 🔹 ENDPOINTS PARA EMPRESA CONFIG
