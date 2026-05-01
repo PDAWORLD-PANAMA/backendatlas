@@ -13,12 +13,10 @@ app.use(express.urlencoded({ extended: true }));
 // ============================================================================
 // 🔥 CONEXIÓN A MONGODB ATLAS
 // ============================================================================
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/erpbipymes', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-.then(() => console.log("✅ MongoDB Atlas conectado"))
-.catch(err => console.error("❌ Error de conexión MongoDB:", err));
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB Atlas conectado'))
+  .catch(err => console.error('❌ Error de conexión MongoDB:', err));
+
 
 
 // 🔥 MODELO
@@ -315,12 +313,7 @@ app.use((err, req, res, next) => {
 // ============================================================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`📡 Endpoints disponibles:`);
-    console.log(`   • GET  /api/dashboard`);
-    console.log(`   • GET  /api/empresa`);
-    console.log(`   • POST /api/empresa`);
-    console.log(`   • PUT  /api/empresa/:id`);
-    console.log(`   • DELETE /api/empresa/:id`);
-    console.log(`   • GET  /api/health`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`📡 Endpoints activos: /api/health, /api/dashboard, /api/empresa`);
 });
+
