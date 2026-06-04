@@ -154,8 +154,7 @@ sugerencias  : []
 });
 
 const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
-Inventariosede.index({ idinventario: 1 });
-Inventariosede.index({ shopify_id: 1 });
+
 
 //%%%%%%%%//
 
@@ -337,6 +336,43 @@ const bienesSchema = new mongoose.Schema({
 const BienServicio = mongoose.model('BienServicio', bienesSchema);
 
 
+var ubicaciongeoschema =  mongoose.Schema;
+// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
+//
+var Schemageoubicacion = new ubicaciongeoschema({
+    ubicacionid: {
+        type : String
+//
+    },
+    noidprov: {
+       type : String
+//
+   },
+    provincia: {
+       type : String
+//
+   },
+   noidistri: {
+    type : String
+//
+},
+   distrito: {
+    type : String
+//
+},
+noidcorre: {
+  type : String
+//
+},
+corregimiento: {
+  type : String
+//
+}
+});
+
+const Ubicacion = mongoose.model('Ubicacion', Schemageoubicacion);
+
+
 var Clienteschema = mongoose.Schema;
 // Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
 //
@@ -445,7 +481,7 @@ historialcambio: [String]
 });
 
 const Cliente = mongoose.model('Cliente', SchemadelCliente);
-Cliente.index({ clientenombre: 'text', ruccliente: 'text', ciudadcliente: 1 });
+
 
 var cotizaheadschema = mongoose.Schema;
 // Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
@@ -481,8 +517,7 @@ var Schemaheadcotiza = new cotizaheadschema({
 const CotizaHead = mongoose.model('CotizaHead',Schemaheadcotiza);
 
 // 🔹 Índices para optimizar búsquedas
-CotizaHead.index({ nocotiza: 1 });
-CotizaHead.index({ codcliente: 1, fechacotiza: -1 });
+
 
 
 var cotizadetaschema = mongoose.Schema;
@@ -509,7 +544,7 @@ var Schemadetacotiza = new cotizadetaschema({
 });
 
 const CotizaDetalle = mongoose.model('Schemareccotizadeta',Schemadetacotiza);
-CotizaDetalle.index({ nocotiza: 1, codproducto: 1 }); 
+
 
 // 🔥 ENDPOINT
 app.get("/api/dashboard", async (req, res) => {
@@ -668,17 +703,7 @@ app.put("/api/empresa/:id", async (req, res) => {
 });
 //
 //
-// In server.js PUT endpoint:
-app.put("/api/empresa/:id", async (req, res) => {
-    const updateData = { ...req.body };
-    
-    // 🚫 PROTECT RUC - Remove from update payload
-    delete updateData.rucempresa;  // ← Backend ignores it
-    delete updateData._id;
-    
-    const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData, { new: true });
-    // ...
-});
+
 // ✅ DELETE - Eliminar configuración de empresa
 app.delete("/api/empresa/:id", async (req, res) => {
     try {
@@ -1385,7 +1410,7 @@ app.post('/api/inventarios/bulk', async (req, res) => {
 });
 
 // 📊 Endpoint para reportes con filtros múltiples
-router.get('/inventarios/report', async (req, res) => {
+app.get('/inventarios/report', async (req, res) => {
   try {
     const { categoria, subcategoria, marca, modelo, idinventario, inventarionombre } = req.query;
     
@@ -2015,7 +2040,7 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 // ========================================================================
 
 // GET all cotizaciones head
-router.get('/ventas/cotizaciones/head', async (req, res) => {
+app.get('/ventas/cotizaciones/head', async (req, res) => {
   try {
     const { nocotiza } = req.query;
     let query = { activo: true };
@@ -2037,7 +2062,7 @@ router.get('/ventas/cotizaciones/head', async (req, res) => {
 });
 
 // GET head by ID
-router.get('/ventas/cotizaciones/head/:id', async (req, res) => {
+app.get('/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const head = await CotizaHead.findById(req.params.id);
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
@@ -2048,7 +2073,7 @@ router.get('/ventas/cotizaciones/head/:id', async (req, res) => {
 });
 
 // POST - Create head
-router.post('/ventas/cotizaciones/head', async (req, res) => {
+app.post('/ventas/cotizaciones/head', async (req, res) => {
   try {
     const { nocotiza, codcliente, fechacotiza } = req.body;
     
@@ -2087,7 +2112,7 @@ router.post('/ventas/cotizaciones/head', async (req, res) => {
 });
 
 // PUT - Update head (🔒 NO permitir cambiar nocotiza)
-router.put('/ventas/cotizaciones/head/:id', async (req, res) => {
+app.put('/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
@@ -2124,7 +2149,7 @@ router.put('/ventas/cotizaciones/head/:id', async (req, res) => {
 });
 
 // DELETE head (soft delete)
-router.delete('/ventas/cotizaciones/head/:id', async (req, res) => {
+app.delete('/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const eliminada = await CotizaHead.findByIdAndUpdate(
       req.params.id,
@@ -2147,7 +2172,7 @@ router.delete('/ventas/cotizaciones/head/:id', async (req, res) => {
 // ========================================================================
 
 // GET detalles por número de cotización
-router.get('/ventas/cotizaciones/detalle/nro/:nocotiza', async (req, res) => {
+app.get('/ventas/cotizaciones/detalle/nro/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     const detalles = await CotizaDetalle.find({ 
@@ -2166,7 +2191,7 @@ router.get('/ventas/cotizaciones/detalle/nro/:nocotiza', async (req, res) => {
 });
 
 // POST - Create detalles (múltiples en una solicitud)
-router.post('/ventas/cotizaciones/detalle', async (req, res) => {
+app.post('/ventas/cotizaciones/detalle', async (req, res) => {
   try {
     let { detalles } = req.body;
     
@@ -2209,7 +2234,7 @@ router.post('/ventas/cotizaciones/detalle', async (req, res) => {
 // ========================================================================
 // 🔹 OPERACIÓN COMBINADA: Crear cotización completa
 // ========================================================================
-router.post('/ventas/cotizaciones/completa', async (req, res) => {
+app.post('/ventas/cotizaciones/completa', async (req, res) => {
   try {
     const { head, detalles } = req.body;
     
@@ -2897,7 +2922,7 @@ async function actualizarTotalesCabecera(nocotiza) {
     try {
 
 // Reemplazar el hardcode de 7% por:
-        const porcentajeImpuesto = ITBMS_PORCENTAJE;
+        var porcentajeImpuesto = ITBMS_PORCENTAJE;
         const detalles = await CotizaDetalle.find({ 
             nocotiza: nocotiza.toUpperCase(), 
             activo: true 
@@ -2914,7 +2939,7 @@ async function actualizarTotalesCabecera(nocotiza) {
         const baseImponible = subtotal1 - (subtotal1 * (descuentoglob / 100));
         
         // Calcular impuesto (ejemplo: 7% ITBMS - ajustar según configuración)
-        const porcentajeImpuesto = 7; // 🔧 Configurar desde empresa o cabecera
+        porcentajeImpuesto = 7; // 🔧 Configurar desde empresa o cabecera
         const impuesto = baseImponible * (porcentajeImpuesto / 100);
         
         // Calcular totales finales
