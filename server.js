@@ -545,6 +545,63 @@ var Schemadetacotiza = new cotizadetaschema({
 
 const CotizaDetalle = mongoose.model('Schemareccotizadeta',Schemadetacotiza);
 
+var categoriaschema = mongoose.Schema;
+// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
+//
+var Schemacategoria = new categoriaschema({
+
+    categoria: { type : String },
+    descripcion: { type : String },
+    activo: {  type : String },
+    fechaCreacion: { type : String },
+    fechaActualizacion: { type : String }
+})
+const Categoria = mongoose.model('Categoria',Schemacategoria);
+
+
+var subcategoriaschema = mongoose.Schema;
+// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
+//
+var Schemasubcategoria = new subcategoriaschema({
+
+    subCategoria: { type : String },
+    categoriaId: { type : String },
+    subCategoriaNombre: {  type : String },
+    descripcion: { type : String },
+    activo: {  type : String },
+    fechaCreacion: { type : String },
+    fechaActualizacion: { type : String }
+})
+const SubCategoria = mongoose.model('SubCategoria',Schemasubcategoria);
+
+//
+var marcaschema = mongoose.Schema;
+var Schemamarca = new marcaschema({
+
+    marca: { type : String },
+    descripcion: { type : String },
+    activo: {  type : String },
+    paisOrigen: {  type : String },
+    fechaCreacion: { type : String },
+    fechaActualizacion: { type : String }
+})
+const Marca = mongoose.model('Marca',Schemamarca);
+
+//
+var modeloschema = mongoose.Schema;
+var Schemamodelo = new modeloschema({
+
+    modelo: { type : String },
+    marcaId: { type : String },
+    marcaNombre: { type : String },
+    descripcion: { type : String },
+    activo: {  type : String },
+    paisOrigen: {  type : String },
+    fechaCreacion: { type : String },
+    fechaActualizacion: { type : String }
+})
+const Modelo = mongoose.model('Modelo',Schemamodelo);
+
 
 // 🔥 ENDPOINT
 app.get("/api/dashboard", async (req, res) => {
