@@ -1501,6 +1501,518 @@ app.get('/inventarios/report', async (req, res) => {
   }
 });
 
+
+// backend / Ruras Categoria SubCategoria Marca Modelo/
+// ============================================================================
+// 🔹 RUTAS: CATEGORÍA (CRUD)
+// ============================================================================
+
+// ✅ GET - Listar todas las categorías
+app.get('/api/inventarios/categorias', async (req, res) => {
+    try {
+        const categorias = await Categoria.find().sort({ categoria: 1 });
+        res.json({ 
+            success: true, 
+            message: `${categorias.length} categoría(s) encontrada(s)`, 
+            data: categorias 
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/categorias:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ GET - Obtener categoría por ID
+app.get('/api/inventarios/categorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        const categoria = await Categoria.findById(id);
+        if (!categoria) {
+            return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
+        }
+        res.json({ success: true, message: 'Categoría obtenida', data: categoria });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/categorias/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ POST - Crear nueva categoría
+app.post('/api/inventarios/categorias', async (req, res) => {
+    try {
+        const { categoria, descripcion } = req.body;
+        
+        if (!categoria?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la categoría es obligatorio' });
+        }
+        
+        // Verificar duplicado (case-insensitive)
+        const existing = await Categoria.findOne({ categoria: categoria.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una categoría con este nombre' });
+        }
+        
+        const nuevaCategoria = new Categoria({
+            categoria: categoria.trim().toUpperCase(),
+            descripcion: descripcion?.trim() || ''
+        });
+        const guardado = await nuevaCategoria.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Categoría creada exitosamente', 
+            data: guardado 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/categorias:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'La categoría ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ✅ PUT - Actualizar categoría
+app.put('/api/inventarios/categorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.createdAt;
+        
+        // Convertir a uppercase si es categoría
+        if (updateData.categoria) {
+            updateData.categoria = updateData.categoria.trim().toUpperCase();
+        }
+        
+        const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { 
+            new: true, 
+            runValidators: true 
+        });
+        
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
+        }
+        
+        res.json({ success: true, message: '✅ Categoría actualizada', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/inventarios/categorias/:id:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'Ya existe una categoría con este nombre' });
+        }
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// ✅ DELETE - Eliminar categoría
+app.delete('/api/inventarios/categorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const eliminado = await Categoria.findByIdAndDelete(id);
+        if (!eliminado) {
+            return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
+        }
+        
+        res.json({ success: true, message: '🗑️ Categoría eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/inventarios/categorias/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 RUTAS: SUBCATEGORÍA (CRUD)
+// ============================================================================
+
+// ✅ GET - Listar todas las subcategorías
+app.get('/api/inventarios/subcategorias', async (req, res) => {
+    try {
+        const subcategorias = await SubCategoria.find().sort({ subCategoria: 1 });
+        res.json({ 
+            success: true, 
+            message: `${subcategorias.length} subcategoría(s) encontrada(s)`, 
+            data: subcategorias 
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/subcategorias:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ GET - Obtener subcategoría por ID
+app.get('/api/inventarios/subcategorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        const subcategoria = await SubCategoria.findById(id);
+        if (!subcategoria) {
+            return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
+        }
+        res.json({ success: true, message: 'Subcategoría obtenida', data: subcategoria });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/subcategorias/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ POST - Crear nueva subcategoría
+app.post('/api/inventarios/subcategorias', async (req, res) => {
+    try {
+        const { subCategoria, descripcion, categoriaPadre } = req.body;
+        
+        if (!subCategoria?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la subcategoría es obligatorio' });
+        }
+        
+        const existing = await SubCategoria.findOne({ subCategoria: subCategoria.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
+        }
+        
+        const nuevaSubCategoria = new SubCategoria({
+            subCategoria: subCategoria.trim().toUpperCase(),
+            descripcion: descripcion?.trim() || '',
+            categoriaPadre: categoriaPadre?.trim().toUpperCase() || ''
+        });
+        const guardado = await nuevaSubCategoria.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Subcategoría creada exitosamente', 
+            data: guardado 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/subcategorias:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'La subcategoría ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ✅ PUT - Actualizar subcategoría
+app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.createdAt;
+        
+        if (updateData.subCategoria) {
+            updateData.subCategoria = updateData.subCategoria.trim().toUpperCase();
+        }
+        if (updateData.categoriaPadre) {
+            updateData.categoriaPadre = updateData.categoriaPadre.trim().toUpperCase();
+        }
+        
+        const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { 
+            new: true, 
+            runValidators: true 
+        });
+        
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
+        }
+        
+        res.json({ success: true, message: '✅ Subcategoría actualizada', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/inventarios/subcategorias/:id:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
+        }
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// ✅ DELETE - Eliminar subcategoría
+app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const eliminado = await SubCategoria.findByIdAndDelete(id);
+        if (!eliminado) {
+            return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
+        }
+        
+        res.json({ success: true, message: '🗑️ Subcategoría eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/inventarios/subcategorias/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 RUTAS: MARCA (CRUD)
+// ============================================================================
+
+// ✅ GET - Listar todas las marcas
+app.get('/api/inventarios/marcas', async (req, res) => {
+    try {
+        const marcas = await Marca.find().sort({ marca: 1 });
+        res.json({ 
+            success: true, 
+            message: `${marcas.length} marca(s) encontrada(s)`, 
+            data: marcas 
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/marcas:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ GET - Obtener marca por ID
+app.get('/api/inventarios/marcas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        const marca = await Marca.findById(id);
+        if (!marca) {
+            return res.status(404).json({ success: false, message: 'Marca no encontrada' });
+        }
+        res.json({ success: true, message: 'Marca obtenida', data: marca });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/marcas/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ POST - Crear nueva marca
+app.post('/api/inventarios/marcas', async (req, res) => {
+    try {
+        const { marca, descripcion } = req.body;
+        
+        if (!marca?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la marca es obligatorio' });
+        }
+        
+        const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
+        }
+        
+        const nuevaMarca = new Marca({
+            marca: marca.trim().toUpperCase(),
+            descripcion: descripcion?.trim() || ''
+        });
+        const guardado = await nuevaMarca.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Marca creada exitosamente', 
+            data: guardado 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/marcas:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'La marca ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ✅ PUT - Actualizar marca
+app.put('/api/inventarios/marcas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.createdAt;
+        
+        if (updateData.marca) {
+            updateData.marca = updateData.marca.trim().toUpperCase();
+        }
+        
+        const actualizado = await Marca.findByIdAndUpdate(id, updateData, { 
+            new: true, 
+            runValidators: true 
+        });
+        
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: 'Marca no encontrada' });
+        }
+        
+        res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/inventarios/marcas/:id:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
+        }
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// ✅ DELETE - Eliminar marca
+app.delete('/api/inventarios/marcas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const eliminado = await Marca.findByIdAndDelete(id);
+        if (!eliminado) {
+            return res.status(404).json({ success: false, message: 'Marca no encontrada' });
+        }
+        
+        res.json({ success: true, message: '🗑️ Marca eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/inventarios/marcas/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 RUTAS: MODELO (CRUD)
+// ============================================================================
+
+// ✅ GET - Listar todos los modelos
+app.get('/api/inventarios/modelos', async (req, res) => {
+    try {
+        const modelos = await Modelo.find().sort({ modelo: 1 });
+        res.json({ 
+            success: true, 
+            message: `${modelos.length} modelo(s) encontrado(s)`, 
+            data: modelos 
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/modelos:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ GET - Obtener modelo por ID
+app.get('/api/inventarios/modelos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        const modelo = await Modelo.findById(id);
+        if (!modelo) {
+            return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
+        }
+        res.json({ success: true, message: 'Modelo obtenido', data: modelo });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/modelos/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ✅ POST - Crear nuevo modelo
+app.post('/api/inventarios/modelos', async (req, res) => {
+    try {
+        const { modelo, descripcion } = req.body;
+        
+        if (!modelo?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre del modelo es obligatorio' });
+        }
+        
+        const existing = await Modelo.findOne({ modelo: modelo.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe un modelo con este nombre' });
+        }
+        
+        const nuevoModelo = new Modelo({
+            modelo: modelo.trim().toUpperCase(),
+            descripcion: descripcion?.trim() || ''
+        });
+        const guardado = await nuevoModelo.save();
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Modelo creado exitosamente', 
+            data: guardado 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/modelos:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'El modelo ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ✅ PUT - Actualizar modelo
+app.put('/api/inventarios/modelos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.createdAt;
+        
+        if (updateData.modelo) {
+            updateData.modelo = updateData.modelo.trim().toUpperCase();
+        }
+        
+        const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { 
+            new: true, 
+            runValidators: true 
+        });
+        
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
+        }
+        
+        res.json({ success: true, message: '✅ Modelo actualizado', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/inventarios/modelos/:id:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'Ya existe un modelo con este nombre' });
+        }
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// ✅ DELETE - Eliminar modelo
+app.delete('/api/inventarios/modelos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'ID inválido' });
+        }
+        
+        const eliminado = await Modelo.findByIdAndDelete(id);
+        if (!eliminado) {
+            return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
+        }
+        
+        res.json({ success: true, message: '🗑️ Modelo eliminado' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/inventarios/modelos/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
 // backend/routes/ventas.js
 
 
