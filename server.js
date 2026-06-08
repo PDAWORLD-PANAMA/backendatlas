@@ -545,63 +545,58 @@ var Schemadetacotiza = new cotizadetaschema({
 
 const CotizaDetalle = mongoose.model('Schemareccotizadeta',Schemadetacotiza);
 
-var categoriaschema = mongoose.Schema;
-// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
-//
-var Schemacategoria = new categoriaschema({
+// ============================================================================
+// 🔹 MODELOS ACTUALIZADOS: CATEGORÍA, SUBCATEGORÍA, MARCA, MODELO
+// ============================================================================
 
-    categoria: { type : String },
-    descripcion: { type : String },
-    activo: {  type : String },
-    fechaCreacion: { type : String },
-    fechaActualizacion: { type : String }
-})
-const Categoria = mongoose.model('Categoria',Schemacategoria);
+// ───────── CATEGORÍA ─────────
+const categoriaSchema = new mongoose.Schema({
+    categoria: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    descripcion: { type: String, default: "", trim: true },
+    activo: { type: Boolean, default: true },
+    fechaCreacion: { type: String, default: () => new Date().toISOString() },
+    fechaActualizacion: { type: String, default: () => new Date().toISOString() }
+});
 
+const Categoria = mongoose.model('Categoria', categoriaSchema);
 
-var subcategoriaschema = mongoose.Schema;
-// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
-//
-var Schemasubcategoria = new subcategoriaschema({
+// ───────── SUBCATEGORÍA ─────────
+const subCategoriaSchema = new mongoose.Schema({
+    subCategoria: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    categoriaId: { type: String, default: "", trim: true },
+    subcategoriaNombre: { type: String, default: "", trim: true },
+    descripcion: { type: String, default: "", trim: true },
+    activo: { type: Boolean, default: true },
+    fechaCreacion: { type: String, default: () => new Date().toISOString() },
+    fechaActualizacion: { type: String, default: () => new Date().toISOString() }
+});
 
-    subCategoria: { type : String },
-    categoriaId: { type : String },
-    subCategoriaNombre: {  type : String },
-    descripcion: { type : String },
-    activo: {  type : String },
-    fechaCreacion: { type : String },
-    fechaActualizacion: { type : String }
-})
-const SubCategoria = mongoose.model('SubCategoria',Schemasubcategoria);
+const SubCategoria = mongoose.model('SubCategoria', subCategoriaSchema);
 
-//
-var marcaschema = mongoose.Schema;
-var Schemamarca = new marcaschema({
+// ───────── MARCA ─────────
+const marcaSchema = new mongoose.Schema({
+    marca: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    descripcion: { type: String, default: "", trim: true },
+    paisOrigen: { type: String, default: "", trim: true },
+    activo: { type: Boolean, default: true },
+    fechaCreacion: { type: String, default: () => new Date().toISOString() },
+    fechaActualizacion: { type: String, default: () => new Date().toISOString() }
+});
 
-    marca: { type : String },
-    descripcion: { type : String },
-    activo: {  type : String },
-    paisOrigen: {  type : String },
-    fechaCreacion: { type : String },
-    fechaActualizacion: { type : String }
-})
-const Marca = mongoose.model('Marca',Schemamarca);
+const Marca = mongoose.model('Marca', marcaSchema);
 
-//
-var modeloschema = mongoose.Schema;
-var Schemamodelo = new modeloschema({
+// ───────── MODELO ─────────
+const modeloSchema = new mongoose.Schema({
+    modelo: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    marcaId: { type: String, default: "", trim: true },
+    marcaNombre: { type: String, default: "", trim: true },
+    descripcion: { type: String, default: "", trim: true },
+    activo: { type: Boolean, default: true },
+    fechaCreacion: { type: String, default: () => new Date().toISOString() },
+    fechaActualizacion: { type: String, default: () => new Date().toISOString() }
+});
 
-    modelo: { type : String },
-    marcaId: { type : String },
-    marcaNombre: { type : String },
-    descripcion: { type : String },
-    activo: {  type : String },
-    paisOrigen: {  type : String },
-    fechaCreacion: { type : String },
-    fechaActualizacion: { type : String }
-})
-const Modelo = mongoose.model('Modelo',Schemamodelo);
-
+const Modelo = mongoose.model('Modelo', modeloSchema);
 
 // 🔥 ENDPOINT
 app.get("/api/dashboard", async (req, res) => {
@@ -1510,7 +1505,7 @@ app.get('/inventarios/report', async (req, res) => {
 // ✅ GET - Listar todas las categorías
 app.get('/api/inventarios/categorias', async (req, res) => {
     try {
-        const categorias = await Categoria.find().sort({ categoria: 1 });
+        const categorias = await Categoria.find({ activo: true }).sort({ categoria: 1 });
         res.json({ 
             success: true, 
             message: `${categorias.length} categoría(s) encontrada(s)`, 
@@ -1522,7 +1517,6 @@ app.get('/api/inventarios/categorias', async (req, res) => {
     }
 });
 
-// ✅ GET - Obtener categoría por ID
 app.get('/api/inventarios/categorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1540,7 +1534,6 @@ app.get('/api/inventarios/categorias/:id', async (req, res) => {
     }
 });
 
-// ✅ POST - Crear nueva categoría
 app.post('/api/inventarios/categorias', async (req, res) => {
     try {
         const { categoria, descripcion } = req.body;
@@ -1549,7 +1542,6 @@ app.post('/api/inventarios/categorias', async (req, res) => {
             return res.status(400).json({ success: false, message: 'El nombre de la categoría es obligatorio' });
         }
         
-        // Verificar duplicado (case-insensitive)
         const existing = await Categoria.findOne({ categoria: categoria.trim().toUpperCase() });
         if (existing) {
             return res.status(409).json({ success: false, message: 'Ya existe una categoría con este nombre' });
@@ -1557,7 +1549,10 @@ app.post('/api/inventarios/categorias', async (req, res) => {
         
         const nuevaCategoria = new Categoria({
             categoria: categoria.trim().toUpperCase(),
-            descripcion: descripcion?.trim() || ''
+            descripcion: descripcion?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
         });
         const guardado = await nuevaCategoria.save();
         
@@ -1575,7 +1570,6 @@ app.post('/api/inventarios/categorias', async (req, res) => {
     }
 });
 
-// ✅ PUT - Actualizar categoría
 app.put('/api/inventarios/categorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1585,12 +1579,12 @@ app.put('/api/inventarios/categorias/:id', async (req, res) => {
         
         const updateData = { ...req.body };
         delete updateData._id;
-        delete updateData.createdAt;
+        delete updateData.fechaCreacion;
         
-        // Convertir a uppercase si es categoría
         if (updateData.categoria) {
             updateData.categoria = updateData.categoria.trim().toUpperCase();
         }
+        updateData.fechaActualizacion = new Date().toISOString();
         
         const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { 
             new: true, 
@@ -1611,7 +1605,6 @@ app.put('/api/inventarios/categorias/:id', async (req, res) => {
     }
 });
 
-// ✅ DELETE - Eliminar categoría
 app.delete('/api/inventarios/categorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1619,12 +1612,17 @@ app.delete('/api/inventarios/categorias/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
         
-        const eliminado = await Categoria.findByIdAndDelete(id);
+        // Soft delete: marcar como inactivo en lugar de eliminar
+        const eliminado = await Categoria.findByIdAndUpdate(id, {
+            activo: false,
+            fechaActualizacion: new Date().toISOString()
+        }, { new: true });
+        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
         }
         
-        res.json({ success: true, message: '🗑️ Categoría eliminada' });
+        res.json({ success: true, message: '🗑️ Categoría eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/categorias/:id:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
@@ -1632,13 +1630,12 @@ app.delete('/api/inventarios/categorias/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 🔹 RUTAS: SUBCATEGORÍA (CRUD)
+// 🔹 RUTAS: SUBCATEGORÍA (CRUD) - ACTUALIZADO
 // ============================================================================
 
-// ✅ GET - Listar todas las subcategorías
 app.get('/api/inventarios/subcategorias', async (req, res) => {
     try {
-        const subcategorias = await SubCategoria.find().sort({ subCategoria: 1 });
+        const subcategorias = await SubCategoria.find({ activo: true }).sort({ subCategoria: 1 });
         res.json({ 
             success: true, 
             message: `${subcategorias.length} subcategoría(s) encontrada(s)`, 
@@ -1650,7 +1647,6 @@ app.get('/api/inventarios/subcategorias', async (req, res) => {
     }
 });
 
-// ✅ GET - Obtener subcategoría por ID
 app.get('/api/inventarios/subcategorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1668,10 +1664,9 @@ app.get('/api/inventarios/subcategorias/:id', async (req, res) => {
     }
 });
 
-// ✅ POST - Crear nueva subcategoría
 app.post('/api/inventarios/subcategorias', async (req, res) => {
     try {
-        const { subCategoria, descripcion, categoriaPadre } = req.body;
+        const { subCategoria, categoriaId, descripcion } = req.body;
         
         if (!subCategoria?.trim()) {
             return res.status(400).json({ success: false, message: 'El nombre de la subcategoría es obligatorio' });
@@ -1682,10 +1677,23 @@ app.post('/api/inventarios/subcategorias', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
         }
         
+        // Buscar nombre de categoría si se proporciona categoriaId
+        let categoriaNombre = '';
+        if (categoriaId) {
+            const categoria = await Categoria.findById(categoriaId);
+            if (categoria) {
+                categoriaNombre = categoria.categoria;
+            }
+        }
+        
         const nuevaSubCategoria = new SubCategoria({
             subCategoria: subCategoria.trim().toUpperCase(),
+            categoriaId: categoriaId?.trim() || '',
+            subcategoriaNombre: categoriaNombre,
             descripcion: descripcion?.trim() || '',
-            categoriaPadre: categoriaPadre?.trim().toUpperCase() || ''
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
         });
         const guardado = await nuevaSubCategoria.save();
         
@@ -1703,7 +1711,6 @@ app.post('/api/inventarios/subcategorias', async (req, res) => {
     }
 });
 
-// ✅ PUT - Actualizar subcategoría
 app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1713,14 +1720,12 @@ app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
         
         const updateData = { ...req.body };
         delete updateData._id;
-        delete updateData.createdAt;
+        delete updateData.fechaCreacion;
         
         if (updateData.subCategoria) {
             updateData.subCategoria = updateData.subCategoria.trim().toUpperCase();
         }
-        if (updateData.categoriaPadre) {
-            updateData.categoriaPadre = updateData.categoriaPadre.trim().toUpperCase();
-        }
+        updateData.fechaActualizacion = new Date().toISOString();
         
         const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { 
             new: true, 
@@ -1741,7 +1746,6 @@ app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
     }
 });
 
-// ✅ DELETE - Eliminar subcategoría
 app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1749,12 +1753,16 @@ app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
         
-        const eliminado = await SubCategoria.findByIdAndDelete(id);
+        const eliminado = await SubCategoria.findByIdAndUpdate(id, {
+            activo: false,
+            fechaActualizacion: new Date().toISOString()
+        }, { new: true });
+        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
         }
         
-        res.json({ success: true, message: '🗑️ Subcategoría eliminada' });
+        res.json({ success: true, message: '🗑️ Subcategoría eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/subcategorias/:id:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
@@ -1762,13 +1770,12 @@ app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 🔹 RUTAS: MARCA (CRUD)
+// 🔹 RUTAS: MARCA (CRUD) - ACTUALIZADO
 // ============================================================================
 
-// ✅ GET - Listar todas las marcas
 app.get('/api/inventarios/marcas', async (req, res) => {
     try {
-        const marcas = await Marca.find().sort({ marca: 1 });
+        const marcas = await Marca.find({ activo: true }).sort({ marca: 1 });
         res.json({ 
             success: true, 
             message: `${marcas.length} marca(s) encontrada(s)`, 
@@ -1780,7 +1787,6 @@ app.get('/api/inventarios/marcas', async (req, res) => {
     }
 });
 
-// ✅ GET - Obtener marca por ID
 app.get('/api/inventarios/marcas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1798,10 +1804,9 @@ app.get('/api/inventarios/marcas/:id', async (req, res) => {
     }
 });
 
-// ✅ POST - Crear nueva marca
 app.post('/api/inventarios/marcas', async (req, res) => {
     try {
-        const { marca, descripcion } = req.body;
+        const { marca, descripcion, paisOrigen } = req.body;
         
         if (!marca?.trim()) {
             return res.status(400).json({ success: false, message: 'El nombre de la marca es obligatorio' });
@@ -1814,7 +1819,11 @@ app.post('/api/inventarios/marcas', async (req, res) => {
         
         const nuevaMarca = new Marca({
             marca: marca.trim().toUpperCase(),
-            descripcion: descripcion?.trim() || ''
+            descripcion: descripcion?.trim() || '',
+            paisOrigen: paisOrigen?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
         });
         const guardado = await nuevaMarca.save();
         
@@ -1832,7 +1841,6 @@ app.post('/api/inventarios/marcas', async (req, res) => {
     }
 });
 
-// ✅ PUT - Actualizar marca
 app.put('/api/inventarios/marcas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1842,11 +1850,12 @@ app.put('/api/inventarios/marcas/:id', async (req, res) => {
         
         const updateData = { ...req.body };
         delete updateData._id;
-        delete updateData.createdAt;
+        delete updateData.fechaCreacion;
         
         if (updateData.marca) {
             updateData.marca = updateData.marca.trim().toUpperCase();
         }
+        updateData.fechaActualizacion = new Date().toISOString();
         
         const actualizado = await Marca.findByIdAndUpdate(id, updateData, { 
             new: true, 
@@ -1867,7 +1876,6 @@ app.put('/api/inventarios/marcas/:id', async (req, res) => {
     }
 });
 
-// ✅ DELETE - Eliminar marca
 app.delete('/api/inventarios/marcas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1875,12 +1883,16 @@ app.delete('/api/inventarios/marcas/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
         
-        const eliminado = await Marca.findByIdAndDelete(id);
+        const eliminado = await Marca.findByIdAndUpdate(id, {
+            activo: false,
+            fechaActualizacion: new Date().toISOString()
+        }, { new: true });
+        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Marca no encontrada' });
         }
         
-        res.json({ success: true, message: '🗑️ Marca eliminada' });
+        res.json({ success: true, message: '🗑️ Marca eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/marcas/:id:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
@@ -1888,13 +1900,12 @@ app.delete('/api/inventarios/marcas/:id', async (req, res) => {
 });
 
 // ============================================================================
-// 🔹 RUTAS: MODELO (CRUD)
+// 🔹 RUTAS: MODELO (CRUD) - ACTUALIZADO
 // ============================================================================
 
-// ✅ GET - Listar todos los modelos
 app.get('/api/inventarios/modelos', async (req, res) => {
     try {
-        const modelos = await Modelo.find().sort({ modelo: 1 });
+        const modelos = await Modelo.find({ activo: true }).sort({ modelo: 1 });
         res.json({ 
             success: true, 
             message: `${modelos.length} modelo(s) encontrado(s)`, 
@@ -1906,7 +1917,6 @@ app.get('/api/inventarios/modelos', async (req, res) => {
     }
 });
 
-// ✅ GET - Obtener modelo por ID
 app.get('/api/inventarios/modelos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1924,10 +1934,9 @@ app.get('/api/inventarios/modelos/:id', async (req, res) => {
     }
 });
 
-// ✅ POST - Crear nuevo modelo
 app.post('/api/inventarios/modelos', async (req, res) => {
     try {
-        const { modelo, descripcion } = req.body;
+        const { modelo, marcaId, descripcion } = req.body;
         
         if (!modelo?.trim()) {
             return res.status(400).json({ success: false, message: 'El nombre del modelo es obligatorio' });
@@ -1938,9 +1947,23 @@ app.post('/api/inventarios/modelos', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Ya existe un modelo con este nombre' });
         }
         
+        // Buscar nombre de marca si se proporciona marcaId
+        let marcaNombre = '';
+        if (marcaId) {
+            const marca = await Marca.findById(marcaId);
+            if (marca) {
+                marcaNombre = marca.marca;
+            }
+        }
+        
         const nuevoModelo = new Modelo({
             modelo: modelo.trim().toUpperCase(),
-            descripcion: descripcion?.trim() || ''
+            marcaId: marcaId?.trim() || '',
+            marcaNombre: marcaNombre,
+            descripcion: descripcion?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
         });
         const guardado = await nuevoModelo.save();
         
@@ -1958,7 +1981,6 @@ app.post('/api/inventarios/modelos', async (req, res) => {
     }
 });
 
-// ✅ PUT - Actualizar modelo
 app.put('/api/inventarios/modelos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1968,11 +1990,12 @@ app.put('/api/inventarios/modelos/:id', async (req, res) => {
         
         const updateData = { ...req.body };
         delete updateData._id;
-        delete updateData.createdAt;
+        delete updateData.fechaCreacion;
         
         if (updateData.modelo) {
             updateData.modelo = updateData.modelo.trim().toUpperCase();
         }
+        updateData.fechaActualizacion = new Date().toISOString();
         
         const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { 
             new: true, 
@@ -1993,7 +2016,6 @@ app.put('/api/inventarios/modelos/:id', async (req, res) => {
     }
 });
 
-// ✅ DELETE - Eliminar modelo
 app.delete('/api/inventarios/modelos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -2001,12 +2023,16 @@ app.delete('/api/inventarios/modelos/:id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
         
-        const eliminado = await Modelo.findByIdAndDelete(id);
+        const eliminado = await Modelo.findByIdAndUpdate(id, {
+            activo: false,
+            fechaActualizacion: new Date().toISOString()
+        }, { new: true });
+        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
         }
         
-        res.json({ success: true, message: '🗑️ Modelo eliminado' });
+        res.json({ success: true, message: '🗑️ Modelo eliminado (desactivado)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/modelos/:id:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
