@@ -1186,351 +1186,35 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
 // ============================================================================
 // 🔹 RUTAS: INVENTARIO (CRUD COMPLETO)
 // ============================================================================
-
-// ✅ GET - Listar todos los inventarios
-app.get('/api/inventarios', async (req, res) => {
-    try {
-        const inventarios = await Inventariosede.find().sort({ createdAt: -1 });
-        res.json({ success: true, message: 'Inventarios obtenidos', data: inventarios });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-// ✅ POST - Crear nuevo inventario
-app.post('/api/inventarios', async (req, res) => {
-    try {
-        const { idinventario, inventarionombre } = req.body;
-        
-        // Validar campos obligatorios
-        if (!idinventario?.trim() || !inventarionombre?.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "ID Inventario y Nombre son campos obligatorios" 
-            });
-        }
-        
-        // Verificar si ya existe el ID
-        const existing = await Inventariosede.findOne({ idinventario });
-        if (existing) {
-            return res.status(409).json({ 
-                success: false, 
-                message: "Ya existe un producto con este ID de inventario" 
-            });
-        }
-        
-        const nuevoInventario = new Inventariosede(req.body);
-        const guardado = await nuevoInventario.save();
-        
-        res.status(201).json({ 
-            success: true, 
-            message: "✅ Producto de inventario creado exitosamente", 
-            data: guardado 
-        });
-        
-    } catch (err) {
-        console.error("❌ Error POST /api/inventarios:", err);
-        
-        if (err.code === 11000) {
-            return res.status(409).json({ 
-                success: false, 
-                message: "❌ El ID de inventario ya está registrado" 
-            });
-        }
-        
-        res.status(500).json({ 
-            success: false, 
-            message: "Error al crear inventario", 
-            error: err.message 
-        });
-    }
-});
-
-// ✅ GET - Buscar inventarios por query (nombre, categoría, marca, etc.)
-app.get('/api/inventarios/search/:query', async (req, res) => {
-    try {
-        const { query } = req.params;
-        const regex = new RegExp(query, 'i'); // Búsqueda insensible a mayúsculas
-        
-        const inventarios = await Inventariosede.find({
-            $or: [
-                { inventarionombre: regex },
-                { idinventario: regex },
-                { categoria: regex },
-                { marca: regex },
-                { modelo: regex }
-            ]
-        }).sort({ inventarionombre: 1 });
-        
-        res.json({ success: true, message: `Resultados para "${query}"`, data: inventarios });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios/search:', error);
-        res.status(500).json({ success: false, message: 'Error en búsqueda', error: error.message });
-    }
-});
-
-// ✅ GET - Obtener un inventario por ID
-app.get('/api/inventarios/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const inventario = await Inventariosede.findById(id);
-        if (!inventario) {
-            return res.status(404).json({ success: false, message: 'Inventario no encontrado' });
-        }
-        res.json({ success: true, message: 'Inventario obtenido', data: inventario });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios/:id:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-
-
-// ✅ PUT - Actualizar inventario existente
-app.put('/api/inventarios/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updateData = { ...req.body };
-        
-        // 🔐 PROTECCIÓN: No permitir modificar idinventario
-        delete updateData.idinventario;
-        delete updateData._id;
-        delete updateData.createdAt;
-        
-        const actualizado = await Inventariosede.findByIdAndUpdate(
-            id, 
-            updateData, 
-            { 
-                new: true, 
-                runValidators: true,
-                context: 'query'
-            }
-        );
-        
-        if (!actualizado) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Inventario no encontrado" 
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            message: "✅ Inventario actualizado exitosamente", 
-            data: actualizado 
-        });
-        
-    } catch (err) {
-        console.error("❌ Error PUT /api/inventarios:", err);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error al actualizar inventario", 
-            error: err.message 
-        });
-    }
-});
-
-// ✅ DELETE - Eliminar inventario
-app.delete('/api/inventarios/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "ID de inventario inválido" 
-            });
-        }
-        
-        const eliminado = await Inventariosede.findByIdAndDelete(id);
-        
-        if (!eliminado) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "Inventario no encontrado" 
-            });
-        }
-        
-        res.json({ 
-            success: true, 
-            message: "🗑️ Producto eliminado exitosamente del inventario" 
-        });
-        
-    } catch (err) {
-        console.error("❌ Error DELETE /api/inventarios:", err);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error al eliminar inventario", 
-            error: err.message 
-        });
-    }
-});
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
-
-// 🔍 Búsqueda por ruta: GET /api/inventarios/search/:query
-app.get('/inventarios/search/:query', async (req, res) => {
-  try {
-    const { query } = req.params;  // ✅ Viene de @Path("query")
-    
-    if (!query || query.trim() === '') {
-      return res.json({ success: true, data: [], message: 'Búsqueda vacía' });
-    }
-    
-    // Regex case-insensitive para búsqueda parcial
-    const regex = new RegExp(query.trim(), 'i');
-    
-    // Buscar en idInventario, inventarioNombre O modelo
-    const results = await Inventariosede.find({
-      $or: [
-        { idInventario: { $regex: regex } },
-        { inventarioNombre: { $regex: regex } },
-        { modelo: { $regex: regex } }
-      ]
-    }).sort({ inventarioNombre: 1 });
-    
-    res.json({
-      success: true,
-      message: `${results.length} resultado(s)`,
-      data: results  // ✅ List<InventoryItem>
-    });
-    
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      data: []
-    });
-  }
-});
-
-// ✅ POST - Carga masiva de inventarios (bulk upload)
-app.post('/api/inventarios/bulk', async (req, res) => {
-    try {
-        const inventariosArray = req.body;
-        
-        if (!Array.isArray(inventariosArray)) {
-            return res.status(400).json({ success: false, message: 'Se requiere un array de inventarios' });
-        }
-        
-        let successCount = 0;
-        let duplicateCount = 0;
-        let errorCount = 0;
-        const errors = [];
-        
-        for (const invData of inventariosArray) {
-            try {
-                const { idinventario, inventarionombre } = invData;
-                
-                if (!idinventario || !inventarionombre) {
-                    errorCount++;
-                    errors.push(`Campos incompletos: ${JSON.stringify(invData)}`);
-                    continue;
-                }
-                
-                const existing = await Inventariosede.findOne({ idinventario });
-                if (existing) {
-                    duplicateCount++;
-                    continue;
-                }
-                
-                const nuevoInv = new Inventariosede(invData);
-                await nuevoInv.save();
-                successCount++;
-                
-            } catch (err) {
-                errorCount++;
-                errors.push(`Error en ${invData.idinventario}: ${err.message}`);
-            }
-        }
-        
-        res.json({
-            success: true,
-            message: 'Carga masiva de inventario completada',
-            data: {
-                total: inventariosArray.length,
-                success: successCount,
-                duplicates: duplicateCount,
-                errors: errorCount,
-                errorMessages: errors
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ Error POST /api/inventarios/bulk:', error);
-        res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
-    }
-});
-
-// 📊 Endpoint para reportes con filtros múltiples
-app.get('/inventarios/report', async (req, res) => {
-  try {
-    const { categoria, subcategoria, marca, modelo, idinventario, inventarionombre } = req.query;
-    
-    // Construir filtro dinámico
-    const filters = {};
-    
-    if (categoria?.trim()) filters.categoria = { $regex: categoria.trim(), $options: 'i' };
-    if (subcategoria?.trim()) filters.subcategoria = { $regex: subcategoria.trim(), $options: 'i' };
-    if (marca?.trim()) filters.marca = { $regex: marca.trim(), $options: 'i' };
-    if (modelo?.trim()) filters.modelo = { $regex: modelo.trim(), $options: 'i' };
-    if (idinventario?.trim()) filters.idinventario = { $regex: idinventario.trim(), $options: 'i' };
-     if (inventarionombre?.trim()) filters.inventarionombre = { $regex: inventarionombre.trim(), $options: 'i' };
-    
-    // Ejecutar consulta con filtros
-    const results = await Inventory.find(filters)
-      .select('idInventario inventarioNombre categoria subcategoria marca modelo cantiDispo precio1 impuesto1 costo1 imagenUrl')
-      .sort({ idInventario: 1 });
-    
-    res.json({
-      success: true,
-      message: `${results.length} registro(s) encontrado(s)`,
-      data: results
-    });
-    
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      data: []
-    });
-  }
-});
-
-
-// backend / Ruras Categoria SubCategoria Marca Modelo/
 // ============================================================================
-// 🔹 RUTAS: CATEGORÍA (CRUD)
+// 🔹 RUTAS DE INVENTARIO - ORDEN CORREGIDO
 // ============================================================================
 
-// ✅ GET - Listar todas las categorías
+// ═══════════════════════════════════════════════════════════════
+// 1️⃣ PRIMERO: RUTAS ESPECÍFICAS SIN PARÁMETROS
+// ═══════════════════════════════════════════════════════════════
+
+// ───────── CATEGORÍAS ─────────
 app.get('/api/inventarios/categorias', async (req, res) => {
     try {
         const categorias = await Categoria.find({ activo: true }).sort({ categoria: 1 });
-        res.json({ 
-            success: true, 
-            message: `${categorias.length} categoría(s) encontrada(s)`, 
-            data: categorias 
-        });
+        res.json({ success: true, message: `${categorias.length} categoría(s) encontrada(s)`, data: categorias });
     } catch (error) {
         console.error('❌ Error GET /api/inventarios/categorias:', error);
         res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
     }
 });
+
 app.post('/api/inventarios/categorias', async (req, res) => {
     try {
         const { categoria, descripcion } = req.body;
-        
         if (!categoria?.trim()) {
             return res.status(400).json({ success: false, message: 'El nombre de la categoría es obligatorio' });
         }
-        
         const existing = await Categoria.findOne({ categoria: categoria.trim().toUpperCase() });
         if (existing) {
             return res.status(409).json({ success: false, message: 'Ya existe una categoría con este nombre' });
         }
-        
         const nuevaCategoria = new Categoria({
             categoria: categoria.trim().toUpperCase(),
             descripcion: descripcion?.trim() || '',
@@ -1539,12 +1223,7 @@ app.post('/api/inventarios/categorias', async (req, res) => {
             fechaActualizacion: new Date().toISOString()
         });
         const guardado = await nuevaCategoria.save();
-        
-        res.status(201).json({ 
-            success: true, 
-            message: '✅ Categoría creada exitosamente', 
-            data: guardado 
-        });
+        res.status(201).json({ success: true, message: '✅ Categoría creada exitosamente', data: guardado });
     } catch (error) {
         console.error('❌ Error POST /api/inventarios/categorias:', error);
         if (error.code === 11000) {
@@ -1554,7 +1233,222 @@ app.post('/api/inventarios/categorias', async (req, res) => {
     }
 });
 
+// ───────── SUBCATEGORÍAS ─────────
+app.get('/api/inventarios/subcategorias', async (req, res) => {
+    try {
+        const subcategorias = await SubCategoria.find({ activo: true }).sort({ subCategoria: 1 });
+        res.json({ success: true, message: `${subcategorias.length} subcategoría(s) encontrada(s)`, data: subcategorias });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/subcategorias:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
 
+app.post('/api/inventarios/subcategorias', async (req, res) => {
+    try {
+        const { subCategoria, categoriaId, descripcion } = req.body;
+        if (!subCategoria?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la subcategoría es obligatorio' });
+        }
+        const existing = await SubCategoria.findOne({ subCategoria: subCategoria.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
+        }
+        let categoriaNombre = '';
+        if (categoriaId) {
+            const categoria = await Categoria.findById(categoriaId);
+            if (categoria) categoriaNombre = categoria.categoria;
+        }
+        const nuevaSubCategoria = new SubCategoria({
+            subCategoria: subCategoria.trim().toUpperCase(),
+            categoriaId: categoriaId?.trim() || '',
+            subcategoriaNombre: categoriaNombre,
+            descripcion: descripcion?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
+        });
+        const guardado = await nuevaSubCategoria.save();
+        res.status(201).json({ success: true, message: '✅ Subcategoría creada exitosamente', data: guardado });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/subcategorias:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'La subcategoría ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ───────── MARCAS ─────────
+app.get('/api/inventarios/marcas', async (req, res) => {
+    try {
+        const marcas = await Marca.find({ activo: true }).sort({ marca: 1 });
+        res.json({ success: true, message: `${marcas.length} marca(s) encontrada(s)`, data: marcas });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/marcas:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.post('/api/inventarios/marcas', async (req, res) => {
+    try {
+        const { marca, descripcion, paisOrigen } = req.body;
+        if (!marca?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la marca es obligatorio' });
+        }
+        const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
+        }
+        const nuevaMarca = new Marca({
+            marca: marca.trim().toUpperCase(),
+            descripcion: descripcion?.trim() || '',
+            paisOrigen: paisOrigen?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
+        });
+        const guardado = await nuevaMarca.save();
+        res.status(201).json({ success: true, message: '✅ Marca creada exitosamente', data: guardado });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/marcas:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'La marca ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ───────── MODELOS ─────────
+app.get('/api/inventarios/modelos', async (req, res) => {
+    try {
+        const modelos = await Modelo.find({ activo: true }).sort({ modelo: 1 });
+        res.json({ success: true, message: `${modelos.length} modelo(s) encontrado(s)`, data: modelos });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/modelos:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.post('/api/inventarios/modelos', async (req, res) => {
+    try {
+        const { modelo, marcaId, descripcion } = req.body;
+        if (!modelo?.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre del modelo es obligatorio' });
+        }
+        const existing = await Modelo.findOne({ modelo: modelo.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe un modelo con este nombre' });
+        }
+        let marcaNombre = '';
+        if (marcaId) {
+            const marca = await Marca.findById(marcaId);
+            if (marca) marcaNombre = marca.marca;
+        }
+        const nuevoModelo = new Modelo({
+            modelo: modelo.trim().toUpperCase(),
+            marcaId: marcaId?.trim() || '',
+            marcaNombre: marcaNombre,
+            descripcion: descripcion?.trim() || '',
+            activo: true,
+            fechaCreacion: new Date().toISOString(),
+            fechaActualizacion: new Date().toISOString()
+        });
+        const guardado = await nuevoModelo.save();
+        res.status(201).json({ success: true, message: '✅ Modelo creado exitosamente', data: guardado });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/modelos:', error);
+        if (error.code === 11000) {
+            return res.status(409).json({ success: false, message: 'El modelo ya existe' });
+        }
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// ───────── BÚSQUEDA Y REPORTES ─────────
+app.get('/api/inventarios/search/:query', async (req, res) => {
+    try {
+        const { query } = req.params;
+        const regex = new RegExp(query, 'i');
+        const inventarios = await Inventariosede.find({
+            $or: [
+                { inventarionombre: regex },
+                { idinventario: regex },
+                { categoria: regex },
+                { marca: regex },
+                { modelo: regex }
+            ]
+        }).sort({ inventarionombre: 1 });
+        res.json({ success: true, message: `Resultados para "${query}"`, data: inventarios });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/search:', error);
+        res.status(500).json({ success: false, message: 'Error en búsqueda', error: error.message });
+    }
+});
+
+app.get('/api/inventarios/report', async (req, res) => {
+    try {
+        const { categoria, subcategoria, marca, modelo, idinventario, inventarionombre } = req.query;
+        const filters = {};
+        if (categoria?.trim()) filters.categoria = { $regex: categoria.trim(), $options: 'i' };
+        if (subcategoria?.trim()) filters.subcategoria = { $regex: subcategoria.trim(), $options: 'i' };
+        if (marca?.trim()) filters.marca = { $regex: marca.trim(), $options: 'i' };
+        if (modelo?.trim()) filters.modelo = { $regex: modelo.trim(), $options: 'i' };
+        if (idinventario?.trim()) filters.idinventario = { $regex: idinventario.trim(), $options: 'i' };
+        if (inventarionombre?.trim()) filters.inventarionombre = { $regex: inventarionombre.trim(), $options: 'i' };
+        const results = await Inventariosede.find(filters).sort({ idinventario: 1 });
+        res.json({ success: true, message: `${results.length} registro(s) encontrado(s)`, data: results });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/report:', error);
+        res.status(500).json({ success: false, message: error.message, data: [] });
+    }
+});
+
+app.post('/api/inventarios/bulk', async (req, res) => {
+    try {
+        const inventariosArray = req.body;
+        if (!Array.isArray(inventariosArray)) {
+            return res.status(400).json({ success: false, message: 'Se requiere un array de inventarios' });
+        }
+        let successCount = 0, duplicateCount = 0, errorCount = 0;
+        const errors = [];
+        for (const invData of inventariosArray) {
+            try {
+                const { idinventario, inventarionombre } = invData;
+                if (!idinventario || !inventarionombre) {
+                    errorCount++;
+                    errors.push(`Campos incompletos: ${JSON.stringify(invData)}`);
+                    continue;
+                }
+                const existing = await Inventariosede.findOne({ idinventario });
+                if (existing) {
+                    duplicateCount++;
+                    continue;
+                }
+                const nuevoInv = new Inventariosede(invData);
+                await nuevoInv.save();
+                successCount++;
+            } catch (err) {
+                errorCount++;
+                errors.push(`Error en ${invData.idinventario}: ${err.message}`);
+            }
+        }
+        res.json({
+            success: true,
+            message: 'Carga masiva de inventario completada',
+            data: { total: inventariosArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors }
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/inventarios/bulk:', error);
+        res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 2️⃣ DESPUÉS: RUTAS CON ID ESPECÍFICO (categorias/:id, etc.)
+// ═══════════════════════════════════════════════════════════════
+
+// ───────── CATEGORÍAS CON ID ─────────
 app.get('/api/inventarios/categorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1572,34 +1466,21 @@ app.get('/api/inventarios/categorias/:id', async (req, res) => {
     }
 });
 
-
-
-
 app.put('/api/inventarios/categorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const updateData = { ...req.body };
         delete updateData._id;
         delete updateData.fechaCreacion;
-        
-        if (updateData.categoria) {
-            updateData.categoria = updateData.categoria.trim().toUpperCase();
-        }
+        if (updateData.categoria) updateData.categoria = updateData.categoria.trim().toUpperCase();
         updateData.fechaActualizacion = new Date().toISOString();
-        
-        const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { 
-            new: true, 
-            runValidators: true 
-        });
-        
+        const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
         if (!actualizado) {
             return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
         }
-        
         res.json({ success: true, message: '✅ Categoría actualizada', data: actualizado });
     } catch (error) {
         console.error('❌ Error PUT /api/inventarios/categorias/:id:', error);
@@ -1616,17 +1497,13 @@ app.delete('/api/inventarios/categorias/:id', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
-        // Soft delete: marcar como inactivo en lugar de eliminar
         const eliminado = await Categoria.findByIdAndUpdate(id, {
             activo: false,
             fechaActualizacion: new Date().toISOString()
         }, { new: true });
-        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
         }
-        
         res.json({ success: true, message: '🗑️ Categoría eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/categorias/:id:', error);
@@ -1634,71 +1511,7 @@ app.delete('/api/inventarios/categorias/:id', async (req, res) => {
     }
 });
 
-// ============================================================================
-// 🔹 RUTAS: SUBCATEGORÍA (CRUD) - ACTUALIZADO
-// ============================================================================
-
-app.get('/api/inventarios/subcategorias', async (req, res) => {
-    try {
-        const subcategorias = await SubCategoria.find({ activo: true }).sort({ subCategoria: 1 });
-        res.json({ 
-            success: true, 
-            message: `${subcategorias.length} subcategoría(s) encontrada(s)`, 
-            data: subcategorias 
-        });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios/subcategorias:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-app.post('/api/inventarios/subcategorias', async (req, res) => {
-    try {
-        const { subCategoria, categoriaId, descripcion } = req.body;
-        
-        if (!subCategoria?.trim()) {
-            return res.status(400).json({ success: false, message: 'El nombre de la subcategoría es obligatorio' });
-        }
-        
-        const existing = await SubCategoria.findOne({ subCategoria: subCategoria.trim().toUpperCase() });
-        if (existing) {
-            return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
-        }
-        
-        // Buscar nombre de categoría si se proporciona categoriaId
-        let categoriaNombre = '';
-        if (categoriaId) {
-            const categoria = await Categoria.findById(categoriaId);
-            if (categoria) {
-                categoriaNombre = categoria.categoria;
-            }
-        }
-        
-        const nuevaSubCategoria = new SubCategoria({
-            subCategoria: subCategoria.trim().toUpperCase(),
-            categoriaId: categoriaId?.trim() || '',
-            subcategoriaNombre: categoriaNombre,
-            descripcion: descripcion?.trim() || '',
-            activo: true,
-            fechaCreacion: new Date().toISOString(),
-            fechaActualizacion: new Date().toISOString()
-        });
-        const guardado = await nuevaSubCategoria.save();
-        
-        res.status(201).json({ 
-            success: true, 
-            message: '✅ Subcategoría creada exitosamente', 
-            data: guardado 
-        });
-    } catch (error) {
-        console.error('❌ Error POST /api/inventarios/subcategorias:', error);
-        if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'La subcategoría ya existe' });
-        }
-        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
-    }
-});
-
+// ───────── SUBCATEGORÍAS CON ID ─────────
 app.get('/api/inventarios/subcategorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1716,32 +1529,21 @@ app.get('/api/inventarios/subcategorias/:id', async (req, res) => {
     }
 });
 
-
 app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const updateData = { ...req.body };
         delete updateData._id;
         delete updateData.fechaCreacion;
-        
-        if (updateData.subCategoria) {
-            updateData.subCategoria = updateData.subCategoria.trim().toUpperCase();
-        }
+        if (updateData.subCategoria) updateData.subCategoria = updateData.subCategoria.trim().toUpperCase();
         updateData.fechaActualizacion = new Date().toISOString();
-        
-        const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { 
-            new: true, 
-            runValidators: true 
-        });
-        
+        const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
         if (!actualizado) {
             return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
         }
-        
         res.json({ success: true, message: '✅ Subcategoría actualizada', data: actualizado });
     } catch (error) {
         console.error('❌ Error PUT /api/inventarios/subcategorias/:id:', error);
@@ -1758,16 +1560,13 @@ app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const eliminado = await SubCategoria.findByIdAndUpdate(id, {
             activo: false,
             fechaActualizacion: new Date().toISOString()
         }, { new: true });
-        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
         }
-        
         res.json({ success: true, message: '🗑️ Subcategoría eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/subcategorias/:id:', error);
@@ -1775,62 +1574,7 @@ app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
     }
 });
 
-// ============================================================================
-// 🔹 RUTAS: MARCA (CRUD) - ACTUALIZADO
-// ============================================================================
-
-app.get('/api/inventarios/marcas', async (req, res) => {
-    try {
-        const marcas = await Marca.find({ activo: true }).sort({ marca: 1 });
-        res.json({ 
-            success: true, 
-            message: `${marcas.length} marca(s) encontrada(s)`, 
-            data: marcas 
-        });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios/marcas:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-app.post('/api/inventarios/marcas', async (req, res) => {
-    try {
-        const { marca, descripcion, paisOrigen } = req.body;
-        
-        if (!marca?.trim()) {
-            return res.status(400).json({ success: false, message: 'El nombre de la marca es obligatorio' });
-        }
-        
-        const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
-        if (existing) {
-            return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
-        }
-        
-        const nuevaMarca = new Marca({
-            marca: marca.trim().toUpperCase(),
-            descripcion: descripcion?.trim() || '',
-            paisOrigen: paisOrigen?.trim() || '',
-            activo: true,
-            fechaCreacion: new Date().toISOString(),
-            fechaActualizacion: new Date().toISOString()
-        });
-        const guardado = await nuevaMarca.save();
-        
-        res.status(201).json({ 
-            success: true, 
-            message: '✅ Marca creada exitosamente', 
-            data: guardado 
-        });
-    } catch (error) {
-        console.error('❌ Error POST /api/inventarios/marcas:', error);
-        if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'La marca ya existe' });
-        }
-        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
-    }
-});
-
-
+// ───────── MARCAS CON ID ─────────
 app.get('/api/inventarios/marcas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1854,25 +1598,15 @@ app.put('/api/inventarios/marcas/:id', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const updateData = { ...req.body };
         delete updateData._id;
         delete updateData.fechaCreacion;
-        
-        if (updateData.marca) {
-            updateData.marca = updateData.marca.trim().toUpperCase();
-        }
+        if (updateData.marca) updateData.marca = updateData.marca.trim().toUpperCase();
         updateData.fechaActualizacion = new Date().toISOString();
-        
-        const actualizado = await Marca.findByIdAndUpdate(id, updateData, { 
-            new: true, 
-            runValidators: true 
-        });
-        
+        const actualizado = await Marca.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
         if (!actualizado) {
             return res.status(404).json({ success: false, message: 'Marca no encontrada' });
         }
-        
         res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
     } catch (error) {
         console.error('❌ Error PUT /api/inventarios/marcas/:id:', error);
@@ -1889,16 +1623,13 @@ app.delete('/api/inventarios/marcas/:id', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const eliminado = await Marca.findByIdAndUpdate(id, {
             activo: false,
             fechaActualizacion: new Date().toISOString()
         }, { new: true });
-        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Marca no encontrada' });
         }
-        
         res.json({ success: true, message: '🗑️ Marca eliminada (desactivada)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/marcas/:id:', error);
@@ -1906,71 +1637,7 @@ app.delete('/api/inventarios/marcas/:id', async (req, res) => {
     }
 });
 
-// ============================================================================
-// 🔹 RUTAS: MODELO (CRUD) - ACTUALIZADO
-// ============================================================================
-
-app.get('/api/inventarios/modelos', async (req, res) => {
-    try {
-        const modelos = await Modelo.find({ activo: true }).sort({ modelo: 1 });
-        res.json({ 
-            success: true, 
-            message: `${modelos.length} modelo(s) encontrado(s)`, 
-            data: modelos 
-        });
-    } catch (error) {
-        console.error('❌ Error GET /api/inventarios/modelos:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-app.post('/api/inventarios/modelos', async (req, res) => {
-    try {
-        const { modelo, marcaId, descripcion } = req.body;
-        
-        if (!modelo?.trim()) {
-            return res.status(400).json({ success: false, message: 'El nombre del modelo es obligatorio' });
-        }
-        
-        const existing = await Modelo.findOne({ modelo: modelo.trim().toUpperCase() });
-        if (existing) {
-            return res.status(409).json({ success: false, message: 'Ya existe un modelo con este nombre' });
-        }
-        
-        // Buscar nombre de marca si se proporciona marcaId
-        let marcaNombre = '';
-        if (marcaId) {
-            const marca = await Marca.findById(marcaId);
-            if (marca) {
-                marcaNombre = marca.marca;
-            }
-        }
-        
-        const nuevoModelo = new Modelo({
-            modelo: modelo.trim().toUpperCase(),
-            marcaId: marcaId?.trim() || '',
-            marcaNombre: marcaNombre,
-            descripcion: descripcion?.trim() || '',
-            activo: true,
-            fechaCreacion: new Date().toISOString(),
-            fechaActualizacion: new Date().toISOString()
-        });
-        const guardado = await nuevoModelo.save();
-        
-        res.status(201).json({ 
-            success: true, 
-            message: '✅ Modelo creado exitosamente', 
-            data: guardado 
-        });
-    } catch (error) {
-        console.error('❌ Error POST /api/inventarios/modelos:', error);
-        if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'El modelo ya existe' });
-        }
-        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
-    }
-});
-
+// ───────── MODELOS CON ID ─────────
 app.get('/api/inventarios/modelos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -1988,32 +1655,21 @@ app.get('/api/inventarios/modelos/:id', async (req, res) => {
     }
 });
 
-
 app.put('/api/inventarios/modelos/:id', async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const updateData = { ...req.body };
         delete updateData._id;
         delete updateData.fechaCreacion;
-        
-        if (updateData.modelo) {
-            updateData.modelo = updateData.modelo.trim().toUpperCase();
-        }
+        if (updateData.modelo) updateData.modelo = updateData.modelo.trim().toUpperCase();
         updateData.fechaActualizacion = new Date().toISOString();
-        
-        const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { 
-            new: true, 
-            runValidators: true 
-        });
-        
+        const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
         if (!actualizado) {
             return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
         }
-        
         res.json({ success: true, message: '✅ Modelo actualizado', data: actualizado });
     } catch (error) {
         console.error('❌ Error PUT /api/inventarios/modelos/:id:', error);
@@ -2030,20 +1686,103 @@ app.delete('/api/inventarios/modelos/:id', async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ success: false, message: 'ID inválido' });
         }
-        
         const eliminado = await Modelo.findByIdAndUpdate(id, {
             activo: false,
             fechaActualizacion: new Date().toISOString()
         }, { new: true });
-        
         if (!eliminado) {
             return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
         }
-        
         res.json({ success: true, message: '🗑️ Modelo eliminado (desactivado)' });
     } catch (error) {
         console.error('❌ Error DELETE /api/inventarios/modelos/:id:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// 3️⃣ AL FINAL: RUTAS GENÉRICAS DE INVENTARIOS
+// ═══════════════════════════════════════════════════════════════
+
+app.get('/api/inventarios', async (req, res) => {
+    try {
+        const inventarios = await Inventariosede.find().sort({ createdAt: -1 });
+        res.json({ success: true, message: 'Inventarios obtenidos', data: inventarios });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.post('/api/inventarios', async (req, res) => {
+    try {
+        const { idinventario, inventarionombre } = req.body;
+        if (!idinventario?.trim() || !inventarionombre?.trim()) {
+            return res.status(400).json({ success: false, message: "ID Inventario y Nombre son campos obligatorios" });
+        }
+        const existing = await Inventariosede.findOne({ idinventario });
+        if (existing) {
+            return res.status(409).json({ success: false, message: "Ya existe un producto con este ID de inventario" });
+        }
+        const nuevoInventario = new Inventariosede(req.body);
+        const guardado = await nuevoInventario.save();
+        res.status(201).json({ success: true, message: "✅ Producto de inventario creado exitosamente", data: guardado });
+    } catch (err) {
+        console.error("❌ Error POST /api/inventarios:", err);
+        if (err.code === 11000) {
+            return res.status(409).json({ success: false, message: "❌ El ID de inventario ya está registrado" });
+        }
+        res.status(500).json({ success: false, message: "Error al crear inventario", error: err.message });
+    }
+});
+
+// ⚠️ ESTA RUTA DEBE IR AL FINAL DE TODAS LAS RUTAS DE INVENTARIOS
+app.get('/api/inventarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const inventario = await Inventariosede.findById(id);
+        if (!inventario) {
+            return res.status(404).json({ success: false, message: 'Inventario no encontrado' });
+        }
+        res.json({ success: true, message: 'Inventario obtenido', data: inventario });
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.put('/api/inventarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+        delete updateData.idinventario;
+        delete updateData._id;
+        delete updateData.createdAt;
+        const actualizado = await Inventariosede.findByIdAndUpdate(id, updateData, { new: true, runValidators: true, context: 'query' });
+        if (!actualizado) {
+            return res.status(404).json({ success: false, message: "Inventario no encontrado" });
+        }
+        res.json({ success: true, message: "✅ Inventario actualizado exitosamente", data: actualizado });
+    } catch (err) {
+        console.error("❌ Error PUT /api/inventarios:", err);
+        res.status(500).json({ success: false, message: "Error al actualizar inventario", error: err.message });
+    }
+});
+
+app.delete('/api/inventarios/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "ID de inventario inválido" });
+        }
+        const eliminado = await Inventariosede.findByIdAndDelete(id);
+        if (!eliminado) {
+            return res.status(404).json({ success: false, message: "Inventario no encontrado" });
+        }
+        res.json({ success: true, message: "🗑️ Producto eliminado exitosamente del inventario" });
+    } catch (err) {
+        console.error("❌ Error DELETE /api/inventarios:", err);
+        res.status(500).json({ success: false, message: "Error al eliminar inventario", error: err.message });
     }
 });
 
