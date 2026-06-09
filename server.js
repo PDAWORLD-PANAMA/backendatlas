@@ -888,21 +888,6 @@ app.get('/api/bienes', async (req, res) => {
     }
 });
 
-// ✅ GET - Leer un bien por ID
-app.get('/api/bienes/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const bien = await BienServicio.findById(id);
-        if (!bien) {
-            return res.status(404).json({ success: false, message: 'Bien no encontrado' });
-        }
-        res.json({ success: true, message: 'Bien obtenido', data: bien });
-    } catch (error) {
-        console.error('❌ Error GET /api/bienes/:id:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
 // ✅ POST - Crear nuevo bien (validar código único)
 app.post('/api/bienes', async (req, res) => {
     try {
@@ -922,6 +907,23 @@ app.post('/api/bienes', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
     }
 });
+
+// ✅ GET - Leer un bien por ID
+app.get('/api/bienes/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const bien = await BienServicio.findById(id);
+        if (!bien) {
+            return res.status(404).json({ success: false, message: 'Bien no encontrado' });
+        }
+        res.json({ success: true, message: 'Bien obtenido', data: bien });
+    } catch (error) {
+        console.error('❌ Error GET /api/bienes/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+
 
 // ✅ PUT - Actualizar bien existente
 app.put('/api/bienes/:id', async (req, res) => {
@@ -1034,20 +1036,6 @@ app.get('/api/ubicaciones', async (req, res) => {
     }
 });
 
-// ✅ GET - Leer una ubicación por ID
-app.get('/api/ubicaciones/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const ubicacion = await Ubicacion.findById(id);
-        if (!ubicacion) {
-            return res.status(404).json({ success: false, message: 'Ubicación no encontrada' });
-        }
-        res.json({ success: true, message: 'Ubicación obtenida',  ubicacion });
-    } catch (error) {
-        console.error('❌ Error GET /api/ubicaciones/:id:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
 
 // ✅ POST - Crear nueva ubicación
 app.post('/api/ubicaciones', async (req, res) => {
@@ -1075,6 +1063,22 @@ app.post('/api/ubicaciones', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
     }
 });
+
+// ✅ GET - Leer una ubicación por ID
+app.get('/api/ubicaciones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const ubicacion = await Ubicacion.findById(id);
+        if (!ubicacion) {
+            return res.status(404).json({ success: false, message: 'Ubicación no encontrada' });
+        }
+        res.json({ success: true, message: 'Ubicación obtenida',  ubicacion });
+    } catch (error) {
+        console.error('❌ Error GET /api/ubicaciones/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
 
 // ✅ PUT - Actualizar ubicación existente
 app.put('/api/ubicaciones/:id', async (req, res) => {
@@ -1177,18 +1181,6 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
 });
 
 // server.js - Agregar al final, junto a las otras rutas
-
-// ============================================================================
-// 🔹 MODELO DE INVENTARIO (usando tu schema existente)
-// ============================================================================
- // Ajustar path según tu estructura
-
-// ============================================================================
-// 🔹 RUTAS: INVENTARIO (CRUD COMPLETO)
-// ============================================================================
-// ============================================================================
-// 🔹 RUTAS DE INVENTARIO - ORDEN CORREGIDO
-// ============================================================================
 
 // ═══════════════════════════════════════════════════════════════
 // 1️⃣ PRIMERO: RUTAS ESPECÍFICAS SIN PARÁMETROS
