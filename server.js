@@ -333,6 +333,47 @@ const modeloSchema = new mongoose.Schema({
 });
 const Modelo = mongoose.model('Modelo', modeloSchema);
 
+
+
+const ClienteSchema = new mongoose.Schema({
+  idcliente: { type: String, required: true, unique: true, uppercase: true },
+  clientenombre: { type: String, required: true, uppercase: true, index: true },
+  idglobal: String,
+  ruccliente: String,
+  digitoverificador: String,
+  retenedor: { type: String, enum: ['N','S'], default: 'N' },
+  dir1cliente: String,
+  dir2cliente: String,
+  dirconta: String,
+  derpar: String,
+  telcliente: String,
+  emailcliente: String,
+  faxcliente: String,
+  webcliente: String,
+  tipocontribuyente: String,
+  ventascliente: { type: Number, default: 0 },
+  acumulapuntos: { type: Number, default: 0 },
+  tiposuscribcliente: String,
+  fechasuscribcliente: String,
+  fechacumplecliente: String,
+  estadoctacliente: String,
+  limitecredcliente: String,
+  provinciacliente: String,
+  clasecliente: { type: String, enum: ['1','2','3'], default: '1' },
+  ciudadcliente: String,
+  vendedorcliente: String,
+  codigopreciocliente: String,
+  fechaultventa: String,
+  historialfacturas: [String],
+  historialcotizacion: [String],
+  historialabonos: [String],
+  historialcambio: [String]
+}, { timestamps: true });
+
+const Cliente = mongoose.model('Cliente', ClienteSchema);
+
+
+
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD
 // ============================================================================
@@ -663,14 +704,6 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
   }
 });
 
-// ============================================================================
-// 🔹 RUTAS: INVENTARIO - REORGANIZADO (ESPECÍFICAS PRIMERO, GENÉRICAS AL FINAL)
-// ============================================================================
-
-// ═══════════════════════════════════════════════════════════════
-// 1️⃣ PRIMERO: RUTAS ESPECÍFICAS SIN PARÁMETROS
-// ═══════════════════════════════════════════════════════════════
-
 // ───────── CATEGORÍAS ─────────
 app.get('/api/inventarios/categorias', async (req, res) => {
   try {
@@ -818,23 +851,6 @@ app.post('/api/inventarios/modelos', async (req, res) => {
   }
 });
 
-// ───────── BÚSQUEDA Y REPORTES ─────────
-app.get('/api/inventarios/search/:query', async (req, res) => {
-  try {
-    const { query } = req.params;
-    const regex = new RegExp(query, 'i');
-    const inventarios = await Inventariosede.find({
-      $or: [
-        { inventarionombre: regex }, { idinventario: regex },
-        { categoria: regex }, { marca: regex }, { modelo: regex }
-      ]
-    }).sort({ inventarionombre: 1 });
-    res.json({ success: true, message: `Resultados para "${query}"`, data: inventarios });
-  } catch (error) {
-    console.error('❌ Error GET /api/inventarios/search:', error);
-    res.status(500).json({ success: false, message: 'Error en búsqueda', error: error.message });
-  }
-});
 
 app.get('/api/inventarios/report', async (req, res) => {
   try {
@@ -1601,6 +1617,8 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al generar PDF', error: error.message });
   }
 });
+
+
 
 // ============================================================================
 // 🔹 HELPERS INTERNOS
