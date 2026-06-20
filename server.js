@@ -1157,19 +1157,29 @@ app.delete('/api/inventarios/:id', async (req, res) => {
 // 🔹 RUTAS: CLIENTES
 // ============================================================================
 app.get('/api/ventas/clientes', async (req, res) => {
-  try {
-    const { clientenombre, ruccliente, ciudadcliente, activo } = req.query;
-    let filters = { activo: activo !== 'false' };
-    if (clientenombre?.trim()) filters.clientenombre = { $regex: clientenombre.trim(), $options: 'i' };
-    if (ruccliente?.trim()) filters.ruccliente = ruccliente.trim().toUpperCase();
-    if (ciudadcliente?.trim()) filters.ciudadcliente = { $regex: ciudadcliente.trim(), $options: 'i' };
-    const clientes = await Cliente.find(filters).sort({ clientenombre: 1 }).limit(CLIENTE_LIMIT);
-    res.json({ success: true, message: `${clientes.length} cliente(s) encontrado(s)`, data: clientes });
+
+ try {
+    const cliente = await Cliente.find().sort({ createdAt: -1 });
+    res.json({ success: true, message: 'Clientes obtenidos', data: cliente });
   } catch (error) {
-    console.error('❌ Error GET /api/ventas/clientes:', error);
+    console.error('❌ Error GET /api/clientes:', error);
     res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
   }
+//  try {
+//    const { clientenombre, ruccliente, ciudadcliente, activo } = req.query;
+//    let filters = { activo: activo !== 'false' };
+//    if (clientenombre?.trim()) filters.clientenombre = { $regex: clientenombre.trim(), $options: 'i' };
+//    if (ruccliente?.trim()) filters.ruccliente = ruccliente.trim().toUpperCase();
+//    if (ciudadcliente?.trim()) filters.ciudadcliente = { $regex: ciudadcliente.trim(), $options: 'i' };
+//    const clientes = await Cliente.find(filters).sort({ clientenombre: 1 }).limit(CLIENTE_LIMIT);
+//    res.json({ success: true, message: `${clientes.length} cliente(s) encontrado(s)`, data: clientes });
+//  } catch (error) {
+//    console.error('❌ Error GET /api/ventas/clientes:', error);
+//    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+//  }
 });
+
+ 
 
 app.post('/api/ventas/clientes', async (req, res) => {
   try {
