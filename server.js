@@ -337,47 +337,6 @@ const modeloSchema = new mongoose.Schema({
 const Modelo = mongoose.model('Modelo', modeloSchema);
 
 
-
-const ClienteSchema = new mongoose.Schema({
-  idcliente: { type: String, required: true, unique: true, uppercase: true },
-  clientenombre: { type: String, required: true, uppercase: true, index: true },
-  idglobal: String,
-  ruccliente: String,
-  digitoverificador: String,
-  retenedor: { type: String, enum: ['N','S'], default: 'N' },
-  dir1cliente: String,
-  dir2cliente: String,
-  dirconta: String,
-  derpar: String,
-  telcliente: String,
-  emailcliente: String,
-  faxcliente: String,
-  webcliente: String,
-  tipocontribuyente: String,
-  ventascliente: { type: Number, default: 0 },
-  acumulapuntos: { type: Number, default: 0 },
-  tiposuscribcliente: String,
-  fechasuscribcliente: String,
-  fechacumplecliente: String,
-  estadoctacliente: String,
-  limitecredcliente: String,
-  provinciacliente: String,
-  clasecliente: { type: String, enum: ['1','2','3'], default: '1' },
-  ciudadcliente: String,
-  vendedorcliente: String,
-   activo: { type: Boolean, default: true },
-  codigopreciocliente: String,
-  fechaultventa: String,
-  historialfacturas: [String],
-  historialcotizacion: [String],
-  historialabonos: [String],
-  historialcambio: [String]
-}, { timestamps: true });
-
-const Cliente = mongoose.model('Cliente', ClienteSchema);
-
-
-
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD
 // ============================================================================
