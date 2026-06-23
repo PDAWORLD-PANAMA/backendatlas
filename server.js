@@ -240,6 +240,25 @@ const SchemadelCliente = new mongoose.Schema({
 
 const Cliente = mongoose.model('Cliente', SchemadelCliente);
 
+
+var Vendedorschema = mongoose.Schema;
+// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
+//
+var SchemadelVendedor = new Vendedorschema({
+    idvendedor: { type : String },
+    vendenombre: { type : String, uppercase: true },
+   tipovendedor: { type : String},
+   dir1vende: { type : String, uppercase: true },
+   dir2vende: { type : String, uppercase: true },
+   activo: { type: Boolean, default: true },
+   telvende: { type : String },
+   emailvende: { type : String },
+   ventasvende: { type : Number }
+});
+
+const Vendedor = mongoose.model('Vendedor', SchemadelVendedor);
+
+
 const Schemaheadcotiza = new mongoose.Schema({
   nocotiza: { type: String },
   fechacotiza: { type: String },
@@ -678,6 +697,7 @@ app.get('/api/inventarios/categorias', async (req, res) => {
 app.post('/api/inventarios/categorias', async (req, res) => {
   try {
     const { categoria, descripcion } = req.body;
+    var fechasistema = formatLocalYmd(new Date());
     if (!categoria?.trim()) return res.status(400).json({ success: false, message: 'El nombre de la categoría es obligatorio' });
     const existing = await Categoria.findOne({ categoria: categoria.trim().toUpperCase() });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe una categoría con este nombre' });
@@ -685,8 +705,8 @@ app.post('/api/inventarios/categorias', async (req, res) => {
       categoria: categoria.trim().toUpperCase(),
       descripcion: descripcion?.trim() || '',
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString()
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
     });
     const guardado = await nuevaCategoria.save();
     res.status(201).json({ success: true, message: '✅ Categoría creada exitosamente', data: guardado });
@@ -711,6 +731,7 @@ app.get('/api/inventarios/subcategorias', async (req, res) => {
 app.post('/api/inventarios/subcategorias', async (req, res) => {
   try {
     const { subCategoria, categoriaId, descripcion } = req.body;
+    var fechasistema = formatLocalYmd(new Date());
     if (!subCategoria?.trim()) return res.status(400).json({ success: false, message: 'El nombre de la subcategoría es obligatorio' });
     const existing = await SubCategoria.findOne({ subCategoria: subCategoria.trim().toUpperCase() });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe una subcategoría con este nombre' });
@@ -725,8 +746,8 @@ app.post('/api/inventarios/subcategorias', async (req, res) => {
       subcategoriaNombre: categoriaNombre,
       descripcion: descripcion?.trim() || '',
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString()
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
     });
     const guardado = await nuevaSubCategoria.save();
     res.status(201).json({ success: true, message: '✅ Subcategoría creada exitosamente', data: guardado });
@@ -751,6 +772,7 @@ app.get('/api/inventarios/marcas', async (req, res) => {
 app.post('/api/inventarios/marcas', async (req, res) => {
   try {
     const { marca, descripcion, paisOrigen } = req.body;
+    var fechasistema = formatLocalYmd(new Date());
     if (!marca?.trim()) return res.status(400).json({ success: false, message: 'El nombre de la marca es obligatorio' });
     const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
@@ -759,8 +781,8 @@ app.post('/api/inventarios/marcas', async (req, res) => {
       descripcion: descripcion?.trim() || '',
       paisOrigen: paisOrigen?.trim() || '',
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString()
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
     });
     const guardado = await nuevaMarca.save();
     res.status(201).json({ success: true, message: '✅ Marca creada exitosamente', data: guardado });
@@ -793,14 +815,15 @@ app.post('/api/inventarios/modelos', async (req, res) => {
       const marca = await Marca.findById(marcaId);
       if (marca) marcaNombre = marca.marca;
     }
+    var fechasistema = formatLocalYmd(new Date());
     const nuevoModelo = new Modelo({
       modelo: modelo.trim().toUpperCase(),
       marcaId: marcaId?.trim() || '',
       marcaNombre: marcaNombre,
       descripcion: descripcion?.trim() || '',
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString()
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
     });
     const guardado = await nuevoModelo.save();
     res.status(201).json({ success: true, message: '✅ Modelo creado exitosamente', data: guardado });
@@ -856,6 +879,49 @@ app.post('/api/inventarios/bulk', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
   }
 });
+
+
+//================================================================//
+// ───────── VENDEDOR  ─────────
+app.get('api/vendedor', async (req, res) => {
+  try {
+    const vendedor = await Vendedor.find({ activo: true }).sort({ vendedorNombre: 1 });
+    res.json({ success: true, message: `${vendedor.length} vendedores(s) encontrada(s)`, data: vendedor });
+  } catch (error) {
+    console.error('❌ Error GET /api/vendedor:', error);
+    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+  }
+});
+
+app.post('api/vendedor', async (req, res) => {
+  try {
+    const { idvendedor, vendenombre } = req.body;
+    if (!idvendedor?.trim()) return res.status(400).json({ success: false, message: 'El codigo de vendedor es obligatorio' });
+    const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
+    if (existing) return res.status(409).json({ success: false, message: 'Ya existe ese codigo ' });
+    const nuevoVendedor = new Vendedor({
+      idvendedor: idvendedor.trim().toUpperCase(),
+      vendenombre: vendenombre?.trim() || '',
+      tipovendedor: tipovendedor?.trim() || '',
+      dir1vende: dir1vende?.trim() || '',
+      activo: true,
+      dir2vende: dir2vende?.trim() || '',
+      telvende: telvende?.trim() || '',
+       emailvende: emailvende?.trim() || '',
+       ventasvende :  0
+    });
+    const guardado = await nuevaMarca.save();
+    res.status(201).json({ success: true, message: '✅ Marca creada exitosamente', data: guardado });
+  } catch (error) {
+    console.error('❌ Error POST /api/inventarios/marcas:', error);
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'La marca ya existe' });
+    res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+  }
+});
+
+
+
+//================================================================//
 
 // ═══════════════════════════════════════════════════════════════
 // 2️⃣ DESPUÉS: RUTAS CON ID ESPECÍFICO
@@ -1013,11 +1079,12 @@ app.get('/api/inventarios/modelos/:id', async (req, res) => {
 app.put('/api/inventarios/modelos/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    var fechasistema = formatLocalYmd(new Date());
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
     delete updateData._id; delete updateData.fechaCreacion;
     if (updateData.modelo) updateData.modelo = updateData.modelo.trim().toUpperCase();
-    updateData.fechaActualizacion = new Date().toISOString();
+    updateData.fechaActualizacion = fechasistema;
     const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
     res.json({ success: true, message: '✅ Modelo actualizado', data: actualizado });
@@ -1040,6 +1107,55 @@ app.delete('/api/inventarios/modelos/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
   }
 });
+
+// ===============================================================
+// ───────── VENDEDOR  CON ID ─────────
+app.get('/api/vendedor/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+    const vendedor = await Vendedor.findById(id);
+    if (!vendedor) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
+    res.json({ success: true, message: 'Vendedor obtenido', data: marca });
+  } catch (error) {
+    console.error('❌ Error GET /api/vendedor/:id:', error);
+    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+  }
+});
+
+app.put('/api/vendedor/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+     var fechasistema = formatLocalYmd(new Date());
+    const updateData = { ...req.body };
+    delete updateData._id; delete updateData.fechaCreacion;
+    if (updateData.idvendedor) updateData.vendedorNombre = updateData.vendedorNombre.trim().toUpperCase();
+    updateData.fechaActualizacion = fechasistema;
+    const actualizado = await Marca.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    if (!actualizado) return res.status(404).json({ success: false, message: 'Marca no encontrada' });
+    res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
+  } catch (error) {
+    console.error('❌ Error PUT /api/inventarios/marcas/:id:', error);
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
+    res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+  }
+});
+
+app.delete('/api/vendedor/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+     var fechasistema = formatLocalYmd(new Date());
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false, fechaActualizacion: fechasistema }, { new: true });
+    if (!eliminado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
+    res.json({ success: true, message: '🗑️ Vendedor eliminado (desactivada)' });
+  } catch (error) {
+    console.error('❌ Error DELETE /api/vendedor/:id:', error);
+    res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+  }
+});
+//  ==============================================================
 
 // ═══════════════════════════════════════════════════════════════
 // 3️⃣ AL FINAL: RUTAS GENÉRICAS DE INVENTARIOS
@@ -1125,18 +1241,7 @@ app.get('/api/ventas/clientes', async (req, res) => {
     console.error('❌ Error GET /api/clientes:', error);
     res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
   }
-//  try {
-//    const { clientenombre, ruccliente, ciudadcliente, activo } = req.query;
-//    let filters = { activo: activo !== 'false' };
-//    if (clientenombre?.trim()) filters.clientenombre = { $regex: clientenombre.trim(), $options: 'i' };
-//    if (ruccliente?.trim()) filters.ruccliente = ruccliente.trim().toUpperCase();
-//    if (ciudadcliente?.trim()) filters.ciudadcliente = { $regex: ciudadcliente.trim(), $options: 'i' };
-//    const clientes = await Cliente.find(filters).sort({ clientenombre: 1 }).limit(CLIENTE_LIMIT);
-//    res.json({ success: true, message: `${clientes.length} cliente(s) encontrado(s)`, data: clientes });
-//  } catch (error) {
-//    console.error('❌ Error GET /api/ventas/clientes:', error);
-//    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-//  }
+
 });
 
  
@@ -1147,6 +1252,7 @@ app.post('/api/ventas/clientes', async (req, res) => {
     if (!idcliente?.trim() || !clientenombre?.trim()) {
       return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
     }
+    var fechasistema = formatLocalYmd(new Date());
     const exists = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase() });
     if (exists) return res.status(409).json({ success: false, message: 'Ya existe un cliente con este ID' });
     const nuevoCliente = await Cliente.create({
@@ -1154,8 +1260,8 @@ app.post('/api/ventas/clientes', async (req, res) => {
       idcliente: idcliente.trim().toUpperCase(),
       clientenombre: clientenombre.trim().toUpperCase(),
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString()
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
     });
     res.status(201).json({ success: true, message: '✅ Cliente creado exitosamente', data: nuevoCliente });
   } catch (error) {
@@ -1204,6 +1310,7 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
     for (const clienteData of clientesArray) {
       try {
         const { idcliente, clientenombre } = clienteData;
+        var fechasistema = formatLocalYmd(new Date());
         if (!idcliente?.trim() || !clientenombre?.trim()) { errorCount++; continue; }
         const idNormalizado = idcliente.trim().toUpperCase();
         if (existingIds.has(idNormalizado)) { duplicateCount++; continue; }
@@ -1212,8 +1319,8 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
           idcliente: idNormalizado,
           clientenombre: clientenombre.trim().toUpperCase(),
           activo: true,
-          fechaCreacion: new Date().toISOString(),
-          fechaActualizacion: new Date().toISOString()
+          fechaCreacion: fechasistema,
+          fechaActualizacion: fechasistema
         });
         await nuevoCliente.save();
         existingIds.add(idNormalizado);
@@ -1260,8 +1367,9 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
+    var fechasistema = formatLocalYmd(new Date());
     delete updateData.idcliente; delete updateData._id; delete updateData.createdAt; delete updateData.fechaCreacion;
-    updateData.fechaActualizacion = new Date().toISOString();
+    updateData.fechaActualizacion = fechasistema;
     const actualizado = await Cliente.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
@@ -1332,6 +1440,7 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
     if (!nocotiza?.trim() || !codcliente?.trim() || !fechacotiza?.trim()) {
       return res.status(400).json({ success: false, message: 'N° Cotización, Cliente y Fecha son obligatorios' });
     }
+    var fechasistema = formatLocalYmd(new Date());
     const exists = await CotizaHead.findOne({ nocotiza: nocotiza.trim().toUpperCase() });
     if (exists) return res.status(409).json({ success: false, message: 'Ya existe una cotización con este número' });
     const newHead = await CotizaHead.create({
@@ -1342,8 +1451,8 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
       ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
       codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
       tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString(),
+      fechaCreacion:fechasistema,
+      fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, detallecoti: '[]'
     });
     res.status(201).json({ success: true, message: '✅ Cabecera de cotización creada', data: newHead });
@@ -1384,12 +1493,13 @@ app.put('/api/ventas/cotizaciones/head/:id', async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
+    var fechasistema = formatLocalYmd(new Date());
     delete updateData.nocotiza; delete updateData._id; delete updateData.createdAt; delete updateData.fechaCreacion;
     if (updateData.codcliente) updateData.codcliente = updateData.codcliente.toUpperCase();
     if (updateData.nombreclie) updateData.nombreclie = updateData.nombreclie.toUpperCase();
     if (updateData.ruccliente) updateData.ruccliente = updateData.ruccliente.toUpperCase();
     if (updateData.codvendedor) updateData.codvendedor = updateData.codvendedor.toUpperCase();
-    updateData.fechaActualizacion = new Date().toISOString();
+    updateData.fechaActualizacion = fechasistema;
     const updated = await CotizaHead.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: '✅ Cotización actualizada', data: updated });
@@ -1446,6 +1556,7 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
     if (!nocotiza || detalles.some(d => d.nocotiza?.trim().toUpperCase() !== nocotiza)) {
       return res.status(400).json({ success: false, message: 'Todos los detalles deben pertenecer a la misma cotización' });
     }
+    var fechasistema = formatLocalYmd(new Date());
     const headExists = await CotizaHead.findOne({ nocotiza, activo: true });
     if (!headExists) return res.status(404).json({ success: false, message: 'La cotización de cabecera no existe o está inactiva' });
     const detallesPreparados = detalles.map(detalle => {
@@ -1461,7 +1572,7 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
         descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
         subtotal: parseFloat(subtotal.toFixed(2)),
         activo: true,
-        fechaCreacion: new Date().toISOString()
+        fechaCreacion: fechasistema
       };
     });
     const creados = await CotizaDetalle.insertMany(detallesPreparados);
@@ -1527,6 +1638,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
       unidad: d.unidad
     })));
+    var fechasistema = formatLocalYmd(new Date());
     const nuevaHead = await CotizaHead.create({
       ...head,
       nocotiza: head.nocotiza.trim().toUpperCase(),
@@ -1536,8 +1648,8 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       codvendedor: head.codvendedor?.trim().toUpperCase(),
       detallecoti: detallecotiJson,
       activo: true,
-      fechaCreacion: new Date().toISOString(),
-      fechaActualizacion: new Date().toISOString(),
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
     });
     const detallesPreparados = detalles.map(detalle => ({
@@ -1550,7 +1662,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
       subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
       activo: true,
-      fechaCreacion: new Date().toISOString()
+      fechaCreacion: fechasistema
     }));
     await CotizaDetalle.insertMany(detallesPreparados);
     await actualizarTotalesCabecera(nuevaHead.nocotiza);
@@ -1565,6 +1677,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
 app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
+    var fechasistema = formatLocalYmd(new Date());
     const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: true });
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
@@ -1579,7 +1692,7 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
         unidad: d.unidad, precio: d.precio, descuento: d.descuento, subtotal: d.subtotal
       })),
       totales: { subtotal: head.subtotal1, descuento: head.descuentoglob, impuesto: head.impuesto, total: head.total },
-      metadata: { generado: new Date().toISOString(), empresa: process.env.EMPRESA_NOMBRE || 'ERP Bipymes' }
+      metadata: { generado: fechasistema, empresa: process.env.EMPRESA_NOMBRE || 'ERP Bipymes' }
     };
     res.json({ success: true, message: 'Datos para generación de PDF', data: pdfData });
   } catch (error) {
@@ -1596,6 +1709,7 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
 async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
+    var fechasistema = formatLocalYmd(new Date());
     const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
     const subtotal1 = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
     const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase() });
@@ -1613,7 +1727,7 @@ async function actualizarTotalesCabecera(nocotiza) {
           subtotal2: parseFloat(subtotal2.toFixed(2)),
           impuesto: parseFloat(impuesto.toFixed(2)),
           total: parseFloat(total.toFixed(2)),
-          fechaActualizacion: new Date().toISOString()
+          fechaActualizacion: fechasistema
         }
       }
     );
@@ -1638,8 +1752,17 @@ app.use((err, req, res, next) => {
   });
 });
 
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📡 Endpoints activos: /api/health, /api/dashboard, /api/empresa, /api/inventarios/categorias`);
 });
+
+   function formatLocalYmd(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
