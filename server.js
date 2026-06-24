@@ -883,7 +883,7 @@ app.post('/api/inventarios/bulk', async (req, res) => {
 
 //================================================================//
 // ───────── VENDEDOR  ─────────
-app.get('api/vendedor', async (req, res) => {
+app.get('/api/vendedor', async (req, res) => {
   try {
     const vendedor = await Vendedor.find({ activo: true }).sort({ vendedorNombre: 1 });
     res.json({ success: true, message: `${vendedor.length} vendedores(s) encontrada(s)`, data: vendedor });
@@ -893,11 +893,11 @@ app.get('api/vendedor', async (req, res) => {
   }
 });
 
-app.post('api/vendedor', async (req, res) => {
+app.post('/api/vendedor', async (req, res) => {
   try {
-    const { idvendedor, vendenombre } = req.body;
+    const { idvendedor, vendenombre, tipovendedor, dir1vende, dir2vende,telvende,emailvende } = req.body;
     if (!idvendedor?.trim()) return res.status(400).json({ success: false, message: 'El codigo de vendedor es obligatorio' });
-    const existing = await Marca.findOne({ marca: marca.trim().toUpperCase() });
+    const existing = await Vendedor.findOne({ idvendedor: idvendedor.trim().toUpperCase() });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe ese codigo ' });
     const nuevoVendedor = new Vendedor({
       idvendedor: idvendedor.trim().toUpperCase(),
@@ -918,9 +918,6 @@ app.post('api/vendedor', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
   }
 });
-
-
-
 //================================================================//
 
 // ═══════════════════════════════════════════════════════════════
@@ -1123,31 +1120,39 @@ app.get('/api/vendedor/:id', async (req, res) => {
   }
 });
 
+
 app.put('/api/vendedor/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-     var fechasistema = formatLocalYmd(new Date());
     const updateData = { ...req.body };
-    delete updateData._id; delete updateData.fechaCreacion;
-    if (updateData.idvendedor) updateData.vendedorNombre = updateData.vendedorNombre.trim().toUpperCase();
-    updateData.fechaActualizacion = fechasistema;
-    const actualizado = await Marca.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
-    if (!actualizado) return res.status(404).json({ success: false, message: 'Marca no encontrada' });
+    delete updateData._id; 
+    if (updateData.idvendedor)
+       updateData.vendedornombre = updateData.vendedornombre.trim().toUpperCase();
+       updateData.tipovendedor = updateData.tipovendedor.trim().toUpperCase();
+       updateData.dir1vende = updateData.dir1vende.trim().toUpperCase();
+       updateData.dir2vende = updateData.dir2vende.trim().toUpperCase();
+       updateData.telvende = updateData.telvende.trim().toUpperCase();
+       updateData.emailvende = updateData.emailvende.trim().toUpperCase();
+// 
+    const actualizado = await Vendedor.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    if (!actualizado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
     res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
   } catch (error) {
-    console.error('❌ Error PUT /api/inventarios/marcas/:id:', error);
-    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Ya existe una marca con este nombre' });
+    console.error('❌ Error PUT /api/vendedor/:id:', error);
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Ya existe vendedor' });
     res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
   }
-});
+});   
+
+
 
 app.delete('/api/vendedor/:id', async (req, res) => {
   try {
     const { id } = req.params;
      var fechasistema = formatLocalYmd(new Date());
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false, fechaActualizacion: fechasistema }, { new: true });
+    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false }, { new: true });
     if (!eliminado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
     res.json({ success: true, message: '🗑️ Vendedor eliminado (desactivada)' });
   } catch (error) {
@@ -1259,9 +1264,29 @@ app.post('/api/ventas/clientes', async (req, res) => {
       ...req.body,
       idcliente: idcliente.trim().toUpperCase(),
       clientenombre: clientenombre.trim().toUpperCase(),
+      ruccliente: ruccliente.trim().toUpperCase(),
+      digitoverificador: digitoverificador.trim().toUpperCase(),
+      retenedor: retenedor.trim().toUpperCase(),
+      dir1cliente: dir1cliente.trim().toUpperCase(),
+      dir2cliente: dir2cliente.trim().toUpperCase(),
+      dirconta: "  ",  
+      derpar: " ",
+      telcliente: telcliente.trim().toUpperCase(),
+      emailcliente: emailcliente.trim().toUpperCase(),
+      retenedor: retenedor.trim().toUpperCase(),  
+      tipocontribuyente: tipocontribuyente.trim().toUpperCase(),
+      ventascliente: ventascliente.trim().toUpperCase(),
+      estadoctacliente: estadoctacliente.trim().toUpperCase(),
+      paiscliente: paiscliente.trim().toUpperCase(),  
+      provinciacliente: provinciacliente.trim().toUpperCase(),
+      ciudadcliente: ciudadcliente.trim().toUpperCase(),
+      vendedorcliente: vendedorcliente.trim().toUpperCase(),
+      codigopreciocliente: codigopreciocliente.trim().toUpperCase(),    
       activo: true,
-      fechaCreacion: fechasistema,
-      fechaActualizacion: fechasistema
+      historialfacturas:  [],
+      historialcotizacion: [],
+      historialabonos: [],
+      historialcambio: []
     });
     res.status(201).json({ success: true, message: '✅ Cliente creado exitosamente', data: nuevoCliente });
   } catch (error) {
@@ -1368,9 +1393,9 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
     var fechasistema = formatLocalYmd(new Date());
-    delete updateData.idcliente; delete updateData._id; delete updateData.createdAt; delete updateData.fechaCreacion;
-    updateData.fechaActualizacion = fechasistema;
-    const actualizado = await Cliente.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
+    delete updateData.idcliente; 
+    delete updateData._id;
+        const actualizado = await Cliente.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
   } catch (error) {
