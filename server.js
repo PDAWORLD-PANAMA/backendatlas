@@ -910,10 +910,10 @@ app.post('/api/vendedor', async (req, res) => {
        emailvende: emailvende?.trim() || '',
        ventasvende :  0
     });
-    const guardado = await nuevaMarca.save();
-    res.status(201).json({ success: true, message: '✅ Marca creada exitosamente', data: guardado });
+    const guardado = await nuevoVendedor.save();
+    res.status(201).json({ success: true, message: '✅ Vendedor creado exitosamente', data: guardado });
   } catch (error) {
-    console.error('❌ Error POST /api/inventarios/marcas:', error);
+    console.error('❌ Error POST /api/vendedor:', error);
     if (error.code === 11000) return res.status(409).json({ success: false, message: 'La marca ya existe' });
     res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
   }
