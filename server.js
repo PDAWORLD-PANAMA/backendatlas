@@ -648,7 +648,8 @@ app.put('/api/ubicaciones/:id', async (req, res) => {
 app.delete('/api/ubicaciones/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const eliminado = await Ubicacion.findByIdAndDelete(id);
+
+ const eliminado = await Ubicacion.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Ubicación no encontrada' });
     res.json({ success: true, message: 'Ubicación eliminada' });
   } catch (error) {
@@ -907,7 +908,7 @@ app.post('/api/vendedor', async (req, res) => {
       activo: true,
       dir2vende: dir2vende?.trim() || '',
       telvende: telvende?.trim() || '',
-       emailvende: emailvende?.trim() || '',
+      emailvende: emailvende?.trim() || '',
        ventasvende :  0
     });
     const guardado = await nuevoVendedor.save();
@@ -960,7 +961,8 @@ app.delete('/api/inventarios/categorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Categoria.findByIdAndUpdate(id, { activo: false, fechaActualizacion: new Date().toISOString() }, { new: true });
+ 
+    const eliminado = await Categoria.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
     res.json({ success: true, message: '🗑️ Categoría eliminada (desactivada)' });
   } catch (error) {
@@ -1005,7 +1007,8 @@ app.delete('/api/inventarios/subcategorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await SubCategoria.findByIdAndUpdate(id, { activo: false, fechaActualizacion: new Date().toISOString() }, { new: true });
+   
+   const eliminado = await SubCategoria.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
     res.json({ success: true, message: '🗑️ Subcategoría eliminada (desactivada)' });
   } catch (error) {
@@ -1050,7 +1053,8 @@ app.delete('/api/inventarios/marcas/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Marca.findByIdAndUpdate(id, { activo: false, fechaActualizacion: new Date().toISOString() }, { new: true });
+   
+  const eliminado = await Marca.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Marca no encontrada' });
     res.json({ success: true, message: '🗑️ Marca eliminada (desactivada)' });
   } catch (error) {
@@ -1096,7 +1100,8 @@ app.delete('/api/inventarios/modelos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Modelo.findByIdAndUpdate(id, { activo: false, fechaActualizacion: new Date().toISOString() }, { new: true });
+   
+     const eliminado = await Modelo.findByIdAndDelete(id);
     if (!eliminado) return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
     res.json({ success: true, message: '🗑️ Modelo eliminado (desactivado)' });
   } catch (error) {
@@ -1146,15 +1151,23 @@ app.put('/api/vendedor/:id', async (req, res) => {
 });   
 
 
-
 app.delete('/api/vendedor/:id', async (req, res) => {
   try {
     const { id } = req.params;
-     var fechasistema = formatLocalYmd(new Date());
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false }, { new: true });
-    if (!eliminado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
-    res.json({ success: true, message: '🗑️ Vendedor eliminado (desactivada)' });
+    
+    // Validación del formato del ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'ID inválido' });
+    }
+    
+    // 🔥 CORREGIDO: Remueve físicamente el registro de la colección en la base de datos
+    const eliminado = await Vendedor.findByIdAndDelete(id);
+    
+    if (!eliminado) {
+      return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
+    }
+    
+    res.json({ success: true, message: '🗑️ Vendedor eliminado permanentemente de la base de datos' });
   } catch (error) {
     console.error('❌ Error DELETE /api/vendedor/:id:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
@@ -1409,7 +1422,7 @@ app.delete('/api/ventas/clientes/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await Cliente.findByIdAndUpdate(id, { $set: { activo: false, fechaActualizacion: new Date().toISOString() } }, { new: true });
+     const eliminado = await Cliente.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '🗑️ Cliente eliminado (desactivado)' });
   } catch (error) {
@@ -1538,7 +1551,7 @@ app.delete('/api/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const deleted = await CotizaHead.findByIdAndUpdate(id, { $set: { activo: false, fechaActualizacion: new Date().toISOString() } }, { new: true });
+     const deleted = await CotizaHead.findByIdAndDelete(id); 
     if (!deleted) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: '🗑️ Cotización eliminada (desactivada)' });
   } catch (error) {
@@ -1639,7 +1652,7 @@ app.delete('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-    const eliminado = await CotizaDetalle.findByIdAndUpdate(id, { $set: { activo: false } }, { new: true });
+      const eliminado = await CotizaDetalle.findByIdAndDelete(id); 
     if (!eliminado) return res.status(404).json({ success: false, message: 'Detalle no encontrado' });
     await actualizarTotalesCabecera(eliminado.nocotiza);
     res.json({ success: true, message: '🗑️ Detalle eliminado' });
@@ -1726,6 +1739,32 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   }
 });
 
+//%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+//  app.delete('/api/vendedor/:id', async (req, res) => {
+
+//  try {
+
+//    const { id } = req.params;
+
+//     var fechasistema = formatLocalYmd(new Date());
+
+//    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+
+//    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false }, { new: true });
+
+//    if (!eliminado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
+
+//    res.json({ success: true, message: '🗑️ Vendedor eliminado (desactivada)' });
+
+//  } catch (error) {
+
+//    console.error('❌ Error DELETE /api/vendedor/:id:', error);
+
+//    res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+
+//  }
+
+//  });
 
 
 // ============================================================================
