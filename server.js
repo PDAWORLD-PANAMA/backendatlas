@@ -687,7 +687,7 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
 // ───────── CATEGORÍAS ─────────
 app.get('/api/inventarios/categorias', async (req, res) => {
   try {
-    const categorias = await Categoria.find({ activo: true }).sort({ categoria: 1 });
+    const categorias = await Categoria.find({}).sort({ categoria: 1 });
     res.json({ success: true, message: `${categorias.length} categoría(s) encontrada(s)`, data: categorias });
   } catch (error) {
     console.error('❌ Error GET /api/inventarios/categorias:', error);
@@ -721,7 +721,7 @@ app.post('/api/inventarios/categorias', async (req, res) => {
 // ───────── SUBCATEGORÍAS ─────────
 app.get('/api/inventarios/subcategorias', async (req, res) => {
   try {
-    const subcategorias = await SubCategoria.find({ activo: true }).sort({ subCategoria: 1 });
+    const subcategorias = await SubCategoria.find({}).sort({ subCategoria: 1 });
     res.json({ success: true, message: `${subcategorias.length} subcategoría(s) encontrada(s)`, data: subcategorias });
   } catch (error) {
     console.error('❌ Error GET /api/inventarios/subcategorias:', error);
@@ -762,7 +762,7 @@ app.post('/api/inventarios/subcategorias', async (req, res) => {
 // ───────── MARCAS ─────────
 app.get('/api/inventarios/marcas', async (req, res) => {
   try {
-    const marcas = await Marca.find({ activo: true }).sort({ marca: 1 });
+    const marcas = await Marca.find({}).sort({ marca: 1 });
     res.json({ success: true, message: `${marcas.length} marca(s) encontrada(s)`, data: marcas });
   } catch (error) {
     console.error('❌ Error GET /api/inventarios/marcas:', error);
@@ -797,7 +797,7 @@ app.post('/api/inventarios/marcas', async (req, res) => {
 // ───────── MODELOS ─────────
 app.get('/api/inventarios/modelos', async (req, res) => {
   try {
-    const modelos = await Modelo.find({ activo: true }).sort({ modelo: 1 });
+    const modelos = await Modelo.find({}).sort({ modelo: 1 });
     res.json({ success: true, message: `${modelos.length} modelo(s) encontrado(s)`, data: modelos });
   } catch (error) {
     console.error('❌ Error GET /api/inventarios/modelos:', error);
@@ -886,7 +886,7 @@ app.post('/api/inventarios/bulk', async (req, res) => {
 // ───────── VENDEDOR  ─────────
 app.get('/api/vendedor', async (req, res) => {
   try {
-    const vendedor = await Vendedor.find({ activo: true }).sort({ vendedorNombre: 1 });
+    const vendedor = await Vendedor.find({}).sort({ vendedorNombre: 1 });
     res.json({ success: true, message: `${vendedor.length} vendedores(s) encontrada(s)`, data: vendedor });
   } catch (error) {
     console.error('❌ Error GET /api/vendedor:', error);
@@ -1253,7 +1253,7 @@ app.delete('/api/inventarios/:id', async (req, res) => {
 app.get('/api/ventas/clientes', async (req, res) => {
 
  try {
-    const cliente = await Cliente.find().sort({ createdAt: -1 });
+    const cliente = await Cliente.find({}).sort({ createdAt: -1 });
     res.json({ success: true, message: 'Clientes obtenidos', data: cliente });
   } catch (error) {
     console.error('❌ Error GET /api/clientes:', error);
