@@ -1132,7 +1132,7 @@ app.put('/api/vendedor/:id', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
     delete updateData._id; 
-    if (updateData.idvendedor)
+    if (updateData.id)
        updateData.vendedornombre = updateData.vendedornombre.trim().toUpperCase();
        updateData.tipovendedor = updateData.tipovendedor.trim().toUpperCase();
        updateData.dir1vende = updateData.dir1vende.trim().toUpperCase();
