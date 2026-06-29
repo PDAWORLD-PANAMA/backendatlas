@@ -1132,7 +1132,7 @@ app.put('/api/vendedor/:id', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
     delete updateData._id; 
-    if (updateData.id)
+    if (updateData.idvendedor)
        updateData.vendedornombre = updateData.vendedornombre.trim().toUpperCase();
        updateData.tipovendedor = updateData.tipovendedor.trim().toUpperCase();
        updateData.dir1vende = updateData.dir1vende.trim().toUpperCase();
@@ -1262,50 +1262,21 @@ app.get('/api/ventas/clientes', async (req, res) => {
 
 });
 
- 
-
 app.post('/api/ventas/clientes', async (req, res) => {
   try {
     const { idcliente, clientenombre } = req.body;
-    if (!idcliente?.trim() || !clientenombre?.trim()) {
+   if (!idcliente?.trim() || !clientenombre?.trim()) {
       return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
     }
-    var fechasistema = formatLocalYmd(new Date());
-    const exists = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase() });
-    if (exists) return res.status(409).json({ success: false, message: 'Ya existe un cliente con este ID' });
-    const nuevoCliente = await Cliente.create({
-      ...req.body,
-      idcliente: idcliente.trim().toUpperCase(),
-      clientenombre: clientenombre.trim().toUpperCase(),
-      ruccliente: ruccliente.trim().toUpperCase(),
-      digitoverificador: digitoverificador.trim().toUpperCase(),
-      retenedor: retenedor.trim().toUpperCase(),
-      dir1cliente: dir1cliente.trim().toUpperCase(),
-      dir2cliente: dir2cliente.trim().toUpperCase(),
-      dirconta: "  ",  
-      derpar: " ",
-      telcliente: telcliente.trim().toUpperCase(),
-      emailcliente: emailcliente.trim().toUpperCase(),
-      retenedor: retenedor.trim().toUpperCase(),  
-      tipocontribuyente: tipocontribuyente.trim().toUpperCase(),
-      ventascliente: ventascliente.trim().toUpperCase(),
-      estadoctacliente: estadoctacliente.trim().toUpperCase(),
-      paiscliente: paiscliente.trim().toUpperCase(),  
-      provinciacliente: provinciacliente.trim().toUpperCase(),
-      ciudadcliente: ciudadcliente.trim().toUpperCase(),
-      vendedorcliente: vendedorcliente.trim().toUpperCase(),
-      codigopreciocliente: codigopreciocliente.trim().toUpperCase(),    
-      activo: true,
-      historialfacturas:  [],
-      historialcotizacion: [],
-      historialabonos: [],
-      historialcambio: []
-    });
-    res.status(201).json({ success: true, message: '✅ Cliente creado exitosamente', data: nuevoCliente });
-  } catch (error) {
-    console.error('❌ Error POST /api/ventas/clientes:', error);
-    if (error.code === 11000) return res.status(409).json({ success: false, message: '❌ El ID de cliente ya está registrado en el sistema' });
-    res.status(500).json({ success: false, message: 'Error al crear cliente', error: error.message });
+    const existing = await Cliente.findOne({ idcliente });
+    if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este Codigo" });
+    const nuevoCliente = new Cliente(req.body);
+    const guardado = await nuevoCliente.save();
+    res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });
+  } catch (err) {
+    console.error("❌ Error POST /api/ventas/clientes:", err);
+    if (err.code === 11000) return res.status(409).json({ success: false, message: "❌ El codigo de cliente ya está registrado" });
+    res.status(500).json({ success: false, message: "Error al crear Cliente en server endpoint ", error: err.message });
   }
 });
 
