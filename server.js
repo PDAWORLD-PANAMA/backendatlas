@@ -1123,7 +1123,7 @@ app.put('/api/vendedor/:id', async (req, res) => {
     const updateData = { ...req.body };
     delete updateData._id; 
     if (updateData.idvendedor)
-       updateData.vendedornombre = updateData.vendedornombre.trim().toUpperCase();
+       updateData.vendenombre = updateData.vendenombre.trim().toUpperCase();
        updateData.tipovendedor = updateData.tipovendedor.trim().toUpperCase();
        updateData.dir1vende = updateData.dir1vende.trim().toUpperCase();
        updateData.dir2vende = updateData.dir2vende.trim().toUpperCase();
@@ -1132,7 +1132,7 @@ app.put('/api/vendedor/:id', async (req, res) => {
 // 
     const actualizado = await Vendedor.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
-    res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
+    res.json({ success: true, message: '✅ Vendedor actualizada', data: actualizado });
   } catch (error) {
     console.error('❌ Error PUT /api/vendedor/:id:', error);
     if (error.code === 11000) return res.status(409).json({ success: false, message: 'Ya existe vendedor' });
@@ -1366,9 +1366,37 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
     const updateData = { ...req.body };
     var fechasistema = formatLocalYmd(new Date());
-    delete updateData.idcliente; 
     delete updateData._id;
-        const actualizado = await Cliente.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
+    if (updateData.idcliente)
+
+       updateData.clientenombre = updateData.clientenombre.trim().toUpperCase();
+       updateData.idglobal = updateData.idglobal;
+       updateData.ruccliente = updateData.ruccliente;
+       updateData.digitoverificador = updateData.digitoverificador;
+       updateData.retenedor = updateData.retenedor.trim().toUpperCase();
+       updateData.dir1cliente = updateData.dir1cliente.trim().toUpperCase();
+       updateData.dir2cliente = updateData.dir2cliente.trim().toUpperCase();
+       updateData.emailcliente = updateData.emailcliente;
+
+       updateData.derpar = updateData.derpar.trim().toUpperCase();
+       updateData.telcliente = updateData.telcliente;
+       updateData.faxcliente = updateData.faxcliente;
+       updateData.webcliente = updateData.webcliente;
+       updateData.tipocontribuyente = updateData.tipocontribuyente;
+       updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
+       updateData.limitecredcliente = updateData.limitecredcliente;
+       updateData.emailcliente = updateData.emailcliente;
+
+      updateData.pais = updateData.pais.trim().toUpperCase();
+       updateData.provinciacliente = updateData.provinciacliente;
+       updateData.ciudadcliente = updateData.ciudadcliente;
+       updateData.vendedorcliente = updateData.vendedorcliente;
+       updateData.codigopreciocliente = updateData.codigopreciocliente;
+       updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
+       updateData.limitecredcliente = updateData.limitecredcliente;
+       updateData.emailcliente = updateData.emailcliente;
+
+        const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
   } catch (error) {
