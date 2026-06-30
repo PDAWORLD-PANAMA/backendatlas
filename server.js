@@ -250,7 +250,6 @@ var SchemadelVendedor = new Vendedorschema({
    tipovendedor: { type : String},
    dir1vende: { type : String, uppercase: true },
    dir2vende: { type : String, uppercase: true },
-   activo: { type: Boolean, default: true },
    telvende: { type : String },
    emailvende: { type : String },
    ventasvende: { type : Number }
@@ -314,7 +313,6 @@ const CotizaDetalle = mongoose.model('Schemareccotizadeta', Schemadetacotiza);
 const categoriaSchema = new mongoose.Schema({
   categoria: { type: String, required: true, unique: true, uppercase: true, trim: true },
   descripcion: { type: String, default: "", trim: true },
-  activo: { type: Boolean, default: true },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -325,7 +323,6 @@ const subCategoriaSchema = new mongoose.Schema({
   categoriaId: { type: String, default: "", trim: true },
   subcategoriaNombre: { type: String, default: "", trim: true },
   descripcion: { type: String, default: "", trim: true },
-  activo: { type: Boolean, default: true },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -335,7 +332,6 @@ const marcaSchema = new mongoose.Schema({
   marca: { type: String, required: true, unique: true, uppercase: true, trim: true },
   descripcion: { type: String, default: "", trim: true },
   paisOrigen: { type: String, default: "", trim: true },
-  activo: { type: Boolean, default: true },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -346,7 +342,6 @@ const modeloSchema = new mongoose.Schema({
   marcaId: { type: String, default: "", trim: true },
   marcaNombre: { type: String, default: "", trim: true },
   descripcion: { type: String, default: "", trim: true },
-  activo: { type: Boolean, default: true },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -705,7 +700,6 @@ app.post('/api/inventarios/categorias', async (req, res) => {
     const nuevaCategoria = new Categoria({
       categoria: categoria.trim().toUpperCase(),
       descripcion: descripcion?.trim() || '',
-      activo: true,
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema
     });
@@ -746,7 +740,6 @@ app.post('/api/inventarios/subcategorias', async (req, res) => {
       categoriaId: categoriaId?.trim() || '',
       subcategoriaNombre: categoriaNombre,
       descripcion: descripcion?.trim() || '',
-      activo: true,
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema
     });
@@ -781,7 +774,6 @@ app.post('/api/inventarios/marcas', async (req, res) => {
       marca: marca.trim().toUpperCase(),
       descripcion: descripcion?.trim() || '',
       paisOrigen: paisOrigen?.trim() || '',
-      activo: true,
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema
     });
@@ -822,7 +814,6 @@ app.post('/api/inventarios/modelos', async (req, res) => {
       marcaId: marcaId?.trim() || '',
       marcaNombre: marcaNombre,
       descripcion: descripcion?.trim() || '',
-      activo: true,
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema
     });
@@ -905,7 +896,6 @@ app.post('/api/vendedor', async (req, res) => {
       vendenombre: vendenombre?.trim() || '',
       tipovendedor: tipovendedor?.trim() || '',
       dir1vende: dir1vende?.trim() || '',
-      activo: true,
       dir2vende: dir2vende?.trim() || '',
       telvende: telvende?.trim() || '',
       emailvende: emailvende?.trim() || '',
@@ -1282,8 +1272,8 @@ app.post('/api/ventas/clientes', async (req, res) => {
 
 app.get('/api/ventas/clientes/search', async (req, res) => {
   try {
-    const { query, clientenombre, ruccliente, ciudadcliente, vendedorcliente, activo } = req.query;
-    let filters = { activo: activo !== 'false' };
+    const { query, clientenombre, ruccliente, ciudadcliente, vendedorcliente } = req.query;
+    let filters = {};
     if (query?.trim()) {
       const regex = new RegExp(query.trim(), 'i');
       filters.$or = [
@@ -1327,7 +1317,6 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
           ...clienteData,
           idcliente: idNormalizado,
           clientenombre: clientenombre.trim().toUpperCase(),
-          activo: true,
           fechaCreacion: fechasistema,
           fechaActualizacion: fechasistema
         });
@@ -1349,7 +1338,7 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
 app.get('/api/ventas/clientes/id/:idcliente', async (req, res) => {
   try {
     const { idcliente } = req.params;
-    const cliente = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase(), activo: true });
+    const cliente = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase()});
     if (!cliente) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: 'Cliente obtenido', data: cliente });
   } catch (error) {
