@@ -219,6 +219,8 @@ const SchemadelCliente = new mongoose.Schema({
   faxcliente: { type: String },
   webcliente: { type: String },
   tipocontribuyente: { type: String },
+  clasecliente: { type: String },
+  tipoclientefe : { type: String },
   ventascliente: { type: Number },
   acumulapuntos: { type: Number },
   tiposuscribcliente: { type: String },
@@ -1383,6 +1385,8 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
        updateData.faxcliente = updateData.faxcliente;
        updateData.webcliente = updateData.webcliente;
        updateData.tipocontribuyente = updateData.tipocontribuyente;
+       updateData.clasecliente = updateData.clasecliente;
+       updateData.tipoclientefe = updateData.tipoclientefe;
        updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
        updateData.limitecredcliente = updateData.limitecredcliente;
        updateData.emailcliente = updateData.emailcliente;
