@@ -219,8 +219,7 @@ const SchemadelCliente = new mongoose.Schema({
   faxcliente: { type: String },
   webcliente: { type: String },
   tipocontribuyente: { type: String },
-  clasecliente: { type: String },
-  tipoclientefe : { type: String },
+  tipoclientefe: { type: String },
   ventascliente: { type: Number },
   acumulapuntos: { type: Number },
   tiposuscribcliente: { type: String },
@@ -230,6 +229,8 @@ const SchemadelCliente = new mongoose.Schema({
   limitecredcliente: { type: String },
   paiscliente: { type: String },
   provinciacliente: { type: String },
+  clasecliente: { type: String },
+  createdAt: { type: String },
   ciudadcliente: { type: String },
   vendedorcliente: { type: String },
   codigopreciocliente: { type: String },
@@ -1319,8 +1320,7 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
           ...clienteData,
           idcliente: idNormalizado,
           clientenombre: clientenombre.trim().toUpperCase(),
-          fechaCreacion: fechasistema,
-          fechaActualizacion: fechasistema
+          createdAt: fechasistema
         });
         await nuevoCliente.save();
         existingIds.add(idNormalizado);
@@ -1382,23 +1382,23 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
 
        updateData.derpar = updateData.derpar.trim().toUpperCase();
        updateData.telcliente = updateData.telcliente;
+       updateData.emailcliente = updateData.emailcliente;
        updateData.faxcliente = updateData.faxcliente;
        updateData.webcliente = updateData.webcliente;
        updateData.tipocontribuyente = updateData.tipocontribuyente;
-       updateData.clasecliente = updateData.clasecliente;
        updateData.tipoclientefe = updateData.tipoclientefe;
        updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
        updateData.limitecredcliente = updateData.limitecredcliente;
-       updateData.emailcliente = updateData.emailcliente;
-
-      updateData.pais = updateData.pais.trim().toUpperCase();
+      
+      updateData.paiscliente = updateData.paiscliente.trim().toUpperCase();
        updateData.provinciacliente = updateData.provinciacliente;
+       updateData.clasecliente = updateData.claseCliente;
        updateData.ciudadcliente = updateData.ciudadcliente;
        updateData.vendedorcliente = updateData.vendedorcliente;
        updateData.codigopreciocliente = updateData.codigopreciocliente;
        updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
-       updateData.limitecredcliente = updateData.limitecredcliente;
-       updateData.emailcliente = updateData.emailcliente;
+       
+      
 
         const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
