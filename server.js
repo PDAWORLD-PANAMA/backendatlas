@@ -525,10 +525,10 @@ app.get('/api/bienes/:id', async (req, res) => {
 
 app.post('/api/bienes', async (req, res) => {
   try {
-    const { codigobienes, describbienes } = req.body;
+    const { codigobienes, descripbienes } = req.body;
     const existing = await BienServicio.findOne({ codigobienes });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe un bien con este código' });
-    const nuevoBien = new BienServicio({ codigobienes, describbienes });
+    const nuevoBien = new BienServicio({ codigobienes, descripbienes });
     const guardado = await nuevoBien.save();
     res.status(201).json({ success: true, message: 'Bien creado', data: guardado });
   } catch (error) {
@@ -540,8 +540,8 @@ app.post('/api/bienes', async (req, res) => {
 app.put('/api/bienes/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { describbienes } = req.body;
-    const actualizado = await BienServicio.findByIdAndUpdate(id, { describbienes }, { new: true, runValidators: true });
+    const { descripbienes } = req.body;
+    const actualizado = await BienServicio.findByIdAndUpdate(id, { descripbienes }, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Bien no encontrado' });
     res.json({ success: true, message: 'Bien actualizado', data: actualizado });
   } catch (error) {
@@ -570,11 +570,11 @@ app.post('/api/bienes/bulk', async (req, res) => {
     const errors = [];
     for (const bienData of bienesArray) {
       try {
-        const { codigobienes, describbienes } = bienData;
-        if (!codigobienes || !describbienes) { errorCount++; errors.push(`Campos incompletos`); continue; }
+        const { codigobienes, descripbienes } = bienData;
+        if (!codigobienes || !descripbienes) { errorCount++; errors.push(`Campos incompletos`); continue; }
         const existing = await BienServicio.findOne({ codigobienes });
         if (existing) { duplicateCount++; continue; }
-        const nuevoBien = new BienServicio({ codigobienes, describbienes });
+        const nuevoBien = new BienServicio({ codigobienes, descripbienes });
         await nuevoBien.save();
         successCount++;
       } catch (err) { errorCount++; errors.push(`Error: ${err.message}`); }
