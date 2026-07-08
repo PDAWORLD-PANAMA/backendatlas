@@ -192,13 +192,13 @@ const bienesSchema = new mongoose.Schema({
 const BienServicio = mongoose.model('BienServicio', bienesSchema);
 
 const Schemageoubicacion = new mongoose.Schema({
-  ubicacionid: { type: String },
   noidprov: { type: String },
   provincia: { type: String },
   noidistri: { type: String },
   distrito: { type: String },
   noidcorre: { type: String },
-  corregimiento: { type: String }
+  corregimiento: { type: String },
+  numcontrol : { type: Number}
 });
 
 const Ubicacion = mongoose.model('Ubicacion', Schemageoubicacion);
@@ -613,13 +613,14 @@ app.get('/api/ubicaciones/:id', async (req, res) => {
 
 app.post('/api/ubicaciones', async (req, res) => {
   try {
-    const { ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento } = req.body;
+    const { noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, numcontrol } = req.body;
     if (!ubicacionid || !provincia || !distrito || !corregimiento) {
       return res.status(400).json({ success: false, message: 'ID, provincia, distrito y corregimiento son obligatorios' });
     }
-    const existing = await Ubicacion.findOne({ ubicacionid });
+    const existing = await Ubicacion.findOne({ numcontrol });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe una ubicación con este ID' });
-    const nuevaUbicacion = new Ubicacion({ ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento });
+    var numcontrol = Math.floor(Math.random() * 10000000);
+    const nuevaUbicacion = new Ubicacion({ noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, numcontrol });
     const guardado = await nuevaUbicacion.save();
     res.status(201).json({ success: true, message: 'Ubicación creada', guardado });
   } catch (error) {
@@ -666,13 +667,13 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
     const existingIds = new Set(existingUbicaciones.map(u => u.ubicacionid));
     for (const ubicacionData of ubicacionesArray) {
       try {
-        const { ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento } = ubicacionData;
-        if (!ubicacionid || !provincia || !distrito || !corregimiento) { errorCount++; continue; }
-        if (existingIds.has(ubicacionid)) { duplicateCount++; continue; }
-        const nuevaUbicacion = new Ubicacion({ ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento });
+        const { noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, numcontrol } = ubicacionData;
+        if (!provincia || !distrito || !corregimiento) { errorCount++; continue; }
+        if (existingIds.has(numcontrol)) { duplicateCount++; continue; }
+        const nuevaUbicacion = new Ubicacion({ noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, numcontrol });
         await nuevaUbicacion.save();
         successCount++;
-        existingIds.add(ubicacionid);
+        existingIds.add(numcontrol);
       } catch (err) { errorCount++; errors.push(`Error: ${err.message}`); }
     }
     res.json({ success: true, message: 'Carga masiva completada', total: ubicacionesArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors });
