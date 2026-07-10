@@ -560,44 +560,88 @@ app.delete('/api/bienes/:id', async (req, res) => {
 app.post('/api/ubicaciones/bulk', async (req, res) => {
     try {
         const ubicacionesArray = req.body;
-        if (!Array.isArray(ubicacionesArray)) return res.status(400).json({ success: false, message: 'Se requiere un array de ubicaciones' });
-        
-        let successCount = 0, duplicateCount = 0, errorCount = 0;
-        const errors = [];
-        
+        if (!Array.isArray(ubicacionesArray)) {
+            return res.status(400).json({ success: false, message: 'Se requiere un array de ubicaciones' });
+        }
+
+        // ✅ 1. Obtener IDs existentes UNA SOLA VEZ
         const existingUbicaciones = await Ubicacion.find({}, 'ubicacionid');
         const existingIds = new Set(existingUbicaciones.map(u => u.ubicacionid));
-        
+
+        // ✅ 2. Filtrar y preparar los documentos válidos
+        const documentosValidos = [];
+        let duplicateCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
         for (const ubicacionData of ubicacionesArray) {
             try {
                 const { ubicacionid, descripubicacion } = ubicacionData;
-                if (!ubicacionid || !descripubicacion) { errorCount++; continue; }
                 
-                // ✅ FIX: Usar ubicacionid en vez de numcontrol
-                if (existingIds.has(ubicacionid)) { duplicateCount++; continue; }
-                
-                const nuevaUbicacion = new Ubicacion({ ubicacionid, descripubicacion });
-                await nuevaUbicacion.save();
-                successCount++;
+                // Validar campos obligatorios
+                if (!ubicacionid || !descripubicacion) {
+                    errorCount++;
+                    errors.push('Registro sin ubicacionid o descripubicacion');
+                    continue;
+                }
+
+                // Verificar duplicados
+                if (existingIds.has(ubicacionid)) {
+                    duplicateCount++;
+                    continue;
+                }
+
+                // Agregar al array de documentos válidos
+                documentosValidos.push({
+                    ubicacionid: ubicacionid,
+                    descripubicacion: descripubicacion
+                });
+
+                // Marcar como existente para evitar duplicados dentro del mismo lote
                 existingIds.add(ubicacionid);
-            } catch (err) { 
-                errorCount++; 
-                errors.push(`Error: ${err.message}`); 
+            } catch (err) {
+                errorCount++;
+                errors.push(`Error: ${err.message}`);
             }
         }
-        
-        res.json({ 
-            success: true, 
-            message: 'Carga masiva completada', 
-            total: ubicacionesArray.length, 
-            success: successCount, 
-            duplicates: duplicateCount, 
-            errors: errorCount, 
-            errorMessages: errors 
+
+        // ✅ 3. INSERTAR TODOS DE UNA VEZ con insertMany (MUCHO MÁS RÁPIDO)
+        let successCount = 0;
+        if (documentosValidos.length > 0) {
+            try {
+                const result = await Ubicacion.insertMany(documentosValidos, { 
+                    ordered: false,  // ✅ Continúa insertando aunque haya errores
+                    rawResult: true 
+                });
+                successCount = result.insertedCount || documentosValidos.length;
+            } catch (err) {
+                // Si hay errores parciales, contar los exitosos
+                if (err.insertedDocs && err.insertedDocs.length > 0) {
+                    successCount = err.insertedDocs.length;
+                }
+                console.error('⚠️ Errores parciales en insertMany:', err.message);
+                errors.push(`Errores parciales: ${err.message}`);
+            }
+        }
+
+        // ✅ 4. Responder con el resumen
+        res.json({
+            success: true,
+            message: 'Carga masiva completada',
+            total: ubicacionesArray.length,
+            success: successCount,
+            duplicates: duplicateCount,
+            errors: errorCount,
+            errorMessages: errors.slice(0, 10)  // Limitar a 10 errores para no saturar
         });
+
     } catch (error) {
         console.error('❌ Error POST /api/ubicaciones/bulk:', error);
-        res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error en carga masiva', 
+            error: error.message 
+        });
     }
 });
 
