@@ -557,28 +557,48 @@ app.delete('/api/bienes/:id', async (req, res) => {
   }
 });
 
-app.post('/api/bienes/bulk', async (req, res) => {
-  try {
-    const bienesArray = req.body;
-    if (!Array.isArray(bienesArray)) return res.status(400).json({ success: false, message: 'Se requiere un array de bienes' });
-    let successCount = 0, duplicateCount = 0, errorCount = 0;
-    const errors = [];
-    for (const bienData of bienesArray) {
-      try {
-        const { codigobienes, descripbienes } = bienData;
-        if (!codigobienes || !descripbienes) { errorCount++; errors.push(`Campos incompletos`); continue; }
-        const existing = await BienServicio.findOne({ codigobienes });
-        if (existing) { duplicateCount++; continue; }
-        const nuevoBien = new BienServicio({ codigobienes, descripbienes });
-        await nuevoBien.save();
-        successCount++;
-      } catch (err) { errorCount++; errors.push(`Error: ${err.message}`); }
+app.post('/api/ubicaciones/bulk', async (req, res) => {
+    try {
+        const ubicacionesArray = req.body;
+        if (!Array.isArray(ubicacionesArray)) return res.status(400).json({ success: false, message: 'Se requiere un array de ubicaciones' });
+        
+        let successCount = 0, duplicateCount = 0, errorCount = 0;
+        const errors = [];
+        
+        const existingUbicaciones = await Ubicacion.find({}, 'ubicacionid');
+        const existingIds = new Set(existingUbicaciones.map(u => u.ubicacionid));
+        
+        for (const ubicacionData of ubicacionesArray) {
+            try {
+                const { ubicacionid, descripubicacion } = ubicacionData;
+                if (!ubicacionid || !descripubicacion) { errorCount++; continue; }
+                
+                // ✅ FIX: Usar ubicacionid en vez de numcontrol
+                if (existingIds.has(ubicacionid)) { duplicateCount++; continue; }
+                
+                const nuevaUbicacion = new Ubicacion({ ubicacionid, descripubicacion });
+                await nuevaUbicacion.save();
+                successCount++;
+                existingIds.add(ubicacionid);
+            } catch (err) { 
+                errorCount++; 
+                errors.push(`Error: ${err.message}`); 
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Carga masiva completada', 
+            total: ubicacionesArray.length, 
+            success: successCount, 
+            duplicates: duplicateCount, 
+            errors: errorCount, 
+            errorMessages: errors 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/ubicaciones/bulk:', error);
+        res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
     }
-    res.json({ success: true, message: 'Carga masiva completada', data: { total: bienesArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors } });
-  } catch (error) {
-    console.error('❌ Error POST /api/bienes/bulk:', error);
-    res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
-  }
 });
 
 // ============================================================================
