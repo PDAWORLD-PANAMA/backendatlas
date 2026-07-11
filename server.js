@@ -557,6 +557,96 @@ app.delete('/api/bienes/:id', async (req, res) => {
   }
 });
 
+app.post('/api/bienes/bulk', async (req, res) => {
+    try {
+        const bienesArray = req.body;
+        if (!Array.isArray(bienesArray)) {
+            return res.status(400).json({ success: false, message: 'Se requiere un array de bienes' });
+        }
+
+        // ✅ 1. Obtener códigos existentes UNA SOLA VEZ
+        const existingBienes = await BienServicio.find({}, 'codigobienes');
+        const existingCodes = new Set(existingBienes.map(b => b.codigobienes));
+
+        // ✅ 2. Filtrar y preparar los documentos válidos
+        const documentosValidos = [];
+        let duplicateCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        for (const bienData of bienesArray) {
+            try {
+                const { codigobienes, descripbienes } = bienData;
+                
+                // Validar campos obligatorios
+                if (!codigobienes || !descripbienes) {
+                    errorCount++;
+                    errors.push('Registro sin codigobienes o descripbienes');
+                    continue;
+                }
+
+                // Verificar duplicados
+                if (existingCodes.has(codigobienes)) {
+                    duplicateCount++;
+                    continue;
+                }
+
+                // Agregar al array de documentos válidos
+                documentosValidos.push({
+                    codigobienes: codigobienes,
+                    descripbienes: descripbienes
+                });
+
+                // Marcar como existente para evitar duplicados dentro del mismo lote
+                existingCodes.add(codigobienes);
+            } catch (err) {
+                errorCount++;
+                errors.push(`Error: ${err.message}`);
+            }
+        }
+
+        // ✅ 3. INSERTAR TODOS DE UNA VEZ con insertMany (MUCHO MÁS RÁPIDO)
+        let successCount = 0;
+        if (documentosValidos.length > 0) {
+            try {
+                const result = await BienServicio.insertMany(documentosValidos, { 
+                    ordered: false,  // ✅ Continúa insertando aunque haya errores
+                    rawResult: true 
+                });
+                successCount = result.insertedCount || documentosValidos.length;
+            } catch (err) {
+                // Si hay errores parciales, contar los exitosos
+                if (err.insertedDocs && err.insertedDocs.length > 0) {
+                    successCount = err.insertedDocs.length;
+                }
+                console.error('⚠️ Errores parciales en insertMany:', err.message);
+                errors.push(`Errores parciales: ${err.message}`);
+            }
+        }
+
+        // ✅ 4. Responder con el resumen
+        res.json({
+            success: true,
+            message: 'Carga masiva completada',
+            data: {
+                total: bienesArray.length,
+                success: successCount,
+                duplicates: duplicateCount,
+                errors: errorCount,
+                errorMessages: errors.slice(0, 10)  // Limitar a 10 errores para no saturar
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error POST /api/bienes/bulk:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error en carga masiva', 
+            error: error.message 
+        });
+    }
+});
+
 app.post('/api/ubicaciones/bulk', async (req, res) => {
     try {
         const ubicacionesArray = req.body;
@@ -716,31 +806,6 @@ app.delete('/api/ubicaciones/:id', async (req, res) => {
   }
 });
 
-app.post('/api/ubicaciones/bulk', async (req, res) => {
-  try {
-    const ubicacionesArray = req.body;
-    if (!Array.isArray(ubicacionesArray)) return res.status(400).json({ success: false, message: 'Se requiere un array de ubicaciones' });
-    let successCount = 0, duplicateCount = 0, errorCount = 0;
-    const errors = [];
-    const existingUbicaciones = await Ubicacion.find({}, 'ubicacionid');
-    const existingIds = new Set(existingUbicaciones.map(u => u.ubicacionid));
-    for (const ubicacionData of ubicacionesArray) {
-      try {
-        const { ubicacionid, descripubicacion } = ubicacionData;
-        if (!ubicacionid || !descripubicacion) { errorCount++; continue; }
-        if (existingIds.has(numcontrol)) { duplicateCount++; continue; }
-        const nuevaUbicacion = new Ubicacion({ ubicacionid, descripubicacion });
-        await nuevaUbicacion.save();
-        successCount++;
-        existingIds.add(ubicacionid);
-      } catch (err) { errorCount++; errors.push(`Error: ${err.message}`); }
-    }
-    res.json({ success: true, message: 'Carga masiva completada', total: ubicacionesArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors });
-  } catch (error) {
-    console.error('❌ Error POST /api/ubicaciones/bulk:', error);
-    res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
-  }
-});
 
 // ───────── CATEGORÍAS ─────────
 app.get('/api/inventarios/categorias', async (req, res) => {
