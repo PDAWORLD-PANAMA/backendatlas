@@ -264,7 +264,10 @@ const Schemaheadcotiza = new mongoose.Schema({
   codvendedor: { type: String },
   tipoclientefe: { type: String },
   tipocontribuyente: { type: String },
+  tipodocumento:  { type: String },
+  tiponaturaleza :   { type: String },
   condiciones: { type: String },
+  retenedor : { type: String },    
   formapago: { type: String },
   descuentoglob: { type: Number },
   subtotal1: { type: Number },
@@ -280,7 +283,10 @@ const Schemaheadcotiza = new mongoose.Schema({
   referencia: { type: String },
   ruccliente: { type: String },
   validez: { type: Number },
-  detallecoti: { type: String }
+  detallecoti: { type: String },
+  activo : { type: Boolean },
+  fechaCreacion: { type: String, default: () => new Date().toISOString() },
+  fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
 
 const CotizaHead = mongoose.model('CotizaHead', Schemaheadcotiza);
@@ -1606,9 +1612,9 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
       ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
       codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
       tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
+      activo : true,
       fechaCreacion:fechasistema,
       fechaActualizacion: fechasistema,
-      subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, detallecoti: '[]'
     });
     res.status(201).json({ success: true, message: '✅ Cabecera de cotización creada', data: newHead });
   } catch (error) {
