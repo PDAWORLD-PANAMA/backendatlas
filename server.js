@@ -99,6 +99,7 @@ const Schemadelinventariosede = new mongoose.Schema({
   cantipormayor: { type: Number },
   tipoempaque: { type: String },
   empaque: { type: String },
+  unidad: { type: String },
   impuesto1: { type: Number },
   impuesto2: { type: Number },
   impuesto3: { type: Number },
