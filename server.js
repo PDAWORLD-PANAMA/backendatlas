@@ -1960,7 +1960,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     }
     
     // Recalcular totales finales desde los detalles guardados
-    await actualizarTotalesCabecera(nocotizaUpper);
+   //  await actualizarTotalesCabecera(nocotizaUpper);
     
     // Obtener el estado final
     const headActualizada = await CotizaHead.findById(headFinal._id);
