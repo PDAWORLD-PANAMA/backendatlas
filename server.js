@@ -1641,8 +1641,11 @@ app.get('/api/ventas/cotizaciones/head/:id', async (req, res) => {
 
 app.get('/api/ventas/cotizaciones/head/nro/:nocotiza', async (req, res) => {
   try {
-    const { nocotiza } = req.params;
-    const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: true });
+    const { nocotiza } = req.params; 
+const head = await CotizaHead.findOne({ 
+    nocotiza: nocotiza.toUpperCase(), 
+    $or: [{ activo: true }, { activo: { $exists: false } }] 
+});
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: 'Cotización obtenida', data: head });
   } catch (error) {
@@ -1836,6 +1839,155 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al crear cotización completa', error: error.message });
   }
 });
+
+// ============================================================================
+// 🔹 ACTUALIZAR COTIZACIÓN COMPLETA (para finalizar/fijar)
+// ============================================================================
+// ============================================================================
+// 🔹 GUARDAR / ACTUALIZAR COTIZACIÓN COMPLETA (UPSERT - Finalizar y Guardar)
+// ============================================================================
+app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
+  try {
+    const { nocotiza } = req.params;
+    const { head, detalles } = req.body;
+    
+    if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
+    }
+    
+    const nocotizaUpper = nocotiza.trim().toUpperCase();
+    var fechasistema = formatLocalYmd(new Date());
+    
+    // Buscar si la cotización ya existe
+    let existingHead = await CotizaHead.findOne({ 
+      nocotiza: nocotizaUpper,
+      $or: [{ activo: true }, { activo: { $exists: false } }]
+    });
+    
+    let headFinal;
+    
+    if (!existingHead) {
+      // ═══════════════════════════════════════════════════════
+      // 🔹 MODO CREAR: La cotización NO existe → Crear nueva
+      // ═══════════════════════════════════════════════════════
+      const detallecotiJson = JSON.stringify(detalles.map(d => ({
+        codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+        precio: d.precio, descuento: d.descuento,
+        subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+        unidad: d.unidad
+      })));
+      
+      headFinal = await CotizaHead.create({
+        ...head,
+        nocotiza: nocotizaUpper,
+        codcliente: head.codcliente?.trim().toUpperCase() || '',
+        nombreclie: head.nombreclie?.trim().toUpperCase() || '',
+        ruccliente: head.ruccliente?.trim().toUpperCase() || '',
+        codvendedor: head.codvendedor?.trim().toUpperCase() || '',
+        tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+        detallecoti: detallecotiJson,
+        activo: true,
+        fechaCreacion: fechasistema,
+        fechaActualizacion: fechasistema,
+        subtotal1: head.subtotal1 || 0,
+        descuentoglob: head.descuentoglob || 0,
+        impuesto: head.impuesto || 0,
+        subtotal2: head.subtotal2 || 0,
+        total: head.total || 0
+      });
+      
+    } else {
+      // ═══════════════════════════════════════════════════════
+      // 🔹 MODO ACTUALIZAR: La cotización existe → Actualizar
+      // ═══════════════════════════════════════════════════════
+      const updateData = {
+        subtotal1: head.subtotal1 || 0,
+        descuentoglob: head.descuentoglob || 0,
+        impuesto: head.impuesto || 0,
+        subtotal2: head.subtotal2 || 0,
+        total: head.total || 0,
+        detallecoti: head.detallecoti || '[]',
+        fechaActualizacion: fechasistema
+      };
+      
+      headFinal = await CotizaHead.findByIdAndUpdate(
+        existingHead._id,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+    }
+    
+    // ═══════════════════════════════════════════════════════
+    // 🔹 GUARDAR/ACTUALIZAR DETALLES (siempre se ejecuta)
+    // ═══════════════════════════════════════════════════════
+    for (const detalle of detalles) {
+      const detalleExistente = await CotizaDetalle.findOne({ 
+        nocotiza: nocotizaUpper, 
+        codproducto: detalle.codproducto?.trim().toUpperCase(),
+        $or: [{ activo: true }, { activo: { $exists: false } }]
+      });
+      
+      const subtotalCalculado = parseFloat(
+        ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
+      );
+      
+      if (detalleExistente) {
+        // Actualizar detalle existente
+        await CotizaDetalle.findByIdAndUpdate(detalleExistente._id, {
+          $set: {
+            cantidad: Math.max(1, detalle.cantidad || 1),
+            precio: Math.max(0, detalle.precio || 0),
+            descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+            subtotal: subtotalCalculado,
+            descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
+            fechaActualizacion: fechasistema
+          }
+        });
+      } else {
+        // Crear nuevo detalle
+        await CotizaDetalle.create({
+          nocotiza: nocotizaUpper,
+          codproducto: detalle.codproducto?.trim().toUpperCase(),
+          descripcion: detalle.descripcion?.trim().toUpperCase(),
+          cantidad: Math.max(1, detalle.cantidad || 1),
+          precio: Math.max(0, detalle.precio || 0),
+          descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+          subtotal: subtotalCalculado,
+          activo: true,
+          fechaCreacion: fechasistema
+        });
+      }
+    }
+    
+    // Recalcular totales finales desde los detalles guardados
+    await actualizarTotalesCabecera(nocotizaUpper);
+    
+    // Obtener el estado final
+    const headActualizada = await CotizaHead.findById(headFinal._id);
+    const detallesFinales = await CotizaDetalle.find({ 
+      nocotiza: nocotizaUpper,
+      $or: [{ activo: true }, { activo: { $exists: false } }]
+    });
+    
+    const mensaje = !existingHead 
+      ? `✅ Cotización ${nocotizaUpper} creada con ${detalles.length} producto(s)`
+      : `✅ Cotización ${nocotizaUpper} actualizada correctamente`;
+    
+    res.status(!existingHead ? 201 : 200).json({ 
+      success: true, 
+      message: mensaje, 
+      data: headActualizada,
+      detalles: detallesFinales
+    });
+    
+  } catch (error) {
+    console.error('❌ Error PUT /api/ventas/cotizaciones/completa:', error);
+    res.status(500).json({ success: false, message: 'Error al guardar cotización', error: error.message });
+  }
+});
+
+
+
 
 app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   try {
