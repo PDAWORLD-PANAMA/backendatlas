@@ -511,7 +511,7 @@ app.get("/api/dashboard", async (req, res) => {
 
     // Contar cotizaciones convertidas (coticonvertido = "S" o "SI")
     const cotizacionesConvertidasArr = todasCotizaciones.filter(c =>
-      c.coticonvertido === 'S' || c.coticonvertido === 'SI'
+      c.coticonvertido === 'S' 
     );
     const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
     const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
@@ -591,15 +591,15 @@ app.get("/api/dashboard", async (req, res) => {
       totalConvertido: parseFloat(totalConvertido.toFixed(2))
     } : {
       // Valores fijos de respaldo si la BD está vacía
-      ventasHoy: 1000, facturasHoy: 5,
-      ventasAyer: 800, facturasAyer: 4,
-      ventasMes: 12000, crecimiento: 25,
-      cotizacionesTotal: 60,
-      cotizacionesConvertidas: 40,
-      cotizacionesNoConvertidas: 20,
-      porcentajeConversion: 66,
-      totalCotizado: 50000,
-      totalConvertido: 30000
+      ventasHoy: 0, facturasHoy: 0,
+      ventasAyer: 0, facturasAyer: 0,
+      ventasMes: 0, crecimiento: 0,
+      cotizacionesTotal: 0,
+      cotizacionesConvertidas: 0,
+      cotizacionesNoConvertidas: 0,
+      porcentajeConversion: 0,
+      totalCotizado: 0,
+      totalConvertido: 0
     };
 
     // ═══════════════════════════════════════════════════════
