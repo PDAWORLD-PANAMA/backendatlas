@@ -286,7 +286,7 @@ const Schemaheadcotiza = new mongoose.Schema({
   ruccliente: { type: String },
   validez: { type: Number },
   detallecoti: { type: String },
-  activo : { type: Boolean },
+  activo : { type: String },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -443,7 +443,7 @@ const facturaSchema = new mongoose.Schema({
     historialnotadebito: [String],
     clasecliente: { type : String},
     estado: { type : String },
-    activo : { type: Boolean },
+    activo : { type: String },
     fechaCreacion: { type : String},
     fechaActualizacion: { type : String}
 }) 
@@ -506,7 +506,7 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     // 🔹 1. CALCULAR DATOS REALES DE COTIZACIONES
     // ═══════════════════════════════════════════════════════
-    const todasCotizaciones = await CotizaHead.find({ activo: { $ne: false } });
+    const todasCotizaciones = await CotizaHead.find({ activo: { $ne: "N" } });
     const cotizacionesTotal = todasCotizaciones.length;
 
     // Contar cotizaciones convertidas (coticonvertido = "S" o "SI")
@@ -1832,7 +1832,7 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 app.get('/api/ventas/cotizaciones/head', async (req, res) => {
   try {
     const { nocotiza, codcliente, activo } = req.query;
-    let filters = { activo: activo !== 'false' };
+    let filters = { activo: activo !== 'N' };
     if (nocotiza?.trim()) filters.nocotiza = { $regex: nocotiza.trim(), $options: 'i' };
     if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
     const cotizaciones = await CotizaHead.find(filters).sort({ fechacotiza: -1, nocotiza: -1 }).limit(100);
@@ -1860,7 +1860,7 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
       ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
       codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
       tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-      activo : true,
+      activo : "S",
       fechaCreacion:fechasistema,
       fechaActualizacion: fechasistema,
     });
@@ -1890,7 +1890,7 @@ app.get('/api/ventas/cotizaciones/head/nro/:nocotiza', async (req, res) => {
     const { nocotiza } = req.params; 
 const head = await CotizaHead.findOne({ 
     nocotiza: nocotiza.toUpperCase(), 
-    $or: [{ activo: true }, { activo: { $exists: false } }] 
+    $or: [{ activo: "S" }] 
 });
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: 'Cotización obtenida', data: head });
@@ -1983,7 +1983,6 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
         precio: Math.max(0, detalle.precio || 0),
         descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
         subtotal: parseFloat(subtotal.toFixed(2)),
-        activo: true,
         fechaCreacion: fechasistema
       };
     });
@@ -2059,7 +2058,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       ruccliente: head.ruccliente?.trim().toUpperCase(),
       codvendedor: head.codvendedor?.trim().toUpperCase(),
       detallecoti: detallecotiJson,
-      activo: true,
+      activo: "S",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2073,7 +2072,6 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       precio: Math.max(0, detalle.precio || 0),
       descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
       subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
-      activo: true,
       fechaCreacion: fechasistema
     }));
     await CotizaDetalle.insertMany(detallesPreparados);
@@ -2107,7 +2105,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     // Buscar si la cotización ya existe
     let existingHead = await CotizaHead.findOne({ 
       nocotiza: nocotizaUpper,
-      $or: [{ activo: true }, { activo: { $exists: false } }]
+      $or: [{ activo: "S" }]
     });
     
     let headFinal;
@@ -2132,7 +2130,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         codvendedor: head.codvendedor?.trim().toUpperCase() || '',
         tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
         detallecoti: detallecotiJson,
-        activo: true,
+        activo: "S",
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
@@ -2169,8 +2167,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     for (const detalle of detalles) {
       const detalleExistente = await CotizaDetalle.findOne({ 
         nocotiza: nocotizaUpper, 
-        codproducto: detalle.codproducto?.trim().toUpperCase(),
-        $or: [{ activo: true }, { activo: { $exists: false } }]
+        codproducto: detalle.codproducto?.trim().toUpperCase()
       });
       
       const subtotalCalculado = parseFloat(
@@ -2211,8 +2208,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     // Obtener el estado final
     const headActualizada = await CotizaHead.findById(headFinal._id);
     const detallesFinales = await CotizaDetalle.find({ 
-      nocotiza: nocotizaUpper,
-      $or: [{ activo: true }, { activo: { $exists: false } }]
+      nocotiza: nocotizaUpper
     });
     
     const mensaje = !existingHead 
@@ -2239,9 +2235,9 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     var fechasistema = formatLocalYmd(new Date());
-    const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: true });
+    const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: "S" });
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
-    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
+    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase()});
     const pdfData = {
       cotizacion: {
         numero: head.nocotiza, fecha: head.fechacotiza, vencimiento: head.fechavencimiento,
@@ -2302,7 +2298,6 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
             codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
             tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
             estado: 'Pendiente',
-            activo: true,
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
         });
@@ -2319,8 +2314,7 @@ app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const head = await FacturaHead.findOne({
-            nofactura: nofactura.toUpperCase(),
-            activo: { $ne: false }
+            nofactura: nofactura.toUpperCase()
         });
         if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
         res.json({ success: true, message: 'Factura obtenida', data: head });
@@ -2362,7 +2356,7 @@ app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
 app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
-        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase(), activo: { $ne: false } }).sort({ codproducto: 1 });
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase()}).sort({ codproducto: 1 });
         res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
     } catch (error) {
         console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
@@ -2398,7 +2392,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
             detallefactura: detallefacturaJson,
             estado: 'Pendiente',
-            activo: true,
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
             subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2413,7 +2406,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
             subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
-            activo: true,
             fechaCreacion: fechasistema
         }));
         
@@ -2443,8 +2435,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         var fechasistema = formatLocalYmd(new Date());
         
         let existingHead = await FacturaHead.findOne({ 
-            nofactura: nofacturaUpper,
-            activo: { $ne: false }
+            nofactura: nofacturaUpper
         });
         
         let headFinal;
@@ -2465,7 +2456,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
                 detallefactura: detallefacturaJson,
                 estado: 'Pendiente',
-                activo: true,
                 fechaCreacion: fechasistema,
                 fechaActualizacion: fechasistema,
                 subtotal1: head.subtotal1 || 0,
@@ -2495,8 +2485,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         for (const detalle of detalles) {
             const detalleExistente = await FacturaDetalle.findOne({ 
                 nofactura: nofacturaUpper, 
-                codproducto: detalle.codproducto?.trim().toUpperCase(),
-                activo: { $ne: false }
+                codproducto: detalle.codproducto?.trim().toUpperCase()
             });
             const subtotalCalculado = parseFloat(
                 ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
@@ -2524,7 +2513,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     impuesto: detalle.impuesto || 0,
                     subtotal: subtotalCalculado,
                     unidad: detalle.unidad || 'UNIDAD',
-                    activo: true,
                     fechaCreacion: fechasistema
                 });
             }
@@ -2532,8 +2520,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         
         const headActualizada = await FacturaHead.findById(headFinal._id);
         const detallesFinales = await FacturaDetalle.find({ 
-            nofactura: nofacturaUpper,
-            activo: { $ne: false }
+            nofactura: nofacturaUpper
         });
         
         const mensaje = !existingHead 
@@ -2635,7 +2622,6 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
             codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
             tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
             estado: 'Pendiente',
-            activo: true,
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
         });
@@ -2652,8 +2638,7 @@ app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const head = await FacturaHead.findOne({
-            nofactura: nofactura.toUpperCase(),
-            activo: { $ne: false }
+            nofactura: nofactura.toUpperCase()
         });
         if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
         res.json({ success: true, message: 'Factura obtenida', data: head });
@@ -2695,7 +2680,7 @@ app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
 app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
-        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase(), activo: { $ne: false } }).sort({ codproducto: 1 });
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase()}).sort({ codproducto: 1 });
         res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
     } catch (error) {
         console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
@@ -2731,7 +2716,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
             detallefactura: detallefacturaJson,
             estado: 'Pendiente',
-            activo: true,
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
             subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2746,7 +2730,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
             subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
-            activo: true,
             fechaCreacion: fechasistema
         }));
         
@@ -2776,8 +2759,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         var fechasistema = formatLocalYmd(new Date());
         
         let existingHead = await FacturaHead.findOne({ 
-            nofactura: nofacturaUpper,
-            activo: { $ne: false }
+            nofactura: nofacturaUpper
         });
         
         let headFinal;
@@ -2798,7 +2780,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
                 detallefactura: detallefacturaJson,
                 estado: 'Pendiente',
-                activo: true,
                 fechaCreacion: fechasistema,
                 fechaActualizacion: fechasistema,
                 subtotal1: head.subtotal1 || 0,
@@ -2828,8 +2809,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         for (const detalle of detalles) {
             const detalleExistente = await FacturaDetalle.findOne({ 
                 nofactura: nofacturaUpper, 
-                codproducto: detalle.codproducto?.trim().toUpperCase(),
-                activo: { $ne: false }
+                codproducto: detalle.codproducto?.trim().toUpperCase()
             });
             const subtotalCalculado = parseFloat(
                 ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
@@ -2857,7 +2837,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     impuesto: detalle.impuesto || 0,
                     subtotal: subtotalCalculado,
                     unidad: detalle.unidad || 'UNIDAD',
-                    activo: true,
                     fechaCreacion: fechasistema
                 });
             }
