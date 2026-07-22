@@ -541,17 +541,17 @@ app.get("/api/dashboard", async (req, res) => {
     // Consultar facturas por fecha (excluir anuladas)
     const facturasHoy = await FacturaHead.find({
       fechafactura: todayStr,
-      estado: { $ne: 'Anulada' }
+      estado: { $ne: 'A' }
     });
 
     const facturasAyer = await FacturaHead.find({
       fechafactura: yesterdayStr,
-      estado: { $ne: 'Anulada' }
+      estado: { $ne: 'A' }
     });
 
     const facturasMes = await FacturaHead.find({
       fechafactura: { $regex: `^${currentMonthStr}` },
-      estado: { $ne: 'Anulada' }
+      estado: { $ne: 'A' }
     });
 
     // Calcular totales de ventas
