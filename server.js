@@ -508,8 +508,7 @@ app.get("/api/dashboard", async (req, res) => {
     
     // Contar cotizaciones convertidas (tienen nofactura o coticonvertido = "S"/"SI")
     const cotizacionesConvertidasArr = todasCotizaciones.filter(c => 
-      c.coticonvertido === 'S' || c.coticonvertido === 'SI' || 
-      (c.nofactura && c.nofactura.trim() !== '' && c.nofactura !== '0000')
+      c.coticonvertido === 'S'
     );
     const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
     const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
