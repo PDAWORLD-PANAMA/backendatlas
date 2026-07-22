@@ -498,6 +498,9 @@ const FacturaDetalle = mongoose.model('FacturaDetalle', facturadetalleSchema);
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD
 // ============================================================================
+// ============================================================================
+// 🔹 RUTAS: DASHBOARD (CON DATOS REALES DE CotizaHead Y FacturaHead)
+// ============================================================================
 app.get("/api/dashboard", async (req, res) => {
   try {
     // ═══════════════════════════════════════════════════════
@@ -505,20 +508,20 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     const todasCotizaciones = await CotizaHead.find({ activo: { $ne: false } });
     const cotizacionesTotal = todasCotizaciones.length;
-    
-    // Contar cotizaciones convertidas (tienen nofactura o coticonvertido = "S"/"SI")
-    const cotizacionesConvertidasArr = todasCotizaciones.filter(c => 
-      c.coticonvertido === 'S'
+
+    // Contar cotizaciones convertidas (coticonvertido = "S" o "SI")
+    const cotizacionesConvertidasArr = todasCotizaciones.filter(c =>
+      c.coticonvertido === 'S' || c.coticonvertido === 'SI'
     );
     const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
     const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
-    
+
     // Calcular porcentaje de conversión
     let porcentajeConversion = 0;
     if (cotizacionesTotal > 0) {
       porcentajeConversion = (cotizacionesConvertidas / cotizacionesTotal) * 100;
     }
-    
+
     // Calcular totales monetarios
     const totalCotizado = todasCotizaciones.reduce((sum, c) => sum + (c.total || 0), 0);
     const totalConvertido = cotizacionesConvertidasArr.reduce((sum, c) => sum + (c.total || 0), 0);
@@ -529,26 +532,26 @@ app.get("/api/dashboard", async (req, res) => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     const formatDate = (date) => date.toISOString().split('T')[0];
     const todayStr = formatDate(today);
     const yesterdayStr = formatDate(yesterday);
     const currentMonthStr = todayStr.substring(0, 7); // "YYYY-MM"
 
     // Consultar facturas por fecha (excluir anuladas)
-    const facturasHoy = await FacturaHead.find({ 
-      fechafactura: todayStr, 
-      estado: { $ne: 'Anulada' } 
+    const facturasHoy = await FacturaHead.find({
+      fechafactura: todayStr,
+      estado: { $ne: 'Anulada' }
     });
-    
-    const facturasAyer = await FacturaHead.find({ 
-      fechafactura: yesterdayStr, 
-      estado: { $ne: 'Anulada' } 
+
+    const facturasAyer = await FacturaHead.find({
+      fechafactura: yesterdayStr,
+      estado: { $ne: 'Anulada' }
     });
-    
-    const facturasMes = await FacturaHead.find({ 
-      fechafactura: { $regex: `^${currentMonthStr}` }, 
-      estado: { $ne: 'Anulada' } 
+
+    const facturasMes = await FacturaHead.find({
+      fechafactura: { $regex: `^${currentMonthStr}` },
+      estado: { $ne: 'Anulada' }
     });
 
     // Calcular totales de ventas
@@ -569,7 +572,7 @@ app.get("/api/dashboard", async (req, res) => {
     // 🔹 3. VERIFICAR SI HAY DATOS REALES
     // ═══════════════════════════════════════════════════════
     const hasRealData = (cotizacionesTotal > 0 || facturasHoy.length > 0 || facturasMes.length > 0);
-    
+
     // ═══════════════════════════════════════════════════════
     // 🔹 4. PREPARAR DATOS FINALES (reales o fallback)
     // ═══════════════════════════════════════════════════════
@@ -588,14 +591,14 @@ app.get("/api/dashboard", async (req, res) => {
       totalConvertido: parseFloat(totalConvertido.toFixed(2))
     } : {
       // Valores fijos de respaldo si la BD está vacía
-      ventasHoy: 1000, facturasHoy: 5, 
+      ventasHoy: 1000, facturasHoy: 5,
       ventasAyer: 800, facturasAyer: 4,
-      ventasMes: 12000, crecimiento: 25, 
+      ventasMes: 12000, crecimiento: 25,
       cotizacionesTotal: 60,
-      cotizacionesConvertidas: 40, 
+      cotizacionesConvertidas: 40,
       cotizacionesNoConvertidas: 20,
-      porcentajeConversion: 66, 
-      totalCotizado: 50000, 
+      porcentajeConversion: 66,
+      totalCotizado: 50000,
       totalConvertido: 30000
     };
 
@@ -604,9 +607,9 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     let data = await Dashboard.findOne();
     if (!data) {
-      data = await Dashboard.create({ 
-        ...finalData, 
-        lastUpdated: new Date().toISOString() 
+      data = await Dashboard.create({
+        ...finalData,
+        lastUpdated: new Date().toISOString()
       });
     } else {
       Object.assign(data, finalData);
