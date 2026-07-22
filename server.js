@@ -354,23 +354,267 @@ const modeloSchema = new mongoose.Schema({
 const Modelo = mongoose.model('Modelo', modeloSchema);
 
 
+// =========================== MODULOS DE FACTURA Y FACTURA DETALLE ========= //
+const facturaSchema = new mongoose.Schema({
+   nofactura: { type: String},
+    facturaelectronica:{ type:String},
+    facturaqr:{ type:String },
+    fechafactura:{ type:String },
+    fechavencimiento:{ type:String},
+    fechainicial:{ type:String },
+    fechafinal:{ type:String},
+    procesoalquiler:{ type:String},
+    fechaEmision:{ type:String},
+    fechaSalida:{ type:String},
+    duraciondias:{ type :Number},
+    retenedor:{ type :String},
+    montoretencion: { type : Number},
+    codcliente:{type : String},
+    idglobalcorporp:{ type : String},
+    globalnombre :{ type : String },
+    tipoclientefe:{ type : String },
+    correocliefe : {type: String },
+    naturalezaoperacion : { type : String,default : "1" },
+    tipooperacion : {type : String},
+    destinooperacion : { type : String },
+    formatocafe : { type : String },
+    entregacafe : { type : String },
+    enviocontenedor : { type : String },
+    procesogeneracion : { type : String},
+    ruccliente : { type :  String},
+    digitoverificadoruc : { type : String},
+    codigosucemisor: { type :String},
+    tiposucursal: { type : String},
+    tipoemision: { type :String},
+     tipodocumento: String = "",
+     puntodefacturacion: { type :  String},
+    tipoventa: { type :String},
+    razonsocial: { type : String},
+    direccioncontribuyente: { type : String},
+    provincia: { type : String},
+    distrito: { type : String},
+    corregimiento: { type : String},
+    pais: { type :String},
+    paisotro: { type :String},
+    ubicacionid: { type : String},
+    tipoidclientefe: { type : String},
+    numeroidextranjero: { type :String},
+    telefonowhatsapp: { type :String },
+    codigoubicacion: { type :String},
+    tipoidentificacion: { type :String},
+    identificacionextranjero:{ type : String},
+    paisextranjero: { type : String},
+    codicionesentrega: { type : String},
+    monedaexportacion: { type :String},
+    modenaexportanodef: { type :String},
+    tipodecambio:{ type :  String},
+    monedaextranjera: { type : String},
+    fechaemisiondocreferenciado: { type :String},
+    cufereferenciado: { type :String},
+    nrofacturapapel: { type :String},
+    nofacturaimpfiscal: { type : String},
+    tipocontribuyente: { type :String},
+    codvendedor: { type :String},
+    condiciones: { type :String},
+    consignacion: { type :String},
+    formapago: { type :String},
+    descuento: { type : Number},
+    subtotal1: { type : Number},
+    cotiitbms: { type :String},
+    impuesto: { type : Number},
+    impuesto1: { type : Number},
+    impuesto2: { type : Number},
+    impuesto3: { type : Number},
+    subtotal2: { type : Number},
+    total: { type : Number},
+    saldo: { type : Number},
+    entregado: { type : Number},
+    cambio: { type : Number},
+    clasefactura: { type : String},
+    nombreclie: { type :String},
+    seriefiscal: { type : String},
+    detallefactura: { type :String},
+    fechadgiauto: { type : String},
+    autorizandgi: { type : String},
+    imagen:{ type : String},
+    centrocosto: { type :String},
+    historialnotacredito : [String],
+    historialnotacambio: [String],
+    historialnotadebito: [String],
+    clasecliente: { type : String},
+    estado: { type : String },
+    activo : { type: Boolean },
+    fechaCreacion: { type : String},
+    fechaActualizacion: { type : String}
+}) 
+const FacturaHead = mongoose.model('FacturaHead', facturaSchema);
+
+
+const facturadetalleSchema = new mongoose.Schema({
+    nofactura: { type :String},
+    fechafactura: { type :String},
+    codcliente: { type :String},
+    codvendedor: { type : String},
+    codproducto: { type : String},
+    cantidad: { type :Number},
+    descripcion: { type : String},
+    precio: { type : Number},
+    descuento: { type : Number},
+    impuesto1: { type : Number},
+    impuesto2: { type : Number},
+    impuesto3: { type : Number},
+    codtasaisc: { type :String},
+    tasaisc: { type : Number},
+    ancho: { type : Number},
+    alto: { type : Number},
+    numerolote: { type :String},
+    cantiprodlote: { type : Number},
+    unidad: { type :String},
+    mercancia: { type : String},
+    modelo: { type : String},
+    fechafabricacion: { type :String} ,
+    fechaexpiracion: { type : String},
+    codigobienes: { type : String},
+    codigoabrev: { type : String},
+    codigogtin: { type : Number},
+    codigogtininven: { type : Number},
+    cantigtin: { type : Number},
+    tasaitbmscod: { type : Number},
+    valorisc: { type : Number },
+    tasaoti: { type : Number},
+    valortasaotro: { type : Number},
+    hora: { type :String},
+    acabados: {  type : String},
+    pormayor: { type : Number},
+    detventa: { type : Number },
+    especificaciones: { type :String},
+    subtotal: { type : Number},
+    activo: { type : bolean}
+}) 
+
+const FacturaDetalle = mongoose.model('FacturaDetalle', facturadetalleSchema);
+    // ✅ Helper para calcular subtotal de línea
+  
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD
 // ============================================================================
 app.get("/api/dashboard", async (req, res) => {
   try {
+    // ═══════════════════════════════════════════════════════
+    // 🔹 1. CALCULAR DATOS REALES DE COTIZACIONES
+    // ═══════════════════════════════════════════════════════
+    const todasCotizaciones = await CotizaHead.find({ activo: { $ne: false } });
+    const cotizacionesTotal = todasCotizaciones.length;
+    
+    // Contar cotizaciones convertidas (tienen nofactura o coticonvertido = "S"/"SI")
+    const cotizacionesConvertidasArr = todasCotizaciones.filter(c => 
+      c.coticonvertido === 'S' || c.coticonvertido === 'SI' || 
+      (c.nofactura && c.nofactura.trim() !== '' && c.nofactura !== '0000')
+    );
+    const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
+    const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
+    
+    // Calcular porcentaje de conversión
+    let porcentajeConversion = 0;
+    if (cotizacionesTotal > 0) {
+      porcentajeConversion = (cotizacionesConvertidas / cotizacionesTotal) * 100;
+    }
+    
+    // Calcular totales monetarios
+    const totalCotizado = todasCotizaciones.reduce((sum, c) => sum + (c.total || 0), 0);
+    const totalConvertido = cotizacionesConvertidasArr.reduce((sum, c) => sum + (c.total || 0), 0);
+
+    // ═══════════════════════════════════════════════════════
+    // 🔹 2. CALCULAR DATOS REALES DE FACTURAS (VENTAS)
+    // ═══════════════════════════════════════════════════════
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const formatDate = (date) => date.toISOString().split('T')[0];
+    const todayStr = formatDate(today);
+    const yesterdayStr = formatDate(yesterday);
+    const currentMonthStr = todayStr.substring(0, 7); // "YYYY-MM"
+
+    // Consultar facturas por fecha (excluir anuladas)
+    const facturasHoy = await FacturaHead.find({ 
+      fechafactura: todayStr, 
+      estado: { $ne: 'Anulada' } 
+    });
+    
+    const facturasAyer = await FacturaHead.find({ 
+      fechafactura: yesterdayStr, 
+      estado: { $ne: 'Anulada' } 
+    });
+    
+    const facturasMes = await FacturaHead.find({ 
+      fechafactura: { $regex: `^${currentMonthStr}` }, 
+      estado: { $ne: 'Anulada' } 
+    });
+
+    // Calcular totales de ventas
+    const ventasHoy = facturasHoy.reduce((sum, f) => sum + (f.total || 0), 0);
+    const ventasAyer = facturasAyer.reduce((sum, f) => sum + (f.total || 0), 0);
+    const ventasMes = facturasMes.reduce((sum, f) => sum + (f.total || 0), 0);
+
+    const countFacturasHoy = facturasHoy.length;
+    const countFacturasAyer = facturasAyer.length;
+
+    // Calcular crecimiento porcentual
+    let crecimiento = 0;
+    if (ventasAyer > 0) {
+      crecimiento = ((ventasHoy - ventasAyer) / ventasAyer) * 100;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 🔹 3. VERIFICAR SI HAY DATOS REALES
+    // ═══════════════════════════════════════════════════════
+    const hasRealData = (cotizacionesTotal > 0 || facturasHoy.length > 0 || facturasMes.length > 0);
+    
+    // ═══════════════════════════════════════════════════════
+    // 🔹 4. PREPARAR DATOS FINALES (reales o fallback)
+    // ═══════════════════════════════════════════════════════
+    const finalData = hasRealData ? {
+      ventasHoy: parseFloat(ventasHoy.toFixed(2)),
+      facturasHoy: countFacturasHoy,
+      ventasAyer: parseFloat(ventasAyer.toFixed(2)),
+      facturasAyer: countFacturasAyer,
+      ventasMes: parseFloat(ventasMes.toFixed(2)),
+      crecimiento: parseFloat(crecimiento.toFixed(2)),
+      cotizacionesTotal,
+      cotizacionesConvertidas,
+      cotizacionesNoConvertidas,
+      porcentajeConversion: parseFloat(porcentajeConversion.toFixed(2)),
+      totalCotizado: parseFloat(totalCotizado.toFixed(2)),
+      totalConvertido: parseFloat(totalConvertido.toFixed(2))
+    } : {
+      // Valores fijos de respaldo si la BD está vacía
+      ventasHoy: 1000, facturasHoy: 5, 
+      ventasAyer: 800, facturasAyer: 4,
+      ventasMes: 12000, crecimiento: 25, 
+      cotizacionesTotal: 60,
+      cotizacionesConvertidas: 40, 
+      cotizacionesNoConvertidas: 20,
+      porcentajeConversion: 66, 
+      totalCotizado: 50000, 
+      totalConvertido: 30000
+    };
+
+    // ═══════════════════════════════════════════════════════
+    // 🔹 5. ACTUALIZAR O CREAR REGISTRO EN DASHBOARD
+    // ═══════════════════════════════════════════════════════
     let data = await Dashboard.findOne();
     if (!data) {
-      data = await Dashboard.create({
-        ventasHoy: 1000, facturasHoy: 5, ventasAyer: 800, facturasAyer: 4,
-        ventasMes: 12000, crecimiento: 25, cotizacionesTotal: 60,
-        cotizacionesConvertidas: 40, cotizacionesNoConvertidas: 20,
-        porcentajeConversion: 66, totalCotizado: 50000, totalConvertido: 30000,
-        lastUpdated: new Date().toISOString()
+      data = await Dashboard.create({ 
+        ...finalData, 
+        lastUpdated: new Date().toISOString() 
       });
+    } else {
+      Object.assign(data, finalData);
+      data.lastUpdated = new Date().toISOString();
+      await data.save();
     }
-    data.lastUpdated = new Date().toISOString();
-    await data.save();
+
     res.json(data);
   } catch (err) {
     console.error("❌ Error /api/dashboard:", err);
@@ -2016,6 +2260,673 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   }
 });
 
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LLAMADAS DE LAS FACTURAS DE VENTAS %%%%%%%%%%%%%%%%%
+
+// ============================================================================
+// 🔹 RUTAS: FACTURAS ELECTRÓNICAS
+// ============================================================================
+
+// ───────── LISTAR FACTURAS ─────────
+app.get('/api/ventas/facturas/head', async (req, res) => {
+    try {
+        const { nofactura, codcliente } = req.query;
+        let filters = { activo: { $ne: false } };
+        if (nofactura?.trim()) filters.nofactura = { $regex: nofactura.trim(), $options: 'i' };
+        if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
+        const facturas = await FacturaHead.find(filters).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
+        res.json({ success: true, message: `${facturas.length} factura(s) encontrada(s)`, data: facturas });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── CREAR CABECERA DE FACTURA ─────────
+app.post('/api/ventas/facturas/head', async (req, res) => {
+    try {
+        const { nofactura, codcliente, fechafactura } = req.body;
+        if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
+            return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
+        }
+        var fechasistema = formatLocalYmd(new Date());
+        const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+        const newHead = await FacturaHead.create({
+            ...req.body,
+            nofactura: nofactura.trim().toUpperCase(),
+            codcliente: codcliente.trim().toUpperCase(),
+            nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
+            ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
+            codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
+            tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
+            estado: 'Pendiente',
+            activo: true,
+            fechaCreacion: fechasistema,
+            fechaActualizacion: fechasistema,
+        });
+        res.status(201).json({ success: true, message: '✅ Cabecera de factura creada', data: newHead });
+    } catch (error) {
+        console.error('❌ Error POST /api/ventas/facturas/head:', error);
+        if (error.code === 11000) return res.status(409).json({ success: false, message: '❌ El número de factura ya está registrado' });
+        res.status(500).json({ success: false, message: 'Error al crear factura', error: error.message });
+    }
+});
+
+// ───────── OBTENER FACTURA POR NÚMERO ─────────
+app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const head = await FacturaHead.findOne({
+            nofactura: nofactura.toUpperCase(),
+            activo: { $ne: false }
+        });
+        if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: 'Factura obtenida', data: head });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head/nro/:nofactura:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── OBTENER FACTURA POR ID ─────────
+app.get('/api/ventas/facturas/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        const head = await FacturaHead.findById(id);
+        if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: 'Factura obtenida', data: head });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── ELIMINAR FACTURA ─────────
+app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        const deleted = await FacturaHead.findByIdAndDelete(id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: '🗑️ Factura eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/ventas/facturas/head/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar factura', error: error.message });
+    }
+});
+
+// ───────── DETALLES POR NÚMERO DE FACTURA ─────────
+app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase(), activo: { $ne: false } }).sort({ codproducto: 1 });
+        res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── CREAR FACTURA COMPLETA (HEAD + DETALLES ATÓMICO) ─────────
+app.post('/api/ventas/facturas/completa', async (req, res) => {
+    try {
+        const { head, detalles } = req.body;
+        if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
+        }
+        const exists = await FacturaHead.findOne({ nofactura: head.nofactura?.trim().toUpperCase() });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+        
+        const detallefacturaJson = JSON.stringify(detalles.map(d => ({
+            codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+            precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
+            subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+            unidad: d.unidad
+        })));
+        
+        var fechasistema = formatLocalYmd(new Date());
+        const nuevaHead = await FacturaHead.create({
+            ...head,
+            nofactura: head.nofactura.trim().toUpperCase(),
+            codcliente: head.codcliente?.trim().toUpperCase() || '',
+            nombreclie: head.nombreclie?.trim().toUpperCase() || '',
+            ruccliente: head.ruccliente?.trim().toUpperCase() || '',
+            codvendedor: head.codvendedor?.trim().toUpperCase() || '',
+            tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+            detallefactura: detallefacturaJson,
+            estado: 'Pendiente',
+            activo: true,
+            fechaCreacion: fechasistema,
+            fechaActualizacion: fechasistema,
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
+        });
+        
+        const detallesPreparados = detalles.map(detalle => ({
+            ...detalle,
+            nofactura: nuevaHead.nofactura,
+            codproducto: detalle.codproducto?.trim().toUpperCase(),
+            descripcion: detalle.descripcion?.trim().toUpperCase(),
+            cantidad: Math.max(1, detalle.cantidad || 1),
+            precio: Math.max(0, detalle.precio || 0),
+            descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+            subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
+            activo: true,
+            fechaCreacion: fechasistema
+        }));
+        
+        await FacturaDetalle.insertMany(detallesPreparados);
+        const headActualizada = await FacturaHead.findById(nuevaHead._id);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: `✅ Factura ${nuevaHead.nofactura} creada con ${detalles.length} producto(s)`, 
+            data: headActualizada 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/ventas/facturas/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al crear factura completa', error: error.message });
+    }
+});
+
+// ───────── ACTUALIZAR FACTURA COMPLETA (UPSERT - Finalizar y Guardar) ─────────
+app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const { head, detalles } = req.body;
+        if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
+        }
+        const nofacturaUpper = nofactura.trim().toUpperCase();
+        var fechasistema = formatLocalYmd(new Date());
+        
+        let existingHead = await FacturaHead.findOne({ 
+            nofactura: nofacturaUpper,
+            activo: { $ne: false }
+        });
+        
+        let headFinal;
+        if (!existingHead) {
+            const detallefacturaJson = JSON.stringify(detalles.map(d => ({
+                codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+                precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
+                subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+                unidad: d.unidad
+            })));
+            headFinal = await FacturaHead.create({
+                ...head,
+                nofactura: nofacturaUpper,
+                codcliente: head.codcliente?.trim().toUpperCase() || '',
+                nombreclie: head.nombreclie?.trim().toUpperCase() || '',
+                ruccliente: head.ruccliente?.trim().toUpperCase() || '',
+                codvendedor: head.codvendedor?.trim().toUpperCase() || '',
+                tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+                detallefactura: detallefacturaJson,
+                estado: 'Pendiente',
+                activo: true,
+                fechaCreacion: fechasistema,
+                fechaActualizacion: fechasistema,
+                subtotal1: head.subtotal1 || 0,
+                descuento: head.descuento || 0,
+                impuesto: head.impuesto || 0,
+                subtotal2: head.subtotal2 || 0,
+                total: head.total || 0
+            });
+        } else {
+            const updateData = {
+                subtotal1: head.subtotal1 || 0,
+                descuento: head.descuento || 0,
+                impuesto: head.impuesto || 0,
+                subtotal2: head.subtotal2 || 0,
+                total: head.total || 0,
+                montoretencion: head.montoretencion || 0,
+                detallefactura: head.detallefactura || '[]',
+                fechaActualizacion: fechasistema
+            };
+            headFinal = await FacturaHead.findByIdAndUpdate(
+                existingHead._id,
+                { $set: updateData },
+                { new: true, runValidators: true }
+            );
+        }
+        
+        for (const detalle of detalles) {
+            const detalleExistente = await FacturaDetalle.findOne({ 
+                nofactura: nofacturaUpper, 
+                codproducto: detalle.codproducto?.trim().toUpperCase(),
+                activo: { $ne: false }
+            });
+            const subtotalCalculado = parseFloat(
+                ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
+            );
+            if (detalleExistente) {
+                await FacturaDetalle.findByIdAndUpdate(detalleExistente._id, {
+                    $set: {
+                        cantidad: Math.max(1, detalle.cantidad || 1),
+                        precio: Math.max(0, detalle.precio || 0),
+                        descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+                        impuesto: detalle.impuesto || 0,
+                        subtotal: subtotalCalculado,
+                        descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
+                        fechaActualizacion: fechasistema
+                    }
+                });
+            } else {
+                await FacturaDetalle.create({
+                    nofactura: nofacturaUpper,
+                    codproducto: detalle.codproducto?.trim().toUpperCase(),
+                    descripcion: detalle.descripcion?.trim().toUpperCase(),
+                    cantidad: Math.max(1, detalle.cantidad || 1),
+                    precio: Math.max(0, detalle.precio || 0),
+                    descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+                    impuesto: detalle.impuesto || 0,
+                    subtotal: subtotalCalculado,
+                    unidad: detalle.unidad || 'UNIDAD',
+                    activo: true,
+                    fechaCreacion: fechasistema
+                });
+            }
+        }
+        
+        const headActualizada = await FacturaHead.findById(headFinal._id);
+        const detallesFinales = await FacturaDetalle.find({ 
+            nofactura: nofacturaUpper,
+            activo: { $ne: false }
+        });
+        
+        const mensaje = !existingHead 
+            ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
+            : `✅ Factura ${nofacturaUpper} actualizada correctamente`;
+        
+        res.status(!existingHead ? 201 : 200).json({ 
+            success: true, 
+            message: mensaje, 
+            data: headActualizada,
+            detalles: detallesFinales
+        });
+    } catch (error) {
+        console.error('❌ Error PUT /api/ventas/facturas/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al guardar factura', error: error.message });
+    }
+});
+
+// ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
+app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        
+        // TODO: Implementar llamada SOAP real a Facttory Corp Panamá
+        // Por ahora simulamos una respuesta exitosa
+        factura.facturaelectronica = `CAE-${Date.now()}`;
+        factura.estado = 'Aceptada';
+        await factura.save();
+        
+        res.json({ 
+            success: true, 
+            message: 'Factura enviada a Facttory Corp', 
+            data: factura,
+            cae: factura.facturaelectronica
+        });
+    } catch (error) {
+        console.error('❌ Error enviar-facttory:', error);
+        res.status(500).json({ success: false, message: 'Error al enviar a Facttory', error: error.message });
+    }
+});
+
+// ───────── ANULAR FACTURA ─────────
+app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const { motivo } = req.body;
+        if (!motivo?.trim()) return res.status(400).json({ success: false, message: 'El motivo de anulación es obligatorio' });
+        
+        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        
+        factura.estado = 'Anulada';
+        await factura.save();
+        
+        res.json({ success: true, message: `Factura anulada. Motivo: ${motivo}`, data: factura });
+    } catch (error) {
+        console.error('❌ Error anular factura:', error);
+        res.status(500).json({ success: false, message: 'Error al anular factura', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 RUTAS: FACTURAS ELECTRÓNICAS
+// ============================================================================
+
+// ───────── LISTAR FACTURAS ─────────
+app.get('/api/ventas/facturas/head', async (req, res) => {
+    try {
+        const { nofactura, codcliente } = req.query;
+        let filters = { activo: { $ne: false } };
+        if (nofactura?.trim()) filters.nofactura = { $regex: nofactura.trim(), $options: 'i' };
+        if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
+        const facturas = await FacturaHead.find(filters).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
+        res.json({ success: true, message: `${facturas.length} factura(s) encontrada(s)`, data: facturas });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── CREAR CABECERA DE FACTURA ─────────
+app.post('/api/ventas/facturas/head', async (req, res) => {
+    try {
+        const { nofactura, codcliente, fechafactura } = req.body;
+        if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
+            return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
+        }
+        var fechasistema = formatLocalYmd(new Date());
+        const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+        const newHead = await FacturaHead.create({
+            ...req.body,
+            nofactura: nofactura.trim().toUpperCase(),
+            codcliente: codcliente.trim().toUpperCase(),
+            nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
+            ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
+            codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
+            tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
+            estado: 'Pendiente',
+            activo: true,
+            fechaCreacion: fechasistema,
+            fechaActualizacion: fechasistema,
+        });
+        res.status(201).json({ success: true, message: '✅ Cabecera de factura creada', data: newHead });
+    } catch (error) {
+        console.error('❌ Error POST /api/ventas/facturas/head:', error);
+        if (error.code === 11000) return res.status(409).json({ success: false, message: '❌ El número de factura ya está registrado' });
+        res.status(500).json({ success: false, message: 'Error al crear factura', error: error.message });
+    }
+});
+
+// ───────── OBTENER FACTURA POR NÚMERO ─────────
+app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const head = await FacturaHead.findOne({
+            nofactura: nofactura.toUpperCase(),
+            activo: { $ne: false }
+        });
+        if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: 'Factura obtenida', data: head });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head/nro/:nofactura:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── OBTENER FACTURA POR ID ─────────
+app.get('/api/ventas/facturas/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        const head = await FacturaHead.findById(id);
+        if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: 'Factura obtenida', data: head });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/head/:id:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── ELIMINAR FACTURA ─────────
+app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        const deleted = await FacturaHead.findByIdAndDelete(id);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        res.json({ success: true, message: '🗑️ Factura eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/ventas/facturas/head/:id:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar factura', error: error.message });
+    }
+});
+
+// ───────── DETALLES POR NÚMERO DE FACTURA ─────────
+app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase(), activo: { $ne: false } }).sort({ codproducto: 1 });
+        res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ───────── CREAR FACTURA COMPLETA (HEAD + DETALLES ATÓMICO) ─────────
+app.post('/api/ventas/facturas/completa', async (req, res) => {
+    try {
+        const { head, detalles } = req.body;
+        if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
+        }
+        const exists = await FacturaHead.findOne({ nofactura: head.nofactura?.trim().toUpperCase() });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+        
+        const detallefacturaJson = JSON.stringify(detalles.map(d => ({
+            codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+            precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
+            subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+            unidad: d.unidad
+        })));
+        
+        var fechasistema = formatLocalYmd(new Date());
+        const nuevaHead = await FacturaHead.create({
+            ...head,
+            nofactura: head.nofactura.trim().toUpperCase(),
+            codcliente: head.codcliente?.trim().toUpperCase() || '',
+            nombreclie: head.nombreclie?.trim().toUpperCase() || '',
+            ruccliente: head.ruccliente?.trim().toUpperCase() || '',
+            codvendedor: head.codvendedor?.trim().toUpperCase() || '',
+            tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+            detallefactura: detallefacturaJson,
+            estado: 'Pendiente',
+            activo: true,
+            fechaCreacion: fechasistema,
+            fechaActualizacion: fechasistema,
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
+        });
+        
+        const detallesPreparados = detalles.map(detalle => ({
+            ...detalle,
+            nofactura: nuevaHead.nofactura,
+            codproducto: detalle.codproducto?.trim().toUpperCase(),
+            descripcion: detalle.descripcion?.trim().toUpperCase(),
+            cantidad: Math.max(1, detalle.cantidad || 1),
+            precio: Math.max(0, detalle.precio || 0),
+            descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+            subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
+            activo: true,
+            fechaCreacion: fechasistema
+        }));
+        
+        await FacturaDetalle.insertMany(detallesPreparados);
+        const headActualizada = await FacturaHead.findById(nuevaHead._id);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: `✅ Factura ${nuevaHead.nofactura} creada con ${detalles.length} producto(s)`, 
+            data: headActualizada 
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/ventas/facturas/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al crear factura completa', error: error.message });
+    }
+});
+
+// ───────── ACTUALIZAR FACTURA COMPLETA (UPSERT - Finalizar y Guardar) ─────────
+app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const { head, detalles } = req.body;
+        if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
+        }
+        const nofacturaUpper = nofactura.trim().toUpperCase();
+        var fechasistema = formatLocalYmd(new Date());
+        
+        let existingHead = await FacturaHead.findOne({ 
+            nofactura: nofacturaUpper,
+            activo: { $ne: false }
+        });
+        
+        let headFinal;
+        if (!existingHead) {
+            const detallefacturaJson = JSON.stringify(detalles.map(d => ({
+                codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+                precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
+                subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+                unidad: d.unidad
+            })));
+            headFinal = await FacturaHead.create({
+                ...head,
+                nofactura: nofacturaUpper,
+                codcliente: head.codcliente?.trim().toUpperCase() || '',
+                nombreclie: head.nombreclie?.trim().toUpperCase() || '',
+                ruccliente: head.ruccliente?.trim().toUpperCase() || '',
+                codvendedor: head.codvendedor?.trim().toUpperCase() || '',
+                tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+                detallefactura: detallefacturaJson,
+                estado: 'Pendiente',
+                activo: true,
+                fechaCreacion: fechasistema,
+                fechaActualizacion: fechasistema,
+                subtotal1: head.subtotal1 || 0,
+                descuento: head.descuento || 0,
+                impuesto: head.impuesto || 0,
+                subtotal2: head.subtotal2 || 0,
+                total: head.total || 0
+            });
+        } else {
+            const updateData = {
+                subtotal1: head.subtotal1 || 0,
+                descuento: head.descuento || 0,
+                impuesto: head.impuesto || 0,
+                subtotal2: head.subtotal2 || 0,
+                total: head.total || 0,
+                montoretencion: head.montoretencion || 0,
+                detallefactura: head.detallefactura || '[]',
+                fechaActualizacion: fechasistema
+            };
+            headFinal = await FacturaHead.findByIdAndUpdate(
+                existingHead._id,
+                { $set: updateData },
+                { new: true, runValidators: true }
+            );
+        }
+        
+        for (const detalle of detalles) {
+            const detalleExistente = await FacturaDetalle.findOne({ 
+                nofactura: nofacturaUpper, 
+                codproducto: detalle.codproducto?.trim().toUpperCase(),
+                activo: { $ne: false }
+            });
+            const subtotalCalculado = parseFloat(
+                ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
+            );
+            if (detalleExistente) {
+                await FacturaDetalle.findByIdAndUpdate(detalleExistente._id, {
+                    $set: {
+                        cantidad: Math.max(1, detalle.cantidad || 1),
+                        precio: Math.max(0, detalle.precio || 0),
+                        descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+                        impuesto: detalle.impuesto || 0,
+                        subtotal: subtotalCalculado,
+                        descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
+                        fechaActualizacion: fechasistema
+                    }
+                });
+            } else {
+                await FacturaDetalle.create({
+                    nofactura: nofacturaUpper,
+                    codproducto: detalle.codproducto?.trim().toUpperCase(),
+                    descripcion: detalle.descripcion?.trim().toUpperCase(),
+                    cantidad: Math.max(1, detalle.cantidad || 1),
+                    precio: Math.max(0, detalle.precio || 0),
+                    descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+                    impuesto: detalle.impuesto || 0,
+                    subtotal: subtotalCalculado,
+                    unidad: detalle.unidad || 'UNIDAD',
+                    activo: true,
+                    fechaCreacion: fechasistema
+                });
+            }
+        }
+        
+        const headActualizada = await FacturaHead.findById(headFinal._id);
+        const detallesFinales = await FacturaDetalle.find({ 
+            nofactura: nofacturaUpper,
+            activo: { $ne: false }
+        });
+        
+        const mensaje = !existingHead 
+            ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
+            : `✅ Factura ${nofacturaUpper} actualizada correctamente`;
+        
+        res.status(!existingHead ? 201 : 200).json({ 
+            success: true, 
+            message: mensaje, 
+            data: headActualizada,
+            detalles: detallesFinales
+        });
+    } catch (error) {
+        console.error('❌ Error PUT /api/ventas/facturas/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al guardar factura', error: error.message });
+    }
+});
+
+// ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
+app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        
+        // TODO: Implementar llamada SOAP real a Facttory Corp Panamá
+        // Por ahora simulamos una respuesta exitosa
+        factura.facturaelectronica = `CAE-${Date.now()}`;
+        factura.estado = 'Aceptada';
+        await factura.save();
+        
+        res.json({ 
+            success: true, 
+            message: 'Factura enviada a Facttory Corp', 
+            data: factura,
+            cae: factura.facturaelectronica
+        });
+    } catch (error) {
+        console.error('❌ Error enviar-facttory:', error);
+        res.status(500).json({ success: false, message: 'Error al enviar a Facttory', error: error.message });
+    }
+});
+
+// ───────── ANULAR FACTURA ─────────
+app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const { motivo } = req.body;
+        if (!motivo?.trim()) return res.status(400).json({ success: false, message: 'El motivo de anulación es obligatorio' });
+        
+        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        
+        factura.estado = 'Anulada';
+        await factura.save();
+        
+        res.json({ success: true, message: `Factura anulada. Motivo: ${motivo}`, data: factura });
+    } catch (error) {
+        console.error('❌ Error anular factura:', error);
+        res.status(500).json({ success: false, message: 'Error al anular factura', error: error.message });
+    }
+});
 //%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 //  app.delete('/api/vendedor/:id', async (req, res) => {
 
@@ -2051,7 +2962,7 @@ async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
     var fechasistema = formatLocalYmd(new Date());
-    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
+    const detalles = await FacturaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
     const subtotal1 = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
     const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase() });
     if (!head) return;
