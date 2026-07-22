@@ -75,7 +75,7 @@ const empresaSchema = new mongoose.Schema({
   nofoliospac: { type: Number, default: 0 },
   firmadigitalemision: { type: String, trim: true },
   firmadigitalexpira: { type: String, trim: true },
-  vigencialicencia: { type: String, trim: true },
+  vigencialicencia: { type: String, trim: true }
 }, { timestamps: true });
 
 const EmpresaConfig = mongoose.model('EmpresaConfig', empresaSchema);
@@ -443,7 +443,6 @@ const facturaSchema = new mongoose.Schema({
     historialnotadebito: [String],
     clasecliente: { type : String},
     estado: { type : String },
-    activo : { type: String },
     fechaCreacion: { type : String},
     fechaActualizacion: { type : String}
 }) 
@@ -488,8 +487,7 @@ const facturadetalleSchema = new mongoose.Schema({
     pormayor: { type : Number},
     detventa: { type : Number },
     especificaciones: { type :String},
-    subtotal: { type : Number},
-    activo: { type : bolean}
+    subtotal: { type : Number}
 }) 
 
 const FacturaDetalle = mongoose.model('FacturaDetalle', facturadetalleSchema);
@@ -1937,7 +1935,7 @@ app.delete('/api/ventas/cotizaciones/head/:id', async (req, res) => {
 app.get('/api/ventas/cotizaciones/detalle/nro/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
-    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true }).sort({ codproducto: 1 });
+    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase()}).sort({ codproducto: 1 });
     res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
   } catch (error) {
     console.error('❌ Error GET /api/ventas/cotizaciones/detalle/nro/:nocotiza:', error);
@@ -2196,7 +2194,6 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
           precio: Math.max(0, detalle.precio || 0),
           descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
           subtotal: subtotalCalculado,
-          activo: true,
           fechaCreacion: fechasistema
         });
       }
@@ -2943,7 +2940,7 @@ async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
     var fechasistema = formatLocalYmd(new Date());
-    const detalles = await FacturaDetalle.find({ nocotiza: nocotiza.toUpperCase(), activo: true });
+    const detalles = await FacturaDetalle.find({ nocotiza: nocotiza.toUpperCase()});
     const subtotal1 = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
     const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase() });
     if (!head) return;
