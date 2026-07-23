@@ -1827,17 +1827,30 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 // ============================================================================
 // 🔹 RUTAS: COTIZACIONES
 // ============================================================================
-app.get('/api/ventas/cotizaciones/head', async (req, res) => {
+// GET /api/ventas/cotizaciones/head
+app.get("/api/ventas/cotizaciones/head", async (req, res) => {
   try {
-    const { nocotiza, codcliente, activo } = req.query;
-    let filters = { activo: activo !== 'N' };
-    if (nocotiza?.trim()) filters.nocotiza = { $regex: nocotiza.trim(), $options: 'i' };
-    if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
-    const cotizaciones = await CotizaHead.find(filters).sort({ fechacotiza: -1, nocotiza: -1 }).limit(100);
-    res.json({ success: true, message: `${cotizaciones.length} cotización(es) encontrada(s)`, data: cotizaciones });
-  } catch (error) {
-    console.error('❌ Error GET /api/ventas/cotizaciones/head:', error);
-    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    const { nocotiza } = req.query;
+    let query = { activo: { $ne: "N" } };
+
+    if (nocotiza && nocotiza.trim() !== "") {
+      query.nocotiza = { $regex: nocotiza.trim(), $options: "i" };
+    }
+
+    const cotizaciones = await CotizaHead.find(query).sort({ fechaCreacion: -1 });
+
+    res.json({
+      success: true,
+      message: `${cotizaciones.length} cotización(es) encontrada(s)`,
+      data: cotizaciones
+    });
+  } catch (err) {
+    console.error("❌ Error GET /api/ventas/cotizaciones/head:", err);
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+      data: []
+    });
   }
 });
 
