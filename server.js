@@ -2032,19 +2032,32 @@ app.put('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
+app.delete('/api/ventas/cotizaciones/detalle/:nocotiza', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-      const eliminado = await CotizaDetalle.findByIdAndDelete(id); 
-    if (!eliminado) return res.status(404).json({ success: false, message: 'Detalle no encontrado' });
-    await actualizarTotalesCabecera(eliminado.nocotiza);
-    res.json({ success: true, message: '🗑️ Detalle eliminado' });
+    const { nocotiza } = req.params;
+    
+      const eliminado = await CotizaDetalle.deleteMany({nocotiza : nocotiza}); 
+    if (!eliminado) return res.status(404).json({ success: false, message: 'Detalles no encontrado' });
+    res.json({ success: true, message: '🗑️ Detalles eliminado' });
   } catch (error) {
-    console.error('❌ Error DELETE /api/ventas/cotizaciones/detalle/:id:', error);
+    console.error('❌ Error DELETE many /api/ventas/cotizaciones/detalle/:nocotiza:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar detalle', error: error.message });
   }
 });
+app.delete('/api/ventas/cotizaciones/uno/detalle/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+     const deleted = await CotizaDetalle.findByIdAndDelete(id); 
+    if (!deleted) return res.status(404).json({ success: false, message: 'Detalle Cotización no encontrada' });
+    await actualizarTotalesCabecera(deleted.nocotiza);
+    res.json({ success: true, message: '🗑️ Detalle Cotización eliminada (desactivada)' });
+  } catch (error) {
+    console.error('❌ Error DELETE /api/ventas/cotizaciones/uno/detalle/:id:', error);
+    res.status(500).json({ success: false, message: 'Error al eliminar detalle cotización', error: error.message });
+  }
+});
+
 
 app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
   try {
@@ -2953,7 +2966,7 @@ async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
     var fechasistema = formatLocalYmd(new Date());
-    const detalles = await FacturaDetalle.find({ nocotiza: nocotiza.toUpperCase()});
+    const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase()});
     const subtotal1 = detalles.reduce((sum, d) => sum + (d.subtotal || 0), 0);
     const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase() });
     if (!head) return;
