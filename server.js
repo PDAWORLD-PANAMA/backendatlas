@@ -1932,6 +1932,46 @@ app.put('/api/ventas/cotizaciones/head/:id', async (req, res) => {
   }
 });
 
+
+// PUT /api/cotizaciones/:id
+app.put('/api/ventas/cotizaciones/editar/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateBody = req.body;
+
+        // Prevent modification of the primary key field 'nocotiza'
+        delete updateBody.nocotiza;
+
+        const updatedCotizacion = await CotizaHead.findByIdAndUpdate(
+            id,
+            { $set: updateBody },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedCotizacion) {
+            return res.status(404).json({
+                success: false,
+                message: "Cotización no encontrada",
+                data: null
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Cotización actualizada exitosamente",
+            data: updatedCotizacion
+        });
+
+    } catch (error) {
+        console.error("❌ Error updating cotizacion:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Error interno del servidor",
+            data: null
+        });
+    }
+});
+
 app.delete('/api/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const { id } = req.params;
