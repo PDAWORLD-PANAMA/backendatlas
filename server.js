@@ -2033,6 +2033,7 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
         cantidad: Math.max(1, detalle.cantidad || 1),
         precio: Math.max(0, detalle.precio || 0),
         descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+        unidad : detalle.unidad?.trim().toUpperCase(),
         subtotal: parseFloat(subtotal.toFixed(2)),
         fechaCreacion: fechasistema
       };
@@ -2134,6 +2135,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       descripcion: detalle.descripcion?.trim().toUpperCase(),
       cantidad: Math.max(1, detalle.cantidad || 1),
       precio: Math.max(0, detalle.precio || 0),
+      unidad: detalle.unidad?.trim().toUpperCase(),
       descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
       subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
       fechaCreacion: fechasistema
@@ -2258,6 +2260,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
           descripcion: detalle.descripcion?.trim().toUpperCase(),
           cantidad: Math.max(1, detalle.cantidad || 1),
           precio: Math.max(0, detalle.precio || 0),
+          unidad: detalle.unidad?.trim().toUpperCase(),
           descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
           subtotal: subtotalCalculado,
           fechaCreacion: fechasistema
