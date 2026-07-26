@@ -1972,6 +1972,7 @@ app.put('/api/ventas/cotizaciones/editar/:id', async (req, res) => {
     }
 });
 
+
 app.delete('/api/ventas/cotizaciones/head/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -2294,9 +2295,6 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
   }
 });
 
-
-
-
 app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
@@ -2390,6 +2388,69 @@ app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
     }
 });
 
+app.put('/api/ventas/facturas/anular/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+               // Prevent modification of the primary key field 'nocotiza'
+        const head = await FacturaHead.findOne({
+            _id: id
+        });
+
+        var fechaini = head.fechafactura
+        // 1. Define your initial date (format: yyyy-mm-dd)
+// 2. Parse the date safely 
+// (Splitting the string avoids the UTC timezone shift bug in JavaScript)
+const [year, month, day] = fechaini.split('-').map(Number);
+const initialDate = new Date(year, month - 1, day); // month - 1 because JS months are 0-indexed
+
+// 3. Get today's date and reset the time to midnight (00:00:00)
+// This ensures we are comparing exact calendar days, ignoring hours/minutes
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+// 4. Calculate the absolute difference in milliseconds
+const diffInMs = Math.abs(today.getTime() - initialDate.getTime());
+
+// 5. Convert milliseconds to days
+const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+// Output the results
+console.log(`Initial Date: ${fechaini}`);
+console.log(`Today's Date: ${today.toISOString().split('T')[0]}`);
+console.log(`Difference: ${diffInDays} days`);
+        
+if ( diffInDays <= 3 ) {
+
+        const updatedFacturaAnular = await FacturaHead.findByIdAndUpdate(
+            id,
+            { $set: { estado : "S" }},
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedFacturaAnular) {
+            return res.status(404).json({
+                success: false,
+                message: "Factura no encontrada",
+                data: null
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Factura Anulada exitosamente",
+            data: updatedCotizacion
+        });
+      }
+    } catch (error) {
+        console.error("❌ Error Anular Factura :", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Error interno del servidor",
+            data: null
+        });
+    }
+});
+
 // ───────── OBTENER FACTURA POR ID ─────────
 app.get('/api/ventas/facturas/head/:id', async (req, res) => {
     try {
@@ -2457,7 +2518,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             codvendedor: head.codvendedor?.trim().toUpperCase() || '',
             tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
             detallefactura: detallefacturaJson,
-            estado: 'Pendiente',
+            estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
             subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2521,7 +2582,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 codvendedor: head.codvendedor?.trim().toUpperCase() || '',
                 tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
                 detallefactura: detallefacturaJson,
-                estado: 'Pendiente',
+                estado: 'S',
                 fechaCreacion: fechasistema,
                 fechaActualizacion: fechasistema,
                 subtotal1: head.subtotal1 || 0,
@@ -2606,28 +2667,314 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
 });
 
 // ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
-app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => {
-    try {
-        const { nofactura } = req.params;
-        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
-        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
-        
-        // TODO: Implementar llamada SOAP real a Facttory Corp Panamá
-        // Por ahora simulamos una respuesta exitosa
-        factura.facturaelectronica = `CAE-${Date.now()}`;
-        factura.estado = 'Aceptada';
-        await factura.save();
-        
-        res.json({ 
-            success: true, 
-            message: 'Factura enviada a Facttory Corp', 
-            data: factura,
-            cae: factura.facturaelectronica
-        });
-    } catch (error) {
-        console.error('❌ Error enviar-facttory:', error);
-        res.status(500).json({ success: false, message: 'Error al enviar a Facttory', error: error.message });
+// ============================================================================
+// 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
+// ============================================================================
+app.post('/api/ventas/facturas/enviar-facttory/:nofactura', async (req, res) => {
+  try {
+    const { nofactura } = req.params;
+    const nofacturaUpper = nofactura.toUpperCase();
+    const https = require('https');
+
+    // 1. Obtener datos de la factura
+    const head = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+    if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+
+    const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+    if (detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+
+    // 2. Obtener configuración de la empresa
+    const empresa = await EmpresaConfig.findOne();
+    if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+    // 3. Mapeo de variables para el XML
+    const fetokenempresa = empresa.tokenempresa || '';
+    const fetokenclave = empresa.tokenclave || '';
+    const fesucursalemisor = empresa.codigosucemisor || '000';
+    const fetipodocumento = head.tipodocumento || '01';
+    const fenundocfiscal = head.nofactura;
+    const fechaEmision = head.fechafactura || new Date().toISOString().slice(0, 10);
+    const fechaSalida = head.fechaSalida || fechaEmision;
+    const fenaturalezaop = head.naturalezaoperacion || '1';
+    const fetipoventa = head.tipoventa || '1';
+    
+    const fetipoclientefe = head.tipoclientefe || '02';
+    const fetipocontribuyente = head.tipocontribuyente || '1';
+    const ferucprt = head.ruccliente || '';
+    const fedigiverificaprt = head.digitoverificadoruc || '';
+    const ferazonsocialprt = head.nombreclie || head.razonsocial || 'CONSUMIDOR FINAL';
+    const fedireccionprt = head.direccioncontribuyente || '';
+    const feubicacion = head.ubicacionid || head.codigoubicacion || '';
+    const feprovincia = head.provincia || '';
+    const fedistrito = head.distrito || '';
+    const fecorregimiento = head.corregimiento || '';
+    const feemailprt = head.correocliefe || '';
+
+    const escapeXml = (unsafe) => {
+      if (!unsafe) return '';
+      return unsafe.toString().replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+          case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;';
+          case '\'': return '&apos;'; case '"': return '&quot;';
+        }
+      });
+    };
+
+    let xmlniv1 = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
+<soapenv:Header/>
+<soapenv:Body>
+      <tem:Enviar>
+       <tem:tokenEmpresa>${fetokenempresa}</tem:tokenEmpresa>
+         <tem:tokenPassword>${fetokenclave}</tem:tokenPassword>
+           <tem:documento>
+            <ser:codigoSucursalEmisor>${fesucursalemisor}</ser:codigoSucursalEmisor>
+            <ser:tipoSucursal>1</ser:tipoSucursal>
+            <ser:datosTransaccion>
+               <ser:tipoEmision>01</ser:tipoEmision>
+               <ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
+               <ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal>
+               <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
+               <ser:fechaEmision>${fechaEmision}</ser:fechaEmision>
+               <ser:fechaSalida>${fechaSalida}</ser:fechaSalida>
+               <ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion>
+               <ser:tipoOperacion>1</ser:tipoOperacion>
+               <ser:destinoOperacion>1</ser:destinoOperacion>
+               <ser:formatoCAFE>1</ser:formatoCAFE>
+               <ser:entregaCAFE>1</ser:entregaCAFE>
+               <ser:envioContenedor>1</ser:envioContenedor>
+               <ser:procesoGeneracion>1</ser:procesoGeneracion>
+               <ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
+               <ser:informacionInteres>Informacion Interes</ser:informacionInteres>
+               <ser:cliente>
+                  <ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE>
+                  <ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
+                  <ser:numeroRUC>${ferucprt}</ser:numeroRUC>
+                  <ser:digitoVerificadorRUC>${fedigiverificaprt}</ser:digitoVerificadorRUC>
+                  <ser:razonSocial>${escapeXml(ferazonsocialprt)}</ser:razonSocial>
+                  <ser:direccion>${escapeXml(fedireccionprt)}</ser:direccion>
+                  <ser:codigoUbicacion>${feubicacion}</ser:codigoUbicacion>
+                  <ser:provincia>${feprovincia}</ser:provincia>
+                  <ser:distrito>${fedistrito}</ser:distrito>
+                  <ser:corregimiento>${fecorregimiento}</ser:corregimiento>
+                  <ser:correoElectronico1>${feemailprt}</ser:correoElectronico1>
+                  <ser:pais>PA</ser:pais>
+               </ser:cliente>
+            </ser:datosTransaccion>`;
+
+    let xmlenviarlist = "";
+    let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
+    const wkimptocontrol = 1; // 1 = activo, 0 = exento (ajustar según lógica de negocio)
+
+    for (let s = 0; s < detalles.length; s++) {
+      const det = detalles[s];
+      let wvalfechafabri = det.fechafabricacion || "";
+      let wvalfechaexpira = det.fechaexpiracion || "";
+      let wfechafabricafinal = wvalfechafabri.length > 5 ? wvalfechafabri : new Date().toISOString().slice(0, 10);
+      let wfechaexpirafinal = wvalfechaexpira.length > 5 ? wvalfechaexpira : new Date().toISOString().slice(0, 10);
+
+      const descpor = parseFloat(det.descuento || 0) / 100;
+      const wpreciowk = parseFloat(det.precio || 0);
+      const wcantidaditem = parseFloat(det.cantidad || 1);
+      const wimpuestoitem = parseFloat(det.impuesto || 0) / 100;
+      const wtasaisc = parseFloat(det.tasaisc || 0);
+      const wcodimpuesto1 = parseFloat(det.impuesto || 0);
+      const wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
+
+      let wtasaitbms = "00";
+      if (wcodimpuesto1 !== 0) wtasaitbms = "01";
+      if (wcodimpuesto2 !== 0) wtasaitbms = "02";
+
+      let wvalordesc = 0;
+      let wprecioitem = wpreciowk * wcantidaditem;
+      if (descpor > 0) {
+        wvalordesc = wpreciowk * descpor;
+        wtotaldescuento += wvalordesc;
+        wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
+      }
+
+      wtotalprecioneto += wprecioitem;
+      let wvalorimpuestoitem = 0, wvalorimpuestoitem2 = 0;
+
+      if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+      if (wtasaitbms === "02") wvalorimpuestoitem2 = wtasaisc;
+
+      let wvalorisc = wprecioitem * wtasaisc;
+      wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+
+      if (parseFloat(wkimptocontrol) === 0) {
+        wtasaitbms = "00"; wvalorimpuestoitem = 0; wvalorimpuestoitem2 = 0; wvalorisc = 0;
+      }
+
+      if (wtasaitbms === "01") wtotalitbms += wvalorimpuestoitem;
+      if (wtasaitbms === "02") wtotalisc += wvalorimpuestoitem2;
+
+      let wtolinitem = 0;
+      if (wtasaitbms === "01") wtolinitem = wprecioitem + wvalorimpuestoitem;
+      else if (wtasaitbms === "02") wtolinitem = wprecioitem + wvalorimpuestoitem2;
+      else wtolinitem = wprecioitem;
+
+      const wentrega = parseFloat(det.pormayor || 1) * wcantidaditem;
+      wtotaldefactura += wtolinitem;
+
+      xmlenviarlist += `<ser:item>
+        <ser:descripcion>${escapeXml(det.descripcion)} Empaque(${wentrega})</ser:descripcion>
+        <ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
+        <ser:unidadMedida>${escapeXml(det.unidad) || 'und'}</ser:unidadMedida>
+        <ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
+        <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
+        <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
+
+      if (fetipoclientefe === "03" && det.codigobienes) {
+        xmlenviarlist += `<ser:codigoCPBSAbrev>${det.codigobienes.substr(0, 2)}</ser:codigoCPBSAbrev>
+        <ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS>
+        <ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
+      }
+
+      xmlenviarlist += `<ser:infoItem>modelo : ${escapeXml(det.modelo)} ${escapeXml(det.acabados)}</ser:infoItem>
+        <ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario>
+        <ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
+        <ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem>
+        <ser:valorTotal>${wtolinitem.toFixed(2)}</ser:valorTotal>\n`;
+
+      let xmlenviartasa = "";
+      if (wtasaitbms === "01") {
+        const wparinter = Math.floor(wvalorimpuestoitem);
+        const decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+        const winter2 = 9 - wparinter.toString().length;
+        const wValornvatasa = "0".repeat(winter2 > 0 ? winter2 : 0) + wparinter + "." + decimalStr;
+        xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n<ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
+      } else if (wtasaitbms === "00") {
+        xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+      } else if (wtasaitbms === "02") {
+        xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n<ser:valorISC>${wvalorisc.toFixed(3)}</ser:valorISC>\n`;
+      }
+      xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
     }
+
+    const xmlfinitems = `</ser:listaItems>`;
+    let fefechavenceplazo = "x";
+    const fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
+    
+    if (head.condiciones !== "1") {
+      const addDays = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); };
+      if (head.condiciones === "2") fefechavenceplazo = addDays(30);
+      else if (head.condiciones === "3") fefechavenceplazo = addDays(45);
+      else if (head.condiciones === "4") fefechavenceplazo = addDays(60);
+      else if (head.condiciones === "5") fefechavenceplazo = addDays(90);
+    }
+
+    let xmltotal = `<ser:totalesSubTotales>
+      <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
+      <ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>\n`;
+    
+    if (wtotalisc > 0) xmltotal += `<ser:totalISC>${wtotalisc.toFixed(2)}</ser:totalISC>\n`;
+
+    const wtotalmontogravado = wtotalitbms + wtotalisc;
+    let xmlotro = head.formapago === "99" ? `<ser:descFormaPago> Otros </ser:descFormaPago>\n` : "";
+    
+    xmltotal += `<ser:totalMontoGravado>${wtotalmontogravado.toFixed(2)}</ser:totalMontoGravado>
+      <ser:totalFactura>${wtotaldefactura.toFixed(2)}</ser:totalFactura>
+      <ser:totalValorRecibido>${fevalorcuota}</ser:totalValorRecibido>
+      <ser:tiempoPago>${head.condiciones === "1" ? "1" : "2"}</ser:tiempoPago>
+      <ser:nroItems>${detalles.length}</ser:nroItems>
+      <ser:totalTodosItems>${wtotaldefactura.toFixed(2)}</ser:totalTodosItems>
+      <ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${head.formapago || '02'}</ser:formaPagoFact>\n`;
+
+    let montoreten = 0, xmlineareten = "";
+    if (head.retenedor && head.retenedor !== "0") {
+      let tasareten = ["1", "3"].includes(head.retenedor) ? 100 : (["2", "4", "7"].includes(head.retenedor) ? 50 : 0);
+      montoreten = parseFloat(wtotalitbms) * (tasareten / 100);
+      xmlineareten = `<ser:retencion><ser:codigoRetencion>${head.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
+    }
+
+    let xmlplazo = "";
+    if (head.condiciones !== "1") {
+      xmlplazo = `<ser:listaPagoPlazo><ser:pagoPlazo><ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>\n`;
+      if (head.formapago === "99") xmlplazo += `<ser:descFormaPago> Otros (nota de credito,etc....) </ser:descFormaPago>\n`;
+      xmlplazo += `<ser:valorCuota>${wtotaldefactura.toFixed(2)}</ser:valorCuota></ser:pagoPlazo></ser:listaPagoPlazo>\n`;
+    }
+
+    const xmlsigue = `<ser:valorCuotaPagada>${fevalorcuota}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
+    const xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
+
+    let xmlenviar = "";
+    if (head.condiciones === "1") {
+      xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlotro + xmlsigue + (head.retenedor !== "0" ? xmlineareten : "") + xmltotcierre;
+    } else {
+      xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlsigue + xmlplazo + (head.retenedor !== "0" ? xmlineareten : "") + xmltotcierre;
+    }
+
+    // 4. Enviar petición SOAP
+    const options = {
+      hostname: 'demoemision.thefactoryhka.com.pa',
+      port: 443,
+      path: '/ws/obj/v1.0/Service.svc?wsdl',
+      method: 'POST',
+      headers: {
+        'User-Agent': 'NODEJS',
+        'Content-Type': 'text/xml;charset=utf-8',
+        'Content-Length': Buffer.byteLength(xmlenviar, 'utf8'),
+        'SOAPAction': 'http://tempuri.org/IService/Enviar'
+      }
+    };
+
+    const reqSoap = https.request(options, (resSoap) => {
+      let data = '';
+      resSoap.on('data', (chunk) => { data += chunk; });
+      resSoap.on('end', () => {
+        if (resSoap.statusCode !== 200) {
+          return res.status(500).json({ success: false, message: `Error SOAP: ${resSoap.statusCode}`, error: data });
+        }
+
+        const extractTag = (xml, tag) => {
+          const start = xml.indexOf(`<a:${tag}>`);
+          if (start === -1) return "";
+          const end = xml.indexOf(`</a:${tag}>`, start);
+          return start !== -1 && end !== -1 ? xml.substring(start + `<a:${tag}>`.length, end) : "";
+        };
+
+        const cufeHandle = extractTag(data, "cufe");
+        const qrHandle = extractTag(data, "qr"); // Se guarda en BD, pero no se muestra en la App
+        const codigoHandle = extractTag(data, "codigo");
+        const msgHandle = extractTag(data, "mensaje");
+        const fecharecepHandle = extractTag(data, "fechaRecepcionDGI");
+        const protocoloHandle = extractTag(data, "nroProtocoloAutorizacion");
+
+        if (["109", "400", "500"].includes(codigoHandle)) {
+          return res.status(400).json({ success: false, message: `Error Facttory: ${msgHandle}`, codigo: codigoHandle });
+        }
+
+        if (codigoHandle === "200") {
+          head.facturaelectronica = cufeHandle;
+          head.facturaqr = qrHandle; // Guardado para uso futuro (ej. PDF)
+          head.estado = 'Aceptada';
+          head.montoretencion = montoreten;
+          head.fechaActualizacion = new Date().toISOString();
+          await head.save();
+
+          res.json({ 
+            success: true, 
+            message: 'Factura enviada y aceptada por la DGI', 
+            data: { nofactura: head.nofactura, cufe: cufeHandle }
+          });
+        } else {
+          res.status(400).json({ success: false, message: `Respuesta inesperada: ${codigoHandle} - ${msgHandle}`, codigo: codigoHandle });
+        }
+      });
+    });
+
+    reqSoap.on('error', (error) => {
+      console.error("SOAP Request Error:", error);
+      res.status(500).json({ success: false, message: 'Error de conexión con Facttory', error: error.message });
+    });
+
+    reqSoap.write(xmlenviar);
+    reqSoap.end();
+
+  } catch (error) {
+    console.error('❌ Error enviar-facttory:', error);
+    res.status(500).json({ success: false, message: 'Error interno al procesar la factura electrónica', error: error.message });
+  }
 });
 
 // ───────── ANULAR FACTURA ─────────
