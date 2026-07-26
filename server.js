@@ -2950,7 +2950,7 @@ app.post('/api/ventas/facturas/enviar-facttory/:nofactura', async (req, res) => 
           head.estado = 'Aceptada';
           head.montoretencion = montoreten;
           head.fechaActualizacion = new Date().toISOString();
-          await head.save();
+          head.save();
 
           res.json({ 
             success: true, 
