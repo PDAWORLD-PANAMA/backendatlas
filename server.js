@@ -1752,7 +1752,7 @@ app.get('/api/ventas/clientes/:id', async (req, res) => {
   }
 });
 
-app.put('/api/ventas/clientes/:id', async (req, res) => {
+app.put('/api/ventas/clientesxxxxxxxxxxx/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
@@ -1787,9 +1787,6 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
        updateData.vendedorcliente = updateData.vendedorcliente;
        updateData.codigopreciocliente = updateData.codigopreciocliente;
        updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
-       
-      
-
         const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
@@ -1797,6 +1794,20 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
     console.error('❌ Error PUT /api/ventas/clientes/:id:', error);
     if (error.code === 11000) return res.status(409).json({ success: false, message: '❌ El ID de cliente ya está registrado' });
     res.status(500).json({ success: false, message: 'Error al actualizar cliente', error: error.message });
+  }
+});
+
+app.put('/api/ventas/clientes/:id', async (req, res) => {
+ try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    delete updateData.Cliente; delete updateData._id; 
+    const actualizado = await CLiente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true, context: 'query' });
+    if (!actualizado) return res.status(404).json({ success: false, message: "Cliente no encontrado" });
+    res.json({ success: true, message: "✅ Cliente actualizado exitosamente", data: actualizado });
+  } catch (err) {
+    console.error("❌ Error PUT /api/ventas/clientes/:id:", err);
+    res.status(500).json({ success: false, message: "Error al actualizar Cliente", err: err.message });
   }
 });
 
