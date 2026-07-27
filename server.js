@@ -234,7 +234,22 @@ const SchemadelCliente = new mongoose.Schema({
   historialfacturas: [String],
   historialcotizacion: [String],
   historialabonos: [String],
-  historialcambio: [String]
+  historialcambio: [String], 
+   namegps: { type: String, required: true },
+  addressgps: { type: String, required: true },
+  
+  // The GeoJSON field for Google Maps
+  locationgps: {
+    typegps: {
+      typegps: String,
+      enumgps: ['Point'],
+      required: true
+    },
+    coordinatesgps: {
+      typegps: [Number], // MUST be [Longitude, Latitude]
+      required: true
+    }
+  }
 });
 
 const Cliente = mongoose.model('Cliente', SchemadelCliente);
