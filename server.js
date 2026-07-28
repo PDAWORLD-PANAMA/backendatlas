@@ -2948,22 +2948,29 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
           return res.status(400).json({ success: false, message: `Error Facttory: ${msgHandle}`, codigo: codigoHandle });
         }
 
-        if (codigoHandle === "200") {
-          head.facturaelectronica = cufeHandle;
-          head.facturaqr = qrHandle; // Guardado para uso futuro (ej. PDF)
-          head.estado = 'Aceptada';
-          head.montoretencion = montoreten;
-          head.fechaActualizacion = new Date().toISOString();
-          head.save();
+       // ... dentro del bloque if (codigoHandle === "200") {
+if (codigoHandle === "200") {
+  head.facturaelectronica = cufeHandle;
+  head.facturaqr = qrHandle;
+  head.estado = 'S';
+  head.montoretencion = montoreten;
+  head.fechaActualizacion = new Date().toISOString();
+  await head.save();
 
-          res.json({ 
-            success: true, 
-            message: 'Factura enviada y aceptada por la DGI', 
-            data: { nofactura: head.nofactura, cufe: cufeHandle }
-          });
-        } else {
-          res.status(400).json({ success: false, message: `Respuesta inesperada: ${codigoHandle} - ${msgHandle}`, codigo: codigoHandle });
-        }
+  // ✅ CORREGIDO: Devolver el objeto 'head' completo, no un objeto parcial
+  res.json({ 
+    success: true, 
+    message: 'Factura enviada y aceptada por la DGI', 
+    data: head 
+  });
+} else {
+  res.status(400).json({ 
+    success: false, 
+    message: `Respuesta inesperada de Facttory: ${codigoHandle} - ${msgHandle}`, 
+    codigo: codigoHandle 
+  });
+}
+// ...
       });
     });
 
