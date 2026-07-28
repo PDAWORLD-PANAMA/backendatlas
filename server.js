@@ -2955,7 +2955,7 @@ if (codigoHandle === "200") {
   head.estado = 'S';
   head.montoretencion = montoreten;
   head.fechaActualizacion = new Date().toISOString();
-  await head.save();
+  head.save();
 
   // ✅ CORREGIDO: Devolver el objeto 'head' completo, no un objeto parcial
   res.json({ 
