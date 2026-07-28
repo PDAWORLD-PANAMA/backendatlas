@@ -194,7 +194,31 @@ const BienServicio = mongoose.model('BienServicio', bienesSchema);
 
 const Schemageoubicacion = new mongoose.Schema({
   ubicacionid: { type: String },
-  descripubicacion: { type: String },
+    noidprov: {
+       type : String
+//
+   },
+    provincia: {
+       type : String
+//
+   },
+   noidistri: {
+    type : String
+//
+},
+   distrito: {
+    type : String
+//
+},
+noidcorre: {
+  type : String
+//
+},
+corregimiento: {
+  type : String
+//
+},
+descripubicacion : { type : String}
 });
 
 const Ubicacion = mongoose.model('Ubicacion', Schemageoubicacion);
@@ -391,8 +415,8 @@ const facturaSchema = new mongoose.Schema({
     codigosucemisor: { type :String},
     tiposucursal: { type : String},
     tipoemision: { type :String},
-     tipodocumento: { type :String},
-     puntodefacturacion: { type :  String},
+    tipodocumento: { type :String},
+    puntodefacturacion: { type :  String},
     tipoventa: { type :String},
     razonsocial: { type : String},
     direccioncontribuyente: { type : String},
@@ -938,10 +962,29 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
                     continue;
                 }
 
+                // ✅ PARSEAR EL CODIGO (ubicacionid) - Formato: "X-Y-Z"
+                // Primer dígito = provincia, Segundo = distrito, Tercero = corregimiento
+                const codigoParts = ubicacionid.split('-');
+                const noidprov = codigoParts[0] || '';
+                const noidistri = codigoParts[1] || '';
+                const noidcorre = codigoParts[2] || '';
+
+                // ✅ PARSEAR LA DESCRIPCION - Formato: "PROVINCIA-DISTRITO-CORREGIMIENTO"
+                const descParts = descripubicacion.split('-');
+                const provincia = (descParts[0] || '').trim();
+                const distrito = (descParts[1] || '').trim();
+                const corregimiento = (descParts[2] || '').trim();
+
                 // Agregar al array de documentos válidos
                 documentosValidos.push({
                     ubicacionid: ubicacionid,
-                    descripubicacion: descripubicacion
+                    descripubicacion: descripubicacion,
+                    noidprov: noidprov,
+                    provincia: provincia,
+                    noidistri: noidistri,
+                    distrito: distrito,
+                    noidcorre: noidcorre,
+                    corregimiento: corregimiento
                 });
 
                 // Marcar como existente para evitar duplicados dentro del mismo lote
@@ -976,7 +1019,7 @@ app.post('/api/ubicaciones/bulk', async (req, res) => {
             success: true,
             message: 'Carga masiva completada',
             total: ubicacionesArray.length,
-            success: successCount,
+            inserted: successCount,
             duplicates: duplicateCount,
             errors: errorCount,
             errorMessages: errors.slice(0, 10)  // Limitar a 10 errores para no saturar
@@ -1019,14 +1062,14 @@ app.get('/api/ubicaciones/:id', async (req, res) => {
 
 app.post('/api/ubicaciones', async (req, res) => {
   try {
-    const { ubicacionid, descripubicacion } = req.body;
+    const { ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, descripubicacion } = req.body;
     if (!ubicacionid || !descripubicacion) {
       return res.status(400).json({ success: false, message: 'ID, provincia, distrito y corregimiento son obligatorios' });
     }
-    const existing = await Ubicacion.findOne({ numcontrol });
+    const existing = await Ubicacion.findOne({ ubicacionid });
     if (existing) return res.status(409).json({ success: false, message: 'Ya existe una ubicación con este ID' });
     var numcontrol = Math.floor(Math.random() * 10000000);
-    const nuevaUbicacion = new Ubicacion({ ubicacionid, descripubicacion });
+    const nuevaUbicacion = new Ubicacion({ ubicacionid, noidprov, provincia, noidistri, distrito, noidcorre, corregimiento, descripubicacion });
     const guardado = await nuevaUbicacion.save();
     res.status(201).json({ success: true, message: 'Ubicación creada', guardado });
   } catch (error) {
@@ -2670,22 +2713,20 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
 });
 
 // ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
-// ============================================================================
-// 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
-// ============================================================================
 
-// ============================================================================
-// 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
-// ============================================================================
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 // ============================================================================
 // 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
 // ============================================================================
 app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) => {
   try {
+
     const { nofactura } = req.params;
     const nofacturaUpper = nofactura.toUpperCase();
-    const https = require('https');
-
+    var request = require("request");
+    const dayjs = require('dayjs');
+    let today = dayjs();
     // 1. Obtener datos de la factura
     const head = await FacturaHead.findOne({ nofactura: nofacturaUpper });
     if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
@@ -2693,45 +2734,81 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
     const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
     if (detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
 
+    const tablaUbicacion = await Ubicacion.find({});
+    if (tablaUbicacion.length === 0) return res.status(400).json({ success: false, message: 'Ubicacion no tiene registros' });
+
     // 2. Obtener configuración de la empresa
-    const empresa = await EmpresaConfig.findOne();
+    const empresa = await EmpresaConfig.findOne({});
     if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 
-    // 3. Mapeo de variables para el XML
-    const fetokenempresa = empresa.tokenempresa || '';
-    const fetokenclave = empresa.tokenclave || '';
-    const fesucursalemisor = empresa.codigosucemisor || '000';
-    const fetipodocumento = head.tipodocumento || '01';
-    const fenundocfiscal = head.nofactura;
-    const fechaEmision = head.fechafactura || new Date().toISOString().slice(0, 10);
-    const fechaSalida = head.fechaSalida || fechaEmision;
-    const fenaturalezaop = head.naturalezaoperacion || '1';
-    const fetipoventa = head.tipoventa || '1';
-    
-    const fetipoclientefe = head.tipoclientefe || '02';
-    const fetipocontribuyente = head.tipocontribuyente || '1';
-    const ferucprt = head.ruccliente || '';
-    const fedigiverificaprt = head.digitoverificadoruc || '';
-    const ferazonsocialprt = head.nombreclie || head.razonsocial || 'CONSUMIDOR FINAL';
-    const fedireccionprt = head.direccioncontribuyente || '';
-    const feubicacion = head.ubicacionid || head.codigoubicacion || '';
-    const feprovincia = head.provincia || '';
-    const fedistrito = head.distrito || '';
-    const fecorregimiento = head.corregimiento || '';
-    const feemailprt = head.correocliefe || '';
 
-    const escapeXml = (unsafe) => {
-      if (!unsafe) return '';
-      return String(unsafe).replace(/[<>&'"]/g, (c) => {
-        switch (c) {
-          case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;';
-          case '\'': return '&apos;'; case '"': return '&quot;';
+
+        var wkimptocontrol = FacturaHead.impuesto;
+
+        let fechaEmision = today.format();
+        let fechaSalida = today.format();
+
+        let fenaturalezaop = FacturaHead.naturalezaoperacion;
+        let fetipodocumento = FacturaHead.tipodocumento;
+        let fetipoventa = FacturaHead.tipoventa;
+        let fetipoclientefe = FacturaHead.tipoclientefe;
+        let fetipocontribuyente = FacturaHead.tipocontribuyente;
+        var ferucprt = FacturaHead.ruccliente;
+        var fedigiverificaprt = FacturaHead.digitoverificadoruc;
+        var ferazonsocialprt = FacturaHead.razonsocial;
+        var fedireccionprt = FacturaHead.direccioncontribuyente;
+        var feemailprt = FacturaHead.correocliefe;
+        var xmlenviarlist = "";
+        var wnumdocfiscal = FacturaHead.nofactura;
+        var wvarcero = wnumdocfiscal.length;
+        var fenundocfiscal = "";
+        var wceroscadena = "";
+        var fetiempopago = "1";
+
+        if (FacturaHead.condiciones != "1") {
+            fetiempopago = "2";
         }
-      });
-    };
+       
+        
+        fenundocfiscal = wnumdocfiscal;
+        console.log("Inicio factura ", fenundocfiscal);
 
-    // ✅ XML limpio y bien formado (sin artefactos de markdown)
-    let xmlniv1 = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
+        var feubicacion = "8-8-6";
+        var feprovincia = "PANAMA";
+        var fedistrito = "PANAMA";
+        var fecorregimiento = "BETHANIA";
+        var fedireccion = "PANAMA CIUDAD";
+        var fecodigocpbs = "xxxx";
+
+        if (fetipoclientefe == "03") {
+            feubicacion = FacturaHead.ubicacionid;
+            for (var x2 = 0; x2 < TablaUbicacion.length; x2++) {
+                var ubicaciontabla =  TablaUbicacion[x2].ubicacionid;
+                if (feubicacion == ubicaciontabla) {
+                    feprovincia =  TablaUbicacion[x2].provincia;
+                    fedistrito =  TablaUbicacion[x2].distrito;
+                    fecorregimiento =  TablaUbicacion[x2].corregimiento;
+                }
+            }
+        }
+
+        var fetipoidentificacion = "99";
+        var fenroidentificacion = "0000000000";
+        var fepasiextranjero = "Nodisponible";
+        if (fetipoclientefe == "04") {
+            fetipoidentificacion = FacturaHead.tipoidentificacion;
+            fenroidentificacion = FacturaHead.numeroidextranjero;
+            fepasiextranjero = FacturaHead.paisextranjero;
+        }
+
+        var fesucursalemisor =  empresa[0].codigosucemisor;
+        var fetokenempresa1 =  empresa[0].tokenempresa;
+        var fetokenclave1 =  empresa[0].tokenclave;
+        var fetokenempresa = fetokenempresa1.trim();
+        var fetokenclave = fetokenclave1.trim();
+
+        let xmlniv1 = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
 <soapenv:Header/>
 <soapenv:Body>
       <tem:Enviar>
@@ -2761,8 +2838,8 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                   <ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
                   <ser:numeroRUC>${ferucprt}</ser:numeroRUC>
                   <ser:digitoVerificadorRUC>${fedigiverificaprt}</ser:digitoVerificadorRUC>
-                  <ser:razonSocial>${escapeXml(ferazonsocialprt)}</ser:razonSocial>
-                  <ser:direccion>${escapeXml(fedireccionprt)}</ser:direccion>
+                  <ser:razonSocial>${ferazonsocialprt}</ser:razonSocial>
+                  <ser:direccion>${fedireccionprt}</ser:direccion>
                   <ser:codigoUbicacion>${feubicacion}</ser:codigoUbicacion>
                   <ser:provincia>${feprovincia}</ser:provincia>
                   <ser:distrito>${fedistrito}</ser:distrito>
@@ -2772,291 +2849,352 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                </ser:cliente>
             </ser:datosTransaccion>`;
 
-    let xmlenviarlist = "";
-    let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
-    const wkimptocontrol = 1;
+        let xmlistseg = "\n<ser:listaItems>\n";
+        var lardetfe = detalle.length;
 
-    for (let s = 0; s < detalles.length; s++) {
-      const det = detalles[s];
-      let wvalfechafabri = det.fechafabricacion || "";
-      let wvalfechaexpira = det.fechaexpiracion || "";
-      let wfechafabricafinal = String(wvalfechafabri).length > 5 ? wvalfechafabri : new Date().toISOString().slice(0, 10);
-      let wfechaexpirafinal = String(wvalfechaexpira).length > 5 ? wvalfechaexpira : new Date().toISOString().slice(0, 10);
+        var wtotalprecioneto = 0;
+        var wtotalitbms = 0;
+        var wtotalisc = 0;
+        var wtotalmontogravado = 0;
+        var wtotaldescuento = 0;
+        var wtotaldefactura = 0;
 
-      const descpor = parseFloat(det.descuento || 0) / 100;
-      const wpreciowk = parseFloat(det.precio || 0);
-      const wcantidaditem = parseFloat(det.cantidad || 1);
-      const wimpuestoitem = parseFloat(det.impuesto || 0) / 100;
-      const wimpuestoitem2 = parseFloat(det.impuesto2 || 0);
-      const wimpuestoitem3 = parseFloat(det.impuesto3 || 0);
-      const wtasaisc = parseFloat(det.tasaisc || 0);
-      
-      const wcodimpuesto1 = parseFloat(det.impuesto || 0);
-      const wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
-      const wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+        console.log("largofe detalle a  facturar ", lardetfe);
+        for (var s = 0; s < detalle.length; s++) {
+            var wvalfechafabri = detalle[s].fechafabricacion;
+            var wvalfechaexpira = detalle[s].fechaexpiracion;
+            var wlargofabri = wvalfechafabri.length;
+            var wlargofechaexpi = wvalfechaexpira.length;
+            var wfechafabricafinal = "";
+            var wfechaexpirafinal = "";
 
-      let wtasaitbms = "00";
-      if (wcodimpuesto1 !== 0) wtasaitbms = "01";
-      if (wcodimpuesto2 !== 0) wtasaitbms = "02";
-      if (wcodimpuesto3 !== 0) wtasaitbms = "03";
+            if (wlargofabri > 5) {
+                wfechafabricafinal = wvalfechafabri;
+                wfechaexpirafinal = wvalfechaexpira;
+            }
+            if (wlargofabri < 5) {
+                wfechafabricafinal = new Date().toISOString().slice(0, 10);
+                wfechaexpirafinal = new Date().toISOString().slice(0, 10);
+            }
 
-      let wvalordesc = 0;
-      let wprecioitem = wpreciowk * wcantidaditem;
-      if (descpor > 0) {
-        wvalordesc = wpreciowk * descpor;
-        wtotaldescuento += wvalordesc;
-        const wpreciotrans = wpreciowk - wvalordesc;
-        wprecioitem = wpreciotrans * wcantidaditem;
-      }
+            var descpor = parseFloat(detalle[s].descuento) / 100;
+            var wpreciowk = parseFloat(detalle[s].precio);
+            var wcantidaditem = parseFloat(detalle[s].cantidad);
+            var wimpuestoitem = parseFloat(detalle[s].impuesto1) / 100;
+            var wimpuestoitem2 = parseFloat(detalle[s].impuesto2);
+            var wimpuestoitem3 = parseFloat(detalle[s].impuesto3);
+            var codtasaisc = detalle[s].codtasaisc;
+            var wtasaisc = detalle[s].tasaisc;
 
-      wtotalprecioneto += wprecioitem;
-      let wvalorimpuestoitem = 0, wvalorimpuestoitem2 = 0, wvalorimpuestoitem3 = 0;
+            var wcodimpuesto1 = parseFloat(detalle[s].impuesto1);
+            var wcodimpuesto2 = parseFloat(detalle[s].impuesto2);
+            var wcodimpuesto3 = parseFloat(detalle[s].impuesto3);
 
-      if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
-      if (wtasaitbms === "02") wvalorimpuestoitem2 = wtasaisc;
-      if (wtasaitbms === "03") wvalorimpuestoitem3 = wimpuestoitem3;
+            var wtasaitbms = "00";
+            if (wcodimpuesto1 != 0) wtasaitbms = "01";
+            if (wcodimpuesto2 != 0) wtasaitbms = "02";
+            if (wcodimpuesto3 != 0) wtasaitbms = "03";
 
-      const wvalorisc = wprecioitem * wtasaisc;
-      wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+            var wvalordesc = 0;
+            var wprecioitem = parseFloat(wpreciowk) * parseFloat(wcantidaditem);
+            if (descpor > 0) {
+                wvalordesc = parseFloat(wpreciowk) * parseFloat(descpor);
+                wtotaldescuento = parseFloat(wtotaldescuento) + parseFloat(wvalordesc);
+                var wpreciotrans = wpreciowk - wvalordesc;
+                wprecioitem = parseFloat(wpreciotrans) * parseFloat(wcantidaditem);
+            }
 
-      if (parseFloat(wkimptocontrol) === 0) {
-        wtasaitbms = "00"; wvalorimpuestoitem = 0; wvalorimpuestoitem2 = 0; wvalorimpuestoitem3 = 0;
-      }
+            wtotalprecioneto = parseFloat(wtotalprecioneto) + parseFloat(wprecioitem);
+            var wvalorimpuestoitem = 0;
+            var wvalorimpuestoitem2 = 0;
+            var wvalorimpuestoitem3 = 0;
+            if (wtasaitbms == "00" || wtasaitbms == "01") {
+                wvalorimpuestoitem = parseFloat(wprecioitem) * parseFloat(wimpuestoitem);
+            }
+            if (wtasaitbms == "02") {
+                wvalorimpuestoitem2 = parseFloat(wtasaisc);
+            }
+            if (wtasaitbms == "03") {
+                wvalorimpuestoitem3 = parseFloat(wimpuestoitem3);
+            }
+            var wvalorisc = parseFloat(wprecioitem) * parseFloat(wtasaisc);
+            var wtotlinitem = 0;
+            wvalorimpuestoitem = wvalorimpuestoitem.toFixed(2);
 
-      if (wtasaitbms === "01") wtotalitbms += wvalorimpuestoitem;
-      if (wtasaitbms === "02") wtotalisc += wvalorimpuestoitem2;
-      if (wtasaitbms === "00") wtotalitbms += 0;
+            if (parseFloat(wkimptocontrol) == 0) {
+                wtasaitbms = "00";
+                wvalorimpuestoitem = 0;
+                wvalorimpuestoitem2 = 0;
+                wvalorimpuestoitem3 = 0;
+                wvalorisc = 0;
+            }
 
-      let wtolinitem = 0;
-      if (wtasaitbms === "01") wtolinitem = wprecioitem + wvalorimpuestoitem;
-      else if (wtasaitbms === "02") wtolinitem = wprecioitem + wvalorimpuestoitem2;
-      else wtolinitem = wprecioitem;
+            if (wtasaitbms == "01") wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem);
+            if (wtasaitbms == "02") wtotalisc = parseFloat(wtotalisc) + parseFloat(wvalorimpuestoitem2);
+            if (wtasaitbms == "00") wtotalitbms = parseFloat(wtotalitbms) + 0;
 
-      const wvardet = det.detventa;
-      let wpormayor = det.pormayor;
-      const campocantidad = det.cantidad;
-      if (wvardet === "1") wpormayor = 1;
+            if (wtasaitbms == "01") {
+                wtotlinitem = parseFloat(wtotlinitem) + parseFloat(wprecioitem) + parseFloat(wvalorimpuestoitem);
+            }
+            if (wtasaitbms == "02") {
+                wtotlinitem = parseFloat(wtotlinitem) + parseFloat(wprecioitem) + parseFloat(wvalorimpuestoitem2);
+            }
+            if (wtasaitbms == "00") {
+                wtotlinitem = parseFloat(wtotlinitem) + parseFloat(wprecioitem);
+            }
 
-      const wentrega = parseFloat(wpormayor || 1) * parseFloat(campocantidad);
-      wtotaldefactura += wtolinitem;
+            var wvardet = detalle[s].detventa;
+            var wpormayor = detalle[s].pormayor;
+            var campocantidad = detalle[s].cantidad;
+            if (wvardet == "1") {
+                wpormayor = 1;
+            }
 
-      xmlenviarlist += `<ser:item>
-        <ser:descripcion>${escapeXml(det.descripcion)} Empaque(${wentrega})</ser:descripcion>
-        <ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
-        <ser:unidadMedida>und</ser:unidadMedida>
-        <ser:cantidad>${parseFloat(wcantidaditem).toFixed(2)}</ser:cantidad>
-        <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
-        <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
+            var wentrega = parseFloat(wpormayor) * parseFloat(campocantidad);
+            wtotaldefactura = parseFloat(wtotaldefactura) + parseFloat(wtotlinitem);
 
-      // ✅ CORRECCIÓN: Convertir a String antes de usar .substr para evitar TypeError
-      if (fetipoclientefe === "03" && det.codigobienes) {
-        const codBienesStr = String(det.codigobienes);
-        const feabreviacpbs = codBienesStr.substring(0, 2);
-        xmlenviarlist += `
-        <ser:codigoCPBSAbrev>${feabreviacpbs}</ser:codigoCPBSAbrev>
-        <ser:codigoCPBS>${codBienesStr}</ser:codigoCPBS>
-        <ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
-      }
+            xmlenviarlist += `<ser:item>
+                  <ser:descripcion>>${escapeXml(detalle[s].descripcion)}  Empaque(${wentrega})</ser:descripcion>
+                  <ser:codigo>${escapeXml(detalle[s].codproducto)}</ser:codigo>
+                  <ser:unidadMedida>und</ser:unidadMedida>
+                  <ser:cantidad>${parseFloat(wcantidaditem).toFixed(2)}</ser:cantidad>
+                  <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
+                  <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
 
-      xmlenviarlist += `
-        <ser:infoItem>modelo : ${escapeXml(det.modelo)} ${escapeXml(det.acabados)}</ser:infoItem>
-        <ser:precioUnitario>${parseFloat(wpreciowk).toFixed(2)}</ser:precioUnitario>
-        <ser:precioUnitarioDescuento>${parseFloat(wvalordesc).toFixed(2)}</ser:precioUnitarioDescuento>
-        <ser:precioItem>${parseFloat(wprecioitem).toFixed(2)}</ser:precioItem>
-        <ser:valorTotal>${parseFloat(wtolinitem).toFixed(2)}</ser:valorTotal>\n`;
+            var fecodigocpbs = detalle[s].codigobienes;
+            if (fetipoclientefe == "03") {
+                var feabreviacpbs = fecodigocpbs.substr(0, 2);
+                xmlenviarlist += `
+                  <ser:codigoCPBSAbrev>${feabreviacpbs}</ser:codigoCPBSAbrev>\n
+                  <ser:codigoCPBS>${fecodigocpbs}</ser:codigoCPBS>\n
+                  <ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
+            }
 
-      let xmlenviartasa = "";
-      if (wtasaitbms === "01") {
-        const wparinter = Math.floor(wvalorimpuestoitem);
-        const wintermedio = wparinter.toString();
-        const decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
-        const larente = wintermedio.length;
-        const winter2 = Math.max(0, 9 - larente); 
-        const wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
-        xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n<ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
-      } else if (wtasaitbms === "00") {
-        xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
-      } else if (wtasaitbms === "02") {
-        xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n<ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
-      }
-      xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
-    }
+            xmlenviarlist += `
+<ser:infoItem>modelo : ${escapeXml(detalle[s].modelo)}   ${escapeXml(detalle[s].acabados)}</ser:infoItem>\n
+                  <ser:precioUnitario>${parseFloat(wpreciowk).toFixed(2)}</ser:precioUnitario>
+                  <ser:precioUnitarioDescuento>${parseFloat(wvalordesc).toFixed(2)}</ser:precioUnitarioDescuento>
+                  <ser:precioItem>${parseFloat(wprecioitem).toFixed(2)}</ser:precioItem>
+                  <ser:valorTotal>${parseFloat(wtotlinitem).toFixed(2)}</ser:valorTotal>\n`;
 
-    const xmlfinitems = `</ser:listaItems>`;
-    let fefechavenceplazo = "x";
-    const fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
-    const fevalorecibido = parseFloat(wtotaldefactura).toFixed(2);
-    const fetiempopago = head.condiciones === "1" ? "1" : "2";
+            var xmlenviartasa = "";
+            if (wtasaitbms == "01") {
+                var wparinter = Math.floor(wvalorimpuestoitem);
+                var wintermedio = wparinter.toString();
+                var decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+                var larente = wintermedio.length;
+                var winter2 = 9 - larente;
+                var wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
 
-    if (head.condiciones !== "1") {
-      const addDays = (days) => {
-        const d = new Date();
-        d.setDate(d.getDate() + days);
-        return d.toISOString().slice(0, 10);
-      };
-      if (head.condiciones === "2") fefechavenceplazo = addDays(30);
-      else if (head.condiciones === "3") fefechavenceplazo = addDays(45);
-      else if (head.condiciones === "4") fefechavenceplazo = addDays(60);
-      else if (head.condiciones === "5") fefechavenceplazo = addDays(90);
-    }
+                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n
+                 <ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
+            }
+            if (wtasaitbms == "00") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+            }
+            if (wtasaitbms == "02") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n
+      <ser:tasaISC>${wtasaisc}</ser:tasaISC>\n
+                 <ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
+            }
 
-    let xmltotal = `
-      <ser:totalesSubTotales>
-         <ser:totalPrecioNeto>${parseFloat(wtotalprecioneto).toFixed(2)}</ser:totalPrecioNeto>
-         <ser:totalITBMS>${parseFloat(wtotalitbms).toFixed(2)}</ser:totalITBMS>\n`;
+            xmlenviarlist += xmlenviartasa;
+            xmlenviarlist += `</ser:item>\n`;
+        }
 
-    if (wtasaitbms === "02") {
-      xmltotal += `<ser:totalISC>${parseFloat(wtotalisc).toFixed(2)}</ser:totalISC>\n`;
-    }
+        let xmlfinitems = `</ser:listaItems>`;
+        var fefechavenceplazo = "x";
+        var fecuotadepagocre = 0;
+        const formatYmd = date => date.toISOString().slice(0, 10);
+        var fechasistema = formatLocalYmd(new Date());
+        var s2x = 0;
+        var fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
+        var fevalorecibido = parseFloat(wtotaldefactura).toFixed(2);
 
-    const wtotalmontogravado = parseFloat(wtotalitbms) + parseFloat(wtotalisc);
-    let xmlotro = "";
-    xmltotal += `
-         <ser:totalMontoGravado>${parseFloat(wtotalmontogravado).toFixed(2)}</ser:totalMontoGravado>
-         <ser:totalFactura>${parseFloat(wtotaldefactura).toFixed(2)}</ser:totalFactura>
-         <ser:totalValorRecibido>${parseFloat(fevalorecibido).toFixed(2)}</ser:totalValorRecibido>
-         <ser:tiempoPago>${fetiempopago}</ser:tiempoPago>
-         <ser:nroItems>${detalles.length}</ser:nroItems>
-         <ser:totalTodosItems>${parseFloat(wtotaldefactura).toFixed(2)}</ser:totalTodosItems>
-         <ser:listaFormaPago>
-            <ser:formaPago>
-               <ser:formaPagoFact>${head.formapago || '02'}</ser:formaPagoFact>\n`;
+        if (FacturaHead.condiciones != "1") {
+            var addDays = (days) => {
+                var d = new Date();
+                d.setDate(d.getDate() + days);
+                return dayjs(d.toLocaleDateString("en-US"));
+            };
+            if (FacturaHead.condiciones == "2") {
+                fefechavenceplazo = addDays(30).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (FacturaHead.condiciones == "3") {
+                fefechavenceplazo = addDays(45).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (FacturaHead.condiciones == "4") {
+                fefechavenceplazo = addDays(60).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (FacturaHead.condiciones == "5") {
+                fefechavenceplazo = addDays(90).format();
+                fecuotadepagocre = fevalorcuota;
+            }
+        }
 
-    if (head.formapago === "99") {
-      xmlotro = `<ser:descFormaPago> Otros producto </ser:descFormaPago>\n`;
-    }
+        let xmltotal = `
+            <ser:totalesSubTotales>
+               <ser:totalPrecioNeto>${parseFloat(wtotalprecioneto).toFixed(2)}</ser:totalPrecioNeto>\n
+               <ser:totalITBMS>${parseFloat(wtotalitbms).toFixed(2)}</ser:totalITBMS>\n`;
 
-    let montoreten = 0;
-    let xmlsigue = `<ser:valorCuotaPagada>${parseFloat(fevalorcuota).toFixed(2)}</ser:valorCuotaPagada>
-               </ser:formaPago>
-            </ser:listaFormaPago>\n`;
+        if (wtasaitbms == "02") {
+            xmltotal += `<ser:totalISC>${parseFloat(wtotalisc).toFixed(2)}</ser:totalISC>\n`;
+        }
 
-    // ✅ CORRECCIÓN: XML limpio sin markdown
-    let xmlineareten = "";
-    if (head.retenedor && head.retenedor !== "0") {
-      let tasareten = 0;
-      if (["1", "3"].includes(head.retenedor)) tasareten = 100;
-      else if (["2", "4", "7"].includes(head.retenedor)) tasareten = 50;
-      
-      const tasaretopera = parseFloat(tasareten) / 100;
-      montoreten = parseFloat(wtotalitbms) * tasaretopera;
-      
-      xmlineareten = `<ser:retencion>
-<ser:codigoRetencion>${head.retenedor}</ser:codigoRetencion>
-<ser:montoRetencion>${parseFloat(montoreten).toFixed(2)}</ser:montoRetencion>
+        var wtotalmontogravado = parseFloat(wtotalitbms) + parseFloat(wtotalisc);
+        var xmlotro = "";
+        xmltotal += `
+               <ser:totalMontoGravado>${parseFloat(wtotalmontogravado).toFixed(2)}</ser:totalMontoGravado>
+               <ser:totalFactura>${parseFloat(wtotaldefactura).toFixed(2)}</ser:totalFactura>
+               <ser:totalValorRecibido>${parseFloat(fevalorecibido).toFixed(2)}</ser:totalValorRecibido>
+               <ser:tiempoPago>${fetiempopago}</ser:tiempoPago>
+               <ser:nroItems>${lardetfe}</ser:nroItems>
+               <ser:totalTodosItems>${parseFloat(wtotaldefactura).toFixed(2)}</ser:totalTodosItems>
+               <ser:listaFormaPago>
+                  <ser:formaPago>
+                     <ser:formaPagoFact>${FacturaHead.formapago}</ser:formaPagoFact>\n`;
+
+        if (FacturaHead.formapago == "99") {
+            xmlotro = `<ser:descFormaPago> Otros producto  </ser:descFormaPago>\n`;
+        }
+
+        var montoreten = 0;
+        var xmlsigue = `<ser:valorCuotaPagada>${parseFloat(fevalorcuota).toFixed(2)}</ser:valorCuotaPagada>
+                  </ser:formaPago>
+               </ser:listaFormaPago>\n`;
+
+        var xmlineareten = "";
+        if (FacturaHead.retenedor != "0") {
+            var tasareten = 0;
+            if (["1", "3"].includes(FacturaHead.retenedor)) tasareten = 100;
+            else if (["2", "4", "7"].includes(FacturaHead.retenedor)) tasareten = 50;
+            // "8" => 0
+
+            var tasaretopera = parseFloat(tasareten) / 100;
+            montoreten = parseFloat(wtotalitbms) * parseFloat(tasaretopera);
+
+            xmlineareten = `<ser:retencion>\n
+<ser:codigoRetencion>${FacturaHead.retenedor}</ser:codigoRetencion>\n
+<ser:montoRetencion>${parseFloat(montoreten).toFixed(2)}</ser:montoRetencion>\n
 </ser:retencion>\n`;
-    }
+        }
 
-    // ✅ CORRECCIÓN: XML limpio sin markdown
-    let xmlplazo = "";
-    if (head.condiciones !== "1") {
-      xmlplazo = `<ser:listaPagoPlazo>
-<ser:pagoPlazo>
-<ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>\n`;
-      if (head.formapago === "99") {
-        xmlplazo += `<ser:descFormaPago> Otros (nota de credito,etc....) </ser:descFormaPago>\n`;
-      }
-      xmlplazo += `<ser:valorCuota>${parseFloat(wtotaldefactura).toFixed(2)}</ser:valorCuota>
-                  </ser:pagoPlazo>
-</ser:listaPagoPlazo>\n`;
-    }
+        var xmlplazo = "";
+        if (FacturaHead.condiciones != "1") {
+            xmlplazo = `<ser:listaPagoPlazo>
+ <ser:pagoPlazo>
+ <ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>\n`;
+            if (FacturaHead.formapago == "99") {
+                xmlplazo += `<ser:descFormaPago> Otros (nota de credito,etc....) </ser:descFormaPago>\n`;
+            }
+            xmlplazo += `<ser:valorCuota>${parseFloat(wtotaldefactura).toFixed(2)}</ser:valorCuota>
+                        </ser:pagoPlazo>
+ </ser:listaPagoPlazo>\n`;
+        }
 
-    const xmltotcierre = `\n</ser:totalesSubTotales>
+        let xmltotcierre = `\n</ser:totalesSubTotales>
          </tem:documento>
       </tem:Enviar>
    </soapenv:Body>
    </soapenv:Envelope>`;
 
-    let xmlenviar = "";
-    if (head.condiciones === "1") {
-      if (head.retenedor === "0") {
-        xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlotro + xmlsigue + xmltotcierre;
-      } else {
-        xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlotro + xmlsigue + xmlineareten + xmltotcierre;
-      }
-    } else {
-      if (head.retenedor === "0") {
-        xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlsigue + xmlplazo + xmltotcierre;
-      } else {
-        xmlenviar = xmlniv1 + xmlenviarlist + xmlfinitems + xmltotal + xmlsigue + xmlplazo + xmlineareten + xmltotcierre;
-      }
-    }
-
-    // 4. Enviar petición SOAP
-    const options = {
-      hostname: 'demoemision.thefactoryhka.com.pa', // Cambia a 'emision.thefactoryhka.com.pa' si es producción
-      port: 443,
-      path: '/ws/obj/v1.0/Service.svc?wsdl',
-      method: 'POST',
-      headers: {
-        'User-Agent': 'NODEJS',
-        'Content-Type': 'text/xml;charset=utf-8',
-        'Content-Length': Buffer.byteLength(xmlenviar, 'utf8'),
-        'SOAPAction': 'http://tempuri.org/IService/Enviar'
-      }
-    };
-
-    const reqSoap = https.request(options, (resSoap) => {
-      let data = '';
-      resSoap.on('data', (chunk) => { data += chunk; });
-      resSoap.on('end', async () => { // ✅ Hacer la función async para poder usar await
-        if (resSoap.statusCode !== 200) {
-          return res.status(500).json({ success: false, message: `Error SOAP: ${resSoap.statusCode}`, error: data });
+        var xmlenviar = "";
+        if (FacturaHead.condiciones == "1") {
+            if (FacturaHead.retenedor === "0") {
+                xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems + xmltotal + xmlotro + xmlsigue + xmltotcierre;
+            } else {
+                xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems + xmltotal + xmlotro + xmlsigue + xmlineareten + xmltotcierre;
+            }
+        } else {
+            if (FacturaHead.retenedor === "0") {
+                xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems + xmltotal + xmlsigue + xmlplazo + xmltotcierre;
+            } else {
+                xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems + xmltotal + xmlsigue + xmlplazo + xmlineareten + xmltotcierre;
+            }
         }
 
-        const extractTag = (xml, tag) => {
-          const start = xml.indexOf(`<a:${tag}>`);
-          if (start === -1) return "";
-          const end = xml.indexOf(`</a:${tag}>`, start);
-          return start !== -1 && end !== -1 ? xml.substring(start + `<a:${tag}>`.length, end) : "";
+        // ✅ FIXED: Removed trailing spaces in URL
+        var options = {
+            url: 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc?wsdl',
+            method: 'POST',
+            body: xmlenviar,
+            headers: {
+                'User-agent': 'NODEJS',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'Content-Length': Buffer.byteLength(xmlenviar, 'utf8'),
+                'SOAPAction': "http://tempuri.org/IService/Enviar"
+            }
         };
 
-        const cufeHandle = extractTag(data, "cufe");
-        const qrHandle = extractTag(data, "qr");
-        const codigoHandle = extractTag(data, "codigo");
-        const msgHandle = extractTag(data, "mensaje");
-        const fecharecepHandle = extractTag(data, "fechaRecepcionDGI");
-        const protocoloHandle = extractTag(data, "nroProtocoloAutorizacion");
+        request(options, (error, response, body) => {
+            if (error) {
+                console.error("SOAP Request Error:", error);
+                return reject(error);
+            }
 
-        console.log("CUFE:", cufeHandle);
-        console.log("QR:", qrHandle);
-        console.log("CODIGO:", codigoHandle);
-        console.log("MENSAJE:", msgHandle);
+            if (response.statusCode !== 200) {
+                const err = new Error(`SOAP failed with status ${response.statusCode}: ${response.statusMessage}`);
+                console.error(err.message);
+                console.error("Response headers:", JSON.stringify(response.headers || {}, null, 2));
+                console.error("Response body (full):", body);
+                return reject(err);
+            }
 
-        if (["109", "400", "500"].includes(codigoHandle)) {
-          return res.status(400).json({ success: false, message: `Error Facttory: ${msgHandle}`, codigo: codigoHandle });
-        }
+            // Parse response manually
+            const extractTag = (xml, tag) => {
+                const start = xml.indexOf(`<a:${tag}>`);
+                if (start === -1) return "";
+                const end = xml.indexOf(`</a:${tag}>`, start);
+                return xml.substring(start + `<a:${tag}>`.length, end);
+            };
 
-        if (codigoHandle === "200") {
-          head.facturaelectronica = cufeHandle;
-          head.facturaqr = qrHandle;
-          head.estado = 'S'; // o 'Aceptada' según tu lógica
-          head.montoretencion = montoreten;
-          head.fechaActualizacion = new Date().toISOString();
-          
-          // ✅ CORRECCIÓN: Usar await para capturar errores de base de datos
-          await head.save();
-          
-          res.json({ 
-            success: true, 
-            message: 'Factura enviada y aceptada por la DGI', 
-            data: head 
-          });
-        } else {
-          res.status(400).json({ success: false, message: `Respuesta inesperada: ${codigoHandle} - ${msgHandle}`, codigo: codigoHandle });
-        }
-      });
-    });
+            const cufeHandle = extractTag(body, "cufe");
+            const qrHandle = extractTag(body, "qr");
+            const codigoHandle = extractTag(body, "codigo");
+            const msgHandle = extractTag(body, "mensaje");
+            const fecharecepHandle = extractTag(body, "fechaRecepcionDGI");
+            const protocoloHandle = extractTag(body, "nroProtocoloAutorizacion");
 
-    reqSoap.on('error', (error) => {
-      console.error("SOAP Request Error:", error);
-      res.status(500).json({ success: false, message: 'Error de conexión con Facttory', error: error.message });
-    });
+            console.log("CUFE   ", cufeHandle);
+            console.log("QR     ", qrHandle);
+            console.log("CODIGO ", codigoHandle);
+            console.log("MENSAJE ", msgHandle);
 
-    reqSoap.write(xmlenviar);
-    reqSoap.end();
+            gelectronica = codigoHandle;
+            gmsgelectronica = msgHandle;
 
-  } catch (error) {
+            if (codigoHandle === "109" || codigoHandle === "500") {
+                const error = new Error(`SOAP Error ${codigoHandle}: ${msgHandle}`);
+                error.codigo = codigoHandle;
+                error.mensaje = msgHandle;
+                return reject(error);
+            }
+
+            wfechaEmision =  new Date().toISOString().slice(0, 10)
+            wfechaSalida =  new Date().toISOString().slice(0, 10)
+if (codigoHandle === "200") {          
+Grabaelcufe(montoreten,
+   fenundocfiscal,
+   cufeHandle,
+   qrHandle,
+   wfechaEmision,
+   wfechaSalida,
+   codigoHandle,
+   msgHandle, 
+  fecharecepHandle,
+  protocoloHandle,
+  optel, telcliente
+  )
+  } else {
+     const error = new Error(`Unexpected SOAP response code: ${codigoHandle} - ${msgHandle}`);
+      error.codigo = codigoHandle;
+      error.mensaje = msgHandle;
+   }
+ });
+
+}catch (error) {
     console.error('❌ Error enviar-facttory:', error);
     res.status(500).json({ success: false, message: 'Error interno al procesar la factura electrónica', error: error.message });
   }
@@ -3407,36 +3545,98 @@ app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
     }
 });
 //%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-//  app.delete('/api/vendedor/:id', async (req, res) => {
-
-//  try {
-
-//    const { id } = req.params;
-
-//     var fechasistema = formatLocalYmd(new Date());
-
-//    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-
-//    const eliminado = await Vendedor.findByIdAndUpdate(id, { activo: false }, { new: true });
-
-//    if (!eliminado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
-
-//    res.json({ success: true, message: '🗑️ Vendedor eliminado (desactivada)' });
-
-//  } catch (error) {
-
-//    console.error('❌ Error DELETE /api/vendedor/:id:', error);
-
-//    res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
-
-//  }
-
-//  });
-
-
 // ============================================================================
 // 🔹 HELPERS INTERNOS
 // ============================================================================
+
+async function Grabaelcufe(montoreten, fenundocfiscal, cufeHandle, qrHandle, wfechaEmision, wfechaSalida, codigoHandle, msgHandle, fecharecepHandle, protocoloHandle, optel, telcliente,baseclienteuno) {
+    return new Promise((resolve, reject) => {
+        var Schemaadicional = require('../controllers/adicionalschema');
+        var Schemafacturahead = require("../controllers/factuheadschema");
+        var path = require('path');
+        var gTTS = require('gtts');
+
+        const qrHandle2 = qrHandle.replace(/amp;/g, '');
+        qrHandle = qrHandle2;
+
+        // Fetch docadicional FIRST and carry it through the chain
+        Schemaadicional.find({}).exec()
+        .then(docadicional => {
+            // Step 1: Update factura
+            return Schemafacturahead.updateOne({ nofactura: fenundocfiscal }, {
+                facturaelectronica: cufeHandle,
+                facturaqr: qrHandle,
+                fechaEmision: wfechaEmision,
+                fechaSalida: wfechaSalida,
+                fechadgiauto: fecharecepHandle,
+                autorizanrodgi: protocoloHandle,
+                montoretencion: parseFloat(montoreten)
+            })
+            .then(() => {
+                console.log("Numero de Factura :", fenundocfiscal);
+                // Step 2: Generate PDF
+                if (parseInt(docadicional[0]?.parm20) == 2) {
+                    try{
+                        if (optel == "1") {
+                           return fimprimeprinter(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente);
+                        }
+                        if (optel == "2") {
+                      setTimeout(function() {
+                        return  fimprimecomprobante(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente,baseclienteuno);
+                     }, 25000);  
+                        }
+                    }catch (error) {
+                        console.error("Error: registro no encontrado imprimiendo en thermal printer  ", error);
+                      }                 
+                     }
+ //*******//                    
+ if (parseInt(docadicional[0]?.parm20) == 1) {
+                return fimprimecomprobante(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente,baseclienteuno);
+                     }
+            })
+            .then(() => {
+                // Step 3: Run post-PDF operations
+                return Promise.all([
+                    fdescuentapac(),
+                    facumulavendedor(fenundocfiscal)
+                ]);
+            })
+            .then(() => {
+                // Step 4: Text-to-speech (using docadicional from outer scope)
+                var randomname = Math.floor(Math.random() * 10000000);
+                var mensamp3 = "Voice" + randomname + ".mp3";
+                var filePath = path.join(__dirname, '..', 'controllers', mensamp3);
+                var speech = "Inicio";
+
+                if (docadicional[0]?.parm30 == 2) {
+                    speech = 'El documento fue generado correctamente y enviado al cliente  ';
+                    return new Promise((resolveTTS, rejectTTS) => {
+                        const gtts = new gTTS(speech, 'es');
+                        gtts.save(filePath, function (err) {
+                            if (err) return rejectTTS(err);
+                            console.log("Text to speech converted!");
+                            const tiempo = 12000;
+                            playSound(filePath, tiempo);
+                            resolveTTS();
+                        });
+                    });
+                }
+            })
+            .then(() => {
+                // Step 5: Printer (using docadicional)
+ //               if (parseInt(docadicional[0]?.parm20) == 2) {
+ //                   return fimprimeprinter(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente);
+ //               }
+                resolve();
+            });
+        })
+        .then(() => {
+            resolve(); // ✅ All steps completed
+        })
+        .catch(reject); // ❌ Any error rejects the promise
+    });
+}
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
