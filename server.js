@@ -2677,6 +2677,9 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
 // ============================================================================
 // 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
 // ============================================================================
+// ============================================================================
+// 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP)
+// ============================================================================
 app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) => {
   try {
     const { nofactura } = req.params;
@@ -2719,7 +2722,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
 
     const escapeXml = (unsafe) => {
       if (!unsafe) return '';
-      return unsafe.toString().replace(/[<>&'"]/g, (c) => {
+      return String(unsafe).replace(/[<>&'"]/g, (c) => {
         switch (c) {
           case '<': return '&lt;'; case '>': return '&gt;'; case '&': return '&amp;';
           case '\'': return '&apos;'; case '"': return '&quot;';
@@ -2771,14 +2774,14 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
 
     let xmlenviarlist = "";
     let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
-    const wkimptocontrol = 1; // 1 = activo, 0 = exento
+    const wkimptocontrol = 1;
 
     for (let s = 0; s < detalles.length; s++) {
       const det = detalles[s];
       let wvalfechafabri = det.fechafabricacion || "";
       let wvalfechaexpira = det.fechaexpiracion || "";
-      let wfechafabricafinal = wvalfechafabri.length > 5 ? wvalfechafabri : new Date().toISOString().slice(0, 10);
-      let wfechaexpirafinal = wvalfechaexpira.length > 5 ? wvalfechaexpira : new Date().toISOString().slice(0, 10);
+      let wfechafabricafinal = String(wvalfechafabri).length > 5 ? wvalfechafabri : new Date().toISOString().slice(0, 10);
+      let wfechaexpirafinal = String(wvalfechaexpira).length > 5 ? wvalfechaexpira : new Date().toISOString().slice(0, 10);
 
       const descpor = parseFloat(det.descuento || 0) / 100;
       const wpreciowk = parseFloat(det.precio || 0);
@@ -2787,7 +2790,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
       const wimpuestoitem2 = parseFloat(det.impuesto2 || 0);
       const wimpuestoitem3 = parseFloat(det.impuesto3 || 0);
       const wtasaisc = parseFloat(det.tasaisc || 0);
-
+      
       const wcodimpuesto1 = parseFloat(det.impuesto || 0);
       const wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
       const wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
@@ -2809,24 +2812,15 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
       wtotalprecioneto += wprecioitem;
       let wvalorimpuestoitem = 0, wvalorimpuestoitem2 = 0, wvalorimpuestoitem3 = 0;
 
-      if (wtasaitbms === "00" || wtasaitbms === "01") {
-        wvalorimpuestoitem = wprecioitem * wimpuestoitem;
-      }
-      if (wtasaitbms === "02") {
-        wvalorimpuestoitem2 = wtasaisc;
-      }
-      if (wtasaitbms === "03") {
-        wvalorimpuestoitem3 = wimpuestoitem3;
-      }
+      if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+      if (wtasaitbms === "02") wvalorimpuestoitem2 = wtasaisc;
+      if (wtasaitbms === "03") wvalorimpuestoitem3 = wimpuestoitem3;
 
       const wvalorisc = wprecioitem * wtasaisc;
       wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
 
       if (parseFloat(wkimptocontrol) === 0) {
-        wtasaitbms = "00";
-        wvalorimpuestoitem = 0;
-        wvalorimpuestoitem2 = 0;
-        wvalorimpuestoitem3 = 0;
+        wtasaitbms = "00"; wvalorimpuestoitem = 0; wvalorimpuestoitem2 = 0; wvalorimpuestoitem3 = 0;
       }
 
       if (wtasaitbms === "01") wtotalitbms += wvalorimpuestoitem;
@@ -2834,20 +2828,14 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
       if (wtasaitbms === "00") wtotalitbms += 0;
 
       let wtolinitem = 0;
-      if (wtasaitbms === "01") {
-        wtolinitem = wprecioitem + wvalorimpuestoitem;
-      } else if (wtasaitbms === "02") {
-        wtolinitem = wprecioitem + wvalorimpuestoitem2;
-      } else {
-        wtolinitem = wprecioitem;
-      }
+      if (wtasaitbms === "01") wtolinitem = wprecioitem + wvalorimpuestoitem;
+      else if (wtasaitbms === "02") wtolinitem = wprecioitem + wvalorimpuestoitem2;
+      else wtolinitem = wprecioitem;
 
       const wvardet = det.detventa;
       let wpormayor = det.pormayor;
       const campocantidad = det.cantidad;
-      if (wvardet === "1") {
-        wpormayor = 1;
-      }
+      if (wvardet === "1") wpormayor = 1;
 
       const wentrega = parseFloat(wpormayor || 1) * parseFloat(campocantidad);
       wtotaldefactura += wtolinitem;
@@ -2860,11 +2848,13 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
         <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
 
+      // ✅ CORRECCIÓN: Convertir a String antes de usar .substr para evitar TypeError
       if (fetipoclientefe === "03" && det.codigobienes) {
-        const feabreviacpbs = det.codigobienes.substr(0, 2);
+        const codBienesStr = String(det.codigobienes);
+        const feabreviacpbs = codBienesStr.substring(0, 2);
         xmlenviarlist += `
         <ser:codigoCPBSAbrev>${feabreviacpbs}</ser:codigoCPBSAbrev>
-        <ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS>
+        <ser:codigoCPBS>${codBienesStr}</ser:codigoCPBS>
         <ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
       }
 
@@ -2881,17 +2871,14 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         const wintermedio = wparinter.toString();
         const decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
         const larente = wintermedio.length;
-        // ✅ CORRECCIÓN CRÍTICA: Math.max evita RangeError si el número tiene más de 9 dígitos
         const winter2 = Math.max(0, 9 - larente); 
         const wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
-
         xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n<ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
       } else if (wtasaitbms === "00") {
         xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
       } else if (wtasaitbms === "02") {
         xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n<ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
       }
-
       xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
     }
 
@@ -2944,32 +2931,34 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                </ser:formaPago>
             </ser:listaFormaPago>\n`;
 
+    // ✅ CORRECCIÓN: XML limpio sin markdown
     let xmlineareten = "";
     if (head.retenedor && head.retenedor !== "0") {
       let tasareten = 0;
       if (["1", "3"].includes(head.retenedor)) tasareten = 100;
       else if (["2", "4", "7"].includes(head.retenedor)) tasareten = 50;
-
+      
       const tasaretopera = parseFloat(tasareten) / 100;
       montoreten = parseFloat(wtotalitbms) * tasaretopera;
-
+      
       xmlineareten = `<ser:retencion>
 <ser:codigoRetencion>${head.retenedor}</ser:codigoRetencion>
 <ser:montoRetencion>${parseFloat(montoreten).toFixed(2)}</ser:montoRetencion>
 </ser:retencion>\n`;
     }
 
+    // ✅ CORRECCIÓN: XML limpio sin markdown
     let xmlplazo = "";
     if (head.condiciones !== "1") {
       xmlplazo = `<ser:listaPagoPlazo>
- <ser:pagoPlazo>
- <ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>\n`;
+<ser:pagoPlazo>
+<ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>\n`;
       if (head.formapago === "99") {
         xmlplazo += `<ser:descFormaPago> Otros (nota de credito,etc....) </ser:descFormaPago>\n`;
       }
       xmlplazo += `<ser:valorCuota>${parseFloat(wtotaldefactura).toFixed(2)}</ser:valorCuota>
                   </ser:pagoPlazo>
- </ser:listaPagoPlazo>\n`;
+</ser:listaPagoPlazo>\n`;
     }
 
     const xmltotcierre = `\n</ser:totalesSubTotales>
@@ -2993,9 +2982,9 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
       }
     }
 
-    // 4. Enviar petición SOAP usando el módulo nativo 'https' (más seguro y sin dependencias obsoletas)
+    // 4. Enviar petición SOAP
     const options = {
-      hostname: 'emision.thefactoryhka.com.pa', // Cambia a 'demoemision.thefactoryhka.com.pa' si es ambiente de pruebas
+      hostname: 'demoemision.thefactoryhka.com.pa', // Cambia a 'emision.thefactoryhka.com.pa' si es producción
       port: 443,
       path: '/ws/obj/v1.0/Service.svc?wsdl',
       method: 'POST',
@@ -3010,7 +2999,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
     const reqSoap = https.request(options, (resSoap) => {
       let data = '';
       resSoap.on('data', (chunk) => { data += chunk; });
-      resSoap.on('end', () => {
+      resSoap.on('end', async () => { // ✅ Hacer la función async para poder usar await
         if (resSoap.statusCode !== 200) {
           return res.status(500).json({ success: false, message: `Error SOAP: ${resSoap.statusCode}`, error: data });
         }
@@ -3041,12 +3030,13 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         if (codigoHandle === "200") {
           head.facturaelectronica = cufeHandle;
           head.facturaqr = qrHandle;
-          head.estado = 'S';
+          head.estado = 'S'; // o 'Aceptada' según tu lógica
           head.montoretencion = montoreten;
           head.fechaActualizacion = new Date().toISOString();
-          head.save();
-
-          // ✅ Devuelve el objeto 'head' completo para que tu App Android lo procese correctamente
+          
+          // ✅ CORRECCIÓN: Usar await para capturar errores de base de datos
+          await head.save();
+          
           res.json({ 
             success: true, 
             message: 'Factura enviada y aceptada por la DGI', 
