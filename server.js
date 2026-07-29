@@ -382,6 +382,22 @@ const modeloSchema = new mongoose.Schema({
 });
 const Modelo = mongoose.model('Modelo', modeloSchema);
 
+// ============================================================================
+// 🔹 MODELO: PROVEEDORES (Agregar junto a los otros modelos)
+// ============================================================================
+const proveedorSchema = new mongoose.Schema({
+    idprov: { type: String, required: true, unique: true, trim: true, uppercase: true },
+    provnombre: { type: String, uppercase: true, trim: true },
+    rucprove: { type: String, trim: true },
+    dir1prove: { type: String, uppercase: true, trim: true },
+    dir2prove: { type: String, uppercase: true, trim: true },
+    telprove: { type: String, trim: true },
+    emailprove: { type: String, lowercase: true, trim: true },
+    compraprove: { type: Number, default: 0 },
+    historialcompras: [String],
+    historialdevolucion: [String]
+}, { timestamps: true });
+const Proveedor = mongoose.model('Proveedor', proveedorSchema);
 
 // =========================== MODULOS DE FACTURA Y FACTURA DETALLE ========= //
 const facturaSchema = new mongoose.Schema({
@@ -1338,6 +1354,86 @@ app.post('/api/vendedor', async (req, res) => {
   }
 });
 //================================================================//
+//%%%%%%%%%%%%%%%%%%%%%%%%%% PROVEEDORES %%%%%%%%%%%%%%%%%%%%%%%%%//
+// GET: Listar todos los proveedores
+app.get('/api/compras/proveedores', async (req, res) => {
+    try {
+        const proveedores = await Proveedor.find({}).sort({ provnombre: 1 });
+        res.json({ success: true, message: 'Proveedores obtenidos', data: proveedores });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/proveedores:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// POST: Crear proveedor
+// In server.js, find the POST /api/compras/proveedores route and replace the Proveedor.create block:
+
+app.post('/api/compras/proveedores', async (req, res) => {
+    try {
+        const { idprov, provnombre, rucprove, dir1prove, dir2prove, telprove, emailprove } = req.body;
+        
+        if (!idprov?.trim() || !provnombre?.trim()) {
+            return res.status(400).json({ success: false, message: 'ID y Nombre son obligatorios' });
+        }
+        
+        const exists = await Proveedor.findOne({ idprov: idprov.trim().toUpperCase() });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe un proveedor con este ID' });
+    
+        // ✅ FIX: Explicitly map fields to prevent Mongoose casting errors from Kotlin's null "_id"
+        const nuevoProveedor = await Proveedor.create({
+            idprov: idprov.trim().toUpperCase(),
+            provnombre: provnombre.trim().toUpperCase(),
+            rucprove: rucprove || '',
+            dir1prove: dir1prove || '',
+            dir2prove: dir2prove || '',
+            telprove: telprove || '',
+            emailprove: emailprove || '',
+            compraprove: 0
+        });
+        
+        res.status(201).json({ success: true, message: '✅ Proveedor creado', data: nuevoProveedor });
+    } catch (error) {
+        console.error('❌ Error POST /api/compras/proveedores:', error);
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// PUT: Editar proveedor
+app.put('/api/compras/proveedores/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        
+        const updateData = { ...req.body };
+        delete updateData.idprov; // No permitir cambiar el ID
+        delete updateData._id;
+        
+        const actualizado = await Proveedor.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        if (!actualizado) return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
+        
+        res.json({ success: true, message: '✅ Proveedor actualizado', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/compras/proveedores:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// DELETE: Eliminar proveedor
+app.delete('/api/compras/proveedores/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        
+        const eliminado = await Proveedor.findByIdAndDelete(id);
+        if (!eliminado) return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
+        
+        res.json({ success: true, message: '🗑️ Proveedor eliminado' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/compras/proveedores:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // 2️⃣ DESPUÉS: RUTAS CON ID ESPECÍFICO
