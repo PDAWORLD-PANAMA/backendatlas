@@ -536,6 +536,31 @@ const facturadetalleSchema = new mongoose.Schema({
 }) 
 
 const FacturaDetalle = mongoose.model('FacturaDetalle', facturadetalleSchema);
+
+// ============================================================================
+// 🔹 MODELOS: GASTOS
+// ============================================================================
+const Schemagastomaestro = new mongoose.Schema({
+    codigogasto: { type: String, required: true, unique: true, uppercase: true, trim: true },
+    nombregasto: { type: String, uppercase: true, trim: true },
+    acumgasto: { type: Number, default: 0 }
+}, { timestamps: true });
+const GastoHead = mongoose.model('Schemarecgastomaestro', Schemagastomaestro);
+
+const Schemagastotran = new mongoose.Schema({
+    codigogasto: { type: String, required: true, uppercase: true, trim: true },
+    rucgasto: { type: String, trim: true },
+    nombrempresa: { type: String, uppercase: true, trim: true },
+    fechatran: { type: String },
+    fechafactura: { type: String },
+    nofactura: { type: String, trim: true },
+    descriptran: { type: String, uppercase: true, trim: true },
+    formapago: { type: String, default: '01' },
+    impuesto: { type: Number, default: 0 },
+    monto: { type: Number, default: 0 }
+    });
+const GastoTrans = mongoose.model('Schemarecgastotran', Schemagastotran);
+
     // ✅ Helper para calcular subtotal de línea
   
 // ============================================================================
@@ -3640,6 +3665,155 @@ app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al anular factura', error: error.message });
     }
 });
+
+//%%%%%%%%%%%%%%%%%%%%%%%% MANEJO DE GASTO %%%%%%%%%%%%%%%%%%%%%%%%%%%//
+
+
+// ============================================================================
+// 🔹 RUTAS: GASTOS MAESTROS (HEAD)
+// ============================================================================
+app.get('/api/compras/gastos/head', async (req, res) => {
+    try {
+        const gastos = await GastoHead.find({}).sort({ codigogasto: 1 });
+        res.json({ success: true, message: `${gastos.length} gasto(s) encontrado(s)`, data: gastos });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/gastos/head:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.post('/api/compras/gastos/head', async (req, res) => {
+    try {
+        const { codigogasto, nombregasto, acumgasto } = req.body;
+        if (!codigogasto?.trim() || !nombregasto?.trim()) {
+            return res.status(400).json({ success: false, message: 'Código y Nombre son obligatorios' });
+        }
+        const exists = await GastoHead.findOne({ codigogasto: codigogasto });
+        if (exists) return res.status(409).json({ success: false, message: 'Ya existe un gasto con este código' });
+
+        const nuevoGasto = await GastoHead.create({
+            codigogasto: codigogasto,
+            nombregasto: nombregasto.trim().toUpperCase(),
+            acumgasto: parseFloat(acumgasto) || 0
+        });
+        res.status(201).json({ success: true, message: '✅ Gasto creado', data: nuevoGasto });
+    } catch (error) {
+        console.error('❌ Error POST /api/compras/gastos/head:', error);
+        if (error.code === 11000) return res.status(409).json({ success: false, message: 'El código ya existe' });
+        res.status(500).json({ success: false, message: 'Error al crear Gasto head', error: error.message });
+    }
+});
+
+app.put('/api/compras/gastos/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+
+        const updateData = { ...req.body };
+        delete updateData._id;
+        delete updateData.codigogasto;
+
+        const actualizado = await GastoHead.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        if (!actualizado) return res.status(404).json({ success: false, message: 'Gasto no encontrado' });
+
+        res.json({ success: true, message: '✅ Gasto actualizado', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/compras/gastos/head:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+app.delete('/api/compras/gastos/head/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+
+        const eliminado = await GastoHead.findByIdAndDelete(id);
+        if (!eliminado) return res.status(404).json({ success: false, message: 'Gasto no encontrado' });
+
+        res.json({ success: true, message: '🗑️ Gasto eliminado' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/compras/gastos/head:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 RUTAS: TRANSACCIONES DE GASTOS
+// ============================================================================
+app.get('/api/compras/gastos/trans', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+        let filter = {};
+
+        if (fechaInicial && fechaFinal) {
+            filter.fechatran = { $gte: fechaInicial, $lte: fechaFinal };
+        } else if (fechaInicial) {
+            filter.fechatran = { $gte: fechaInicial };
+        } else if (fechaFinal) {
+            filter.fechatran = { $lte: fechaFinal };
+        }
+
+        const transacciones = await GastoTrans.find(filter).sort({ fechatran: -1, createdAt: -1 });
+        res.json({
+            success: true,
+            message: `${transacciones.length} transacción(es) encontrada(s)`,
+            data: transacciones
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/gastos/trans:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+app.post('/api/compras/gastos/trans', async (req, res) => {
+    try {
+        const { codigogasto, monto } = req.body;
+        if (!codigogasto?.trim()) {
+            return res.status(400).json({ success: false, message: 'El código de gasto es obligatorio' });
+        }
+
+        const gastoExiste = await GastoHead.findOne({ codigogasto: codigogasto.trim().toUpperCase() });
+        if (!gastoExiste) {
+            return res.status(404).json({ success: false, message: 'El código de gasto no existe en el maestro' });
+        }
+
+        const nuevaTrans = await GastoTrans.create({
+            ...req.body,
+            codigogasto: codigogasto.trim().toUpperCase(),
+            monto: parseFloat(monto) || 0,
+            impuesto: parseFloat(req.body.impuesto) || 0
+        });
+
+        await GastoHead.findOneAndUpdate(
+            { codigogasto: codigogasto.trim().toUpperCase() },
+            { $inc: { acumgasto: parseFloat(monto) || 0 } }
+        );
+
+        res.status(201).json({ success: true, message: '✅ Transacción creada y acumulado actualizado', data: nuevaTrans });
+    } catch (error) {
+        console.error('❌ Error POST /api/compras/gastos/trans:', error);
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+app.delete('/api/compras/gastos/trans/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+
+        const eliminado = await GastoTrans.findByIdAndDelete(id);
+        if (!eliminado) return res.status(404).json({ success: false, message: 'Transacción no encontrada' });
+
+        res.json({ success: true, message: '🗑️ Transacción eliminada' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/compras/gastos/trans:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
+    }
+});
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+
 //%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // ============================================================================
 // 🔹 HELPERS INTERNOS
