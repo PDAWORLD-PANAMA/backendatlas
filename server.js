@@ -3685,22 +3685,70 @@ app.get('/api/compras/gastos/head', async (req, res) => {
 app.post('/api/compras/gastos/head', async (req, res) => {
     try {
         const { codigogasto, nombregasto, acumgasto } = req.body;
-        if (!codigogasto?.trim() || !nombregasto?.trim()) {
-            return res.status(400).json({ success: false, message: 'Código y Nombre son obligatorios' });
+        
+        // ✅ Validar que el código tenga exactamente 6 dígitos numéricos
+        if (!codigogasto?.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El código de gasto es obligatorio' 
+            });
         }
-        const exists = await GastoHead.findOne({ codigogasto: codigogasto });
-        if (exists) return res.status(409).json({ success: false, message: 'Ya existe un gasto con este código' });
+        
+        // ✅ Validar formato: exactamente 6 dígitos numéricos
+        const codigoRegex = /^\d{6}$/;
+        if (!codigoRegex.test(codigogasto.trim())) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El código de gasto debe tener exactamente 6 dígitos numéricos (ejemplo: 616391)' 
+            });
+        }
+        
+        if (!nombregasto?.trim()) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El nombre del gasto es obligatorio' 
+            });
+        }
+        
+        // ✅ Normalizar el código (ya tiene 6 dígitos, no necesita uppercase)
+        const codigoFinal = codigogasto.trim();
+        
+        // ✅ Verificar duplicados
+        const exists = await GastoHead.findOne({ codigogasto: codigoFinal });
+        if (exists) {
+            return res.status(409).json({ 
+                success: false, 
+                message: `Ya existe un gasto con el código: ${codigoFinal}` 
+            });
+        }
 
+        // ✅ Crear el gasto
         const nuevoGasto = await GastoHead.create({
-            codigogasto: codigogasto,
+            codigogasto: codigoFinal,
             nombregasto: nombregasto.trim().toUpperCase(),
             acumgasto: parseFloat(acumgasto) || 0
         });
-        res.status(201).json({ success: true, message: '✅ Gasto creado', data: nuevoGasto });
+        
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Gasto creado', 
+            data: nuevoGasto 
+        });
     } catch (error) {
         console.error('❌ Error POST /api/compras/gastos/head:', error);
-        if (error.code === 11000) return res.status(409).json({ success: false, message: 'El código ya existe' });
-        res.status(500).json({ success: false, message: 'Error al crear Gasto head', error: error.message });
+        
+        if (error.code === 11000) {
+            return res.status(409).json({ 
+                success: false, 
+                message: 'El código ya existe' 
+            });
+        }
+        
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al crear gasto', 
+            error: error.message 
+        });
     }
 });
 
@@ -3769,31 +3817,59 @@ app.get('/api/compras/gastos/trans', async (req, res) => {
 app.post('/api/compras/gastos/trans', async (req, res) => {
     try {
         const { codigogasto, monto } = req.body;
+        
         if (!codigogasto?.trim()) {
-            return res.status(400).json({ success: false, message: 'El código de gasto es obligatorio' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El código de gasto es obligatorio' 
+            });
+        }
+        
+        // ✅ Validar formato: exactamente 6 dígitos numéricos
+        const codigoRegex = /^\d{6}$/;
+        if (!codigoRegex.test(codigogasto.trim())) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'El código de gasto debe tener exactamente 6 dígitos numéricos' 
+            });
         }
 
-        const gastoExiste = await GastoHead.findOne({ codigogasto: codigogasto.trim().toUpperCase() });
+        // ✅ Buscar el gasto maestro (ya está en formato correcto)
+        const gastoExiste = await GastoHead.findOne({ codigogasto: codigogasto.trim() });
+        
         if (!gastoExiste) {
-            return res.status(404).json({ success: false, message: 'El código de gasto no existe en el maestro' });
+            return res.status(404).json({ 
+                success: false, 
+                message: `El código de gasto ${codigogasto} no existe en el maestro` 
+            });
         }
 
+        // ✅ Crear la transacción
         const nuevaTrans = await GastoTrans.create({
             ...req.body,
-            codigogasto: codigogasto.trim().toUpperCase(),
+            codigogasto: codigogasto.trim(), // ✅ Ya tiene 6 dígitos
             monto: parseFloat(monto) || 0,
             impuesto: parseFloat(req.body.impuesto) || 0
         });
 
+        // ✅ Actualizar el acumulado del gasto maestro
         await GastoHead.findOneAndUpdate(
-            { codigogasto: codigogasto.trim().toUpperCase() },
+            { codigogasto: codigogasto.trim() },
             { $inc: { acumgasto: parseFloat(monto) || 0 } }
         );
 
-        res.status(201).json({ success: true, message: '✅ Transacción creada y acumulado actualizado', data: nuevaTrans });
+        res.status(201).json({ 
+            success: true, 
+            message: '✅ Transacción creada y acumulado actualizado', 
+            data: nuevaTrans 
+        });
     } catch (error) {
         console.error('❌ Error POST /api/compras/gastos/trans:', error);
-        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al crear transacción', 
+            error: error.message 
+        });
     }
 });
 
