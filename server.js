@@ -3751,6 +3751,92 @@ app.post('/api/compras/gastos/head', async (req, res) => {
         });
     }
 });
+//============================================================================//
+// ============================================================================
+// 🔹 RUTAS: CARGA MASIVA DE GASTOS MAESTROS
+// ============================================================================
+
+app.post('/api/compras/gastos/head/bulk', async (req, res) => {
+    try {
+        console.log('📥 Recibiendo carga masiva. Tipo de dato:', Array.isArray(req.body) ? 'Array' : typeof req.body);
+        
+        const gastosArray = req.body;
+        if (!Array.isArray(gastosArray)) {
+            return res.status(400).json({ success: false, message: 'Se requiere un array de gastos en el body' });
+        }
+
+        // ✅ 1. Obtener códigos existentes UNA SOLA VEZ para máxima velocidad
+        const existingGastos = await GastoHead.find({}, 'codigogasto');
+        const existingCodes = new Set(existingGastos.map(g => g.codigogasto));
+
+        const documentosValidos = [];
+        let duplicateCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        for (const gastoData of gastosArray) {
+            try {
+                const { codigogasto, nombregasto } = gastoData;
+                if (!codigogasto || !nombregasto) {
+                    errorCount++;
+                    errors.push('Registro sin codigogasto o nombregasto');
+                    continue;
+                }
+                
+                const codigoUpper = codigogasto.toString().trim().toUpperCase();
+                if (existingCodes.has(codigoUpper)) {
+                    duplicateCount++;
+                    continue;
+                }
+
+                documentosValidos.push({
+                    codigogasto: codigoUpper,
+                    nombregasto: nombregasto.toString().trim().toUpperCase(),
+                    acumgasto: 0
+                });
+                existingCodes.add(codigoUpper);
+            } catch (err) {
+                errorCount++;
+                errors.push(`Error procesando registro: ${err.message}`);
+            }
+        }
+
+        // ✅ 2. INSERTAR TODOS DE UNA VEZ con insertMany (Mucho más rápido)
+        let successCount = 0;
+        if (documentosValidos.length > 0) {
+            try {
+                const result = await GastoHead.insertMany(documentosValidos, { 
+                    ordered: false,  // ✅ Continúa insertando aunque haya errores de duplicado
+                    rawResult: true 
+                });
+                successCount = result.insertedCount || documentosValidos.length;
+            } catch (err) {
+                if (err.insertedDocs && err.insertedDocs.length > 0) {
+                    successCount = err.insertedDocs.length;
+                }
+                console.error('⚠️ Errores parciales en insertMany:', err.message);
+                errors.push(`Errores parciales en BD: ${err.message}`);
+            }
+        }
+
+        // ✅ 3. Responder con el resumen
+        res.json({
+            success: true,
+            message: 'Carga masiva de gastos completada',
+            data: {
+                total: gastosArray.length,
+                success: successCount,
+                duplicates: duplicateCount,
+                errors: errorCount,
+                errorMessages: errors.slice(0, 10) // Limitar a 10 errores para no saturar
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error CRÍTICO POST /api/compras/gastos/head/bulk:', error);
+        res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
+        // Si ves este log en la consola de Node.js, sabremos exactamente qué falló
+    }
+});
 
 app.put('/api/compras/gastos/head/:id', async (req, res) => {
     try {
