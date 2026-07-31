@@ -561,7 +561,142 @@ const Schemagastotran = new mongoose.Schema({
     });
 const GastoTrans = mongoose.model('Schemarecgastotran', Schemagastotran);
 
-    // ✅ Helper para calcular subtotal de línea
+var Schemaheadcompra = new mongoose.Schema({
+    nodocumento: {
+        type : String
+    },
+    fechadocumento: {
+        type : String
+    },
+    fechafactura: {
+        type : String
+    },
+    fechavencimiento: {
+        type : String
+    },
+    nofactura: {
+        type : String
+    },
+    codproveedor:{
+        type: String
+    },
+    condiciones: {
+        type : String
+    },
+    formapago: {
+        type : String
+    },
+    descuento: {
+        type : Number
+    },
+    subtotal1: {
+        type : Number
+    },
+    impuesto1: {
+        type : Number
+    },
+    impuesto2: {
+        type : Number
+    },
+    impuesto3: {
+        type : Number
+    },
+    impuesto: {
+        type : Number
+    },
+    subtotal2: {
+        type : Number
+    },
+    total: {
+        type : Number
+    },
+    costoadicional: {
+        type : Number
+    },
+    saldo: {
+        type : Number
+    },
+    nombreproveedor: {
+        type : String
+    },
+    tipocompra: {
+        type : String
+    },
+    rucproveedor: {
+        type : String
+    },
+    seriefiscal: {
+        type : String
+    },
+    transaccion: {
+        type : String
+    },
+    estatuscompra: {
+        type : String
+    },
+    detallecompra: {
+        type : String
+    },
+    imagencompra: {
+        type : String
+    },
+    historialdevolucion: [String]
+});
+
+const ComprasHead = mongoose.model('Schemareccomprahead',Schemaheadcompra);
+
+
+var Schemadetacompra = new mongoose.Schema({
+    nodocumento: {
+        type : String
+    },
+    fechadocumento: {
+        type : String
+    },
+    fechafactura: {
+        type : String
+    },
+    nofactura: {
+        type : String
+    },
+    codproducto:{
+        type: String
+    },
+    descripcion :{
+        type : String
+    },
+    codproveedor: {
+        type : String
+    },
+    costo: {
+        type : Number
+    },
+    tarifa : {
+        type : Number
+    },
+    impuesto: {
+        type : Number
+    },
+    descuento: {
+        type : Number
+    },
+    cantidad: {
+        type : Number
+    },
+    hora : {
+        type : String
+    },
+    costoadicional: {
+        type : Number
+    },
+    detalle :{
+        type : String
+    },
+});
+
+const CompraDetalle = mongoose.model('Schemareccompradeta',Schemadetacompra);
+
+// ✅ Helper para calcular subtotal de línea
   
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD
@@ -3875,20 +4010,37 @@ app.delete('/api/compras/gastos/head/:id', async (req, res) => {
 // ============================================================================
 // 🔹 RUTAS: TRANSACCIONES DE GASTOS
 // ============================================================================
+// In server.js, update the GET endpoint
 app.get('/api/compras/gastos/trans', async (req, res) => {
     try {
         const { fechaInicial, fechaFinal } = req.query;
+        console.log(`📥 GET /api/compras/gastos/trans: fechaInicial=${fechaInicial}, fechaFinal=${fechaFinal}`);
+        
         let filter = {};
 
         if (fechaInicial && fechaFinal) {
             filter.fechatran = { $gte: fechaInicial, $lte: fechaFinal };
+            console.log(`📅 Filtering by date range: ${fechaInicial} to ${fechaFinal}`);
         } else if (fechaInicial) {
             filter.fechatran = { $gte: fechaInicial };
+            console.log(`📅 Filtering from: ${fechaInicial}`);
         } else if (fechaFinal) {
             filter.fechatran = { $lte: fechaFinal };
+            console.log(`📅 Filtering to: ${fechaFinal}`);
+        } else {
+            console.log(`📅 No date filter applied`);
         }
 
+        console.log(`🔍 Final filter: ${JSON.stringify(filter)}`);
+        
         const transacciones = await GastoTrans.find(filter).sort({ fechatran: -1, createdAt: -1 });
+        
+        console.log(`✅ Found ${transacciones.length} transactions`);
+        
+        if (transacciones.length > 0) {
+            console.log(`📋 First transaction: ${JSON.stringify(transacciones[0])}`);
+        }
+        
         res.json({
             success: true,
             message: `${transacciones.length} transacción(es) encontrada(s)`,
@@ -3896,7 +4048,11 @@ app.get('/api/compras/gastos/trans', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Error GET /api/compras/gastos/trans:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error del servidor', 
+            error: error.message 
+        });
     }
 });
 
@@ -3972,6 +4128,188 @@ app.delete('/api/compras/gastos/trans/:id', async (req, res) => {
         console.error('❌ Error DELETE /api/compras/gastos/trans:', error);
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
     }
+});
+
+
+
+// GET: Listar Compras (Cabecera)
+app.get('/api/compras/head', async (req, res) => {
+  try {
+    const { nocompra, idprov } = req.query;
+    let query = {};
+    if (nocompra) query.nocompra = { $regex: nocompra.trim(), $options: 'i' };
+    if (idprov) query.idprov = idprov.trim().toUpperCase();
+
+    const compras = await CompraHead.find(query).sort({ fechaCreacion: -1 });
+    res.json({ success: true, count: compras.length, data: compras });
+  } catch (error) {
+    console.error('❌ Error GET /api/compras/head:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener compras', error: error.message });
+  }
+});
+
+app.post('/api/compras', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { head, detalles } = req.body;
+    if (!head || !head.nocompra || !head.idprov || !Array.isArray(detalles) || detalles.length === 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Datos incompletos de la compra' });
+    }
+
+    const nocompraNorm = head.nocompra.trim().toUpperCase();
+    const existing = await CompraHead.findOne({ nocompra: nocompraNorm }).session(session);
+    if (existing) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(409).json({ success: false, message: 'La compra ya está registrada' });
+    }
+
+    const fechasistema = formatLocalYmd(new Date());
+
+    // 1. Guardar Cabecera
+    const nuevaCompraHead = new CompraHead({
+      ...head,
+      nocompra: nocompraNorm,
+      idprov: head.idprov.trim().toUpperCase(),
+      fechaCreacion: fechasistema,
+      fechaActualizacion: fechasistema
+    });
+    await nuevaCompraHead.save({ session });
+
+    // 2. Guardar Detalles e Incrementar Inventario / Actualizar costo2
+    const detallesPreparados = [];
+    for (const d of detalles) {
+      const codproductoNorm = d.codproducto.trim().toUpperCase();
+      detallesPreparados.push({
+        ...d,
+        nocompra: nocompraNorm,
+        idprov: head.idprov.trim().toUpperCase(),
+        codproducto: codproductoNorm
+      });
+
+      // Actualizar existencias y costo2 en Inventario
+      await Inventariosede.findOneAndUpdate(
+        { idinventario: codproductoNorm },
+        { 
+          $inc: { cantidispo: d.cantidad },
+          $set: { costo2: d.costo } // Actualizar campo costo2 con el nuevo costo
+        },
+        { session }
+      );
+    }
+
+    await CompraDetalle.insertMany(detallesPreparados, { session });
+
+    // 3. Registrar en historial del Proveedor
+    await Proveedor.findOneAndUpdate(
+      { idprov: head.idprov.trim().toUpperCase() },
+      { 
+        $inc: { compraprove: head.total || 0 },
+        $addToSet: { historialcompras: nocompraNorm }
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(201).json({ success: true, message: '✅ Compra registrada exitosamente', data: nuevaCompraHead });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('❌ Error POST /api/compras:', error);
+    res.status(500).json({ success: false, message: 'Error al registrar la compra', error: error.message });
+  }
+});
+
+// GET: Detalle de una compra por N° Compra
+app.get('/api/compras/detalle/nro/:nocompra', async (req, res) => {
+  try {
+    const { nocompra } = req.params;
+    const detalles = await CompraDetalle.find({ nocompra: nocompra.trim().toUpperCase() });
+    res.json({ success: true, count: detalles.length, data: detalles });
+  } catch (error) {
+    console.error('❌ Error GET /api/compras/detalle/nro/:nocompra:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener detalle de compra', error: error.message });
+  }
+});
+
+// POST: Reversión / Devolución de Compra (Maneja pago Efectivo / Crédito)
+app.post('/api/compras/reversal', async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { nocompra, motivo } = req.body;
+    if (!nocompra) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'Número de compra es requerido' });
+    }
+
+    const compra = await CompraHead.findOne({ nocompra: nocompra.trim().toUpperCase() }).session(session);
+    if (!compra) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+    }
+
+    if (compra.estado === 'REVERTIDO' || compra.estado === 'ANULADO') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: 'La compra ya ha sido revertida o anulada previamente' });
+    }
+
+    const detalles = await CompraDetalle.find({ nocompra: compra.nocompra }).session(session);
+
+    // 1. Revertir Stock en Inventarios
+    for (const item of detalles) {
+      await Inventariosede.findOneAndUpdate(
+        { idinventario: item.codproducto },
+        { $inc: { cantidispo: -item.cantidad } },
+        { session }
+      );
+    }
+
+    // 2. Lógica de Reversión según tipo de pago (Efectivo vs Crédito)
+    const esCredito = compra.formapago !== "01"; // Presumiendo '01' es contado/efectivo
+    
+    if (esCredito) {
+      // Ajustar saldo de cuenta por pagar del proveedor
+      compra.saldo = 0; 
+    }
+
+    compra.estado = 'REVERTIDO';
+    compra.observaciones = motivo ? `Revertido: ${motivo}` : 'Compra Revertida';
+    compra.fechaActualizacion = formatLocalYmd(new Date());
+    await compra.save({ session });
+
+    // 3. Registrar en Historial Devolución Proveedor
+    await Proveedor.findOneAndUpdate(
+      { idprov: compra.idprov },
+      { 
+        $inc: { compraprove: -compra.total },
+        $addToSet: { historialdevolucion: compra.nocompra }
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({
+      success: true,
+      message: `✅ Reversión procesada correctamente (${esCredito ? 'Crédito reajustado' : 'Efectivo revertido'})`,
+      data: compra
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('❌ Error POST /api/compras/reversal:', error);
+    res.status(500).json({ success: false, message: 'Error al procesar reversión de compra', error: error.message });
+  }
 });
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
