@@ -637,9 +637,6 @@ var Schemaheadcompra = new mongoose.Schema({
     detallecompra: {
         type : String
     },
-    imagencompra: {
-        type : String
-    },
     historialdevolucion: [String]
 });
 
@@ -4129,187 +4126,348 @@ app.delete('/api/compras/gastos/trans/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
     }
 });
+//%%%%%%%%%%%%%%%%%%%%%%% COMPRAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
+// ============================================================================
+// 🔹 RUTAS: COMPRAS HEAD & DETALLE
+// ============================================================================
 
-
-// GET: Listar Compras (Cabecera)
+// GET: Obtener todas las compras
 app.get('/api/compras/head', async (req, res) => {
-  try {
-    const { nocompra, idprov } = req.query;
-    let query = {};
-    if (nocompra) query.nocompra = { $regex: nocompra.trim(), $options: 'i' };
-    if (idprov) query.idprov = idprov.trim().toUpperCase();
-
-    const compras = await CompraHead.find(query).sort({ fechaCreacion: -1 });
-    res.json({ success: true, count: compras.length, data: compras });
-  } catch (error) {
-    console.error('❌ Error GET /api/compras/head:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener compras', error: error.message });
-  }
+    try {
+        const { nodocumento } = req.query;
+        const filter = {};
+        if (nodocumento?.trim()) {
+            filter.nodocumento = { $regex: nodocumento.trim(), $options: 'i' };
+        }
+        const compras = await ComprasHead.find(filter).sort({ fechadocumento: -1 });
+        res.json({ success: true, message: `${compras.length} compras encontradas`, data: compras });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/head:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
 });
 
-app.post('/api/compras', async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const { head, detalles } = req.body;
-    if (!head || !head.nocompra || !head.idprov || !Array.isArray(detalles) || detalles.length === 0) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ success: false, message: 'Datos incompletos de la compra' });
+// GET: Obtener compra por ID o Número de documento
+app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
+    try {
+        const { nodocumento } = req.params;
+        const compra = await ComprasHead.findOne({ nodocumento: nodocumento.trim() });
+        if (!compra) {
+            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+        }
+        res.json({ success: true, data: compra });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/head/nro:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
     }
-
-    const nocompraNorm = head.nocompra.trim().toUpperCase();
-    const existing = await CompraHead.findOne({ nocompra: nocompraNorm }).session(session);
-    if (existing) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(409).json({ success: false, message: 'La compra ya está registrada' });
-    }
-
-    const fechasistema = formatLocalYmd(new Date());
-
-    // 1. Guardar Cabecera
-    const nuevaCompraHead = new CompraHead({
-      ...head,
-      nocompra: nocompraNorm,
-      idprov: head.idprov.trim().toUpperCase(),
-      fechaCreacion: fechasistema,
-      fechaActualizacion: fechasistema
-    });
-    await nuevaCompraHead.save({ session });
-
-    // 2. Guardar Detalles e Incrementar Inventario / Actualizar costo2
-    const detallesPreparados = [];
-    for (const d of detalles) {
-      const codproductoNorm = d.codproducto.trim().toUpperCase();
-      detallesPreparados.push({
-        ...d,
-        nocompra: nocompraNorm,
-        idprov: head.idprov.trim().toUpperCase(),
-        codproducto: codproductoNorm
-      });
-
-      // Actualizar existencias y costo2 en Inventario
-      await Inventariosede.findOneAndUpdate(
-        { idinventario: codproductoNorm },
-        { 
-          $inc: { cantidispo: d.cantidad },
-          $set: { costo2: d.costo } // Actualizar campo costo2 con el nuevo costo
-        },
-        { session }
-      );
-    }
-
-    await CompraDetalle.insertMany(detallesPreparados, { session });
-
-    // 3. Registrar en historial del Proveedor
-    await Proveedor.findOneAndUpdate(
-      { idprov: head.idprov.trim().toUpperCase() },
-      { 
-        $inc: { compraprove: head.total || 0 },
-        $addToSet: { historialcompras: nocompraNorm }
-      },
-      { session }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.status(201).json({ success: true, message: '✅ Compra registrada exitosamente', data: nuevaCompraHead });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('❌ Error POST /api/compras:', error);
-    res.status(500).json({ success: false, message: 'Error al registrar la compra', error: error.message });
-  }
 });
 
-// GET: Detalle de una compra por N° Compra
-app.get('/api/compras/detalle/nro/:nocompra', async (req, res) => {
-  try {
-    const { nocompra } = req.params;
-    const detalles = await CompraDetalle.find({ nocompra: nocompra.trim().toUpperCase() });
-    res.json({ success: true, count: detalles.length, data: detalles });
-  } catch (error) {
-    console.error('❌ Error GET /api/compras/detalle/nro/:nocompra:', error);
-    res.status(500).json({ success: false, message: 'Error al obtener detalle de compra', error: error.message });
-  }
+// GET: Obtener detalle por número de documento
+app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
+    try {
+        const { nodocumento } = req.params;
+        const detalles = await CompraDetalle.find({ nodocumento: nodocumento.trim() });
+        res.json({ success: true, data: detalles });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/detalle/nro:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+// POST: Crear compra completa (Head + Detalles)
+app.post('/api/compras/completa', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+ try {
+       const { head, detalles } = req.body;
+
+        if (!head || !head.nodocumento || !head.codproveedor || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'Faltan datos obligatorios en la cabecera o detalle de la compra' });
+        }
+       const existing = await ComprasHead.findOne({ nodocumento: head.nodocumento }).session(session);
+        if (existing) {
+            await session.abortTransaction();
+            return res.status(409).json({ success: false, message: 'Ya existe una compra con este número de documento' });
+        }
+        const detallecompraJson = JSON.stringify(detalles.map(d => ({
+            codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
+            costo: d.costo, descuento: d.descuento, impuesto: d.impuesto,
+            subtotal: (d.cantidad || 1) * (d.costo || 0) * (1 - (d.descuento || 0) / 100),
+            unidad: d.unidad
+        })));
+        
+        var fechasistema = formatLocalYmd(new Date());
+         var workhora = new Date().toLocaleTimeString();
+        const nuevaCompraHead = await ComprasHead.create({
+            ...head,
+            nodocumento : head.nodocumento,
+            nofactura: head.nofactura,
+            fechadocumento:fechasistema,
+            fechafactura: head.fechafactura,
+            fechavencimiento: head.fechavencimiento,
+            codproveedor: head.codproveedor?.trim().toUpperCase() || '',
+            nombreproveedor: head.nombreproveedor?.trim().toUpperCase() || '',
+            rucproveedor: head.rucproveedor?.trim().toUpperCase() || '',
+            tipocompra: head.tipocompra?.trim().toUpperCase() || '',
+            transaccion: head.transaccion?.trim().toUpperCase() || '',
+            detallecompra: detallecompraJson,
+            estatuscompra: 'A',
+            condiciones : head.condiciones,
+            formapago : head.formapago,
+            subtotal1: 0, descuento : 0, saldo : 0, impuesto: 0, impuesto1 :0, impuesto2:0, impuesto3: 0, subtotal2: 0, total: 0
+        });
+
+//--------------------------------------------------------------------//
+if (Array.isArray(detalles) && detalles.length > 0) {
+            for (const item of detalles) {
+                // 🔹 Actualizar stock (cantidispo) y costo1 (costo promedio)
+                if (item.codproducto) {
+                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+                    if (itemInventario) {
+                        const cantActual = Number(itemInventario.cantidispo || 0);
+                        const costo1Actual = Number(itemInventario.costo1 || 0);
+                        const cantNueva = Number(item.cantidad || 0);
+                        const costoNuevo = Number(item.costo || 0);
+
+                        const totalCant = cantActual + cantNueva;
+
+                        // Cálculo del Costo Promedio (costo1)
+                        let nuevoCostoPromedio = costoNuevo;
+                        if (totalCant > 0) {
+                            nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
+                        }
+
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: item.codproducto },
+                            {
+                                $inc: { cantidispo: cantNueva },
+                                $set: {
+                                    costo1: Math.round(nuevoCostoPromedio * 10000) / 10000 // Costo Promedio siempre en costo1
+                                }
+                            },
+                            { session }
+                        );
+                    }
+                }
+            }
+        }
+
+//-------------------------------------------------------------------//
+        
+        const detallesPreparados = detalles.map(detalle => ({
+            ...detalle,
+            nodocumento : nuevaCompraHead.nodocumento,
+            nofactura: nuevaCompraHead.nofactura,
+            fechadocumento : fechasistema,
+            codproveedor : nuevaCompraHead.codproveedor,
+            codproducto: detalle.codproducto?.trim().toUpperCase(),
+            descripcion: detalle.descripcion?.trim().toUpperCase(),
+            detalle : detalle.detalle?.trim().toUpperCase(),
+            cantidad: Math.max(1, detalle.cantidad || 1),
+            costo: Math.max(0, detalle.costo || 0),
+            tarifa : Math.max(0, detalle.tarifa || 0),
+            hora : workhora,
+            impuesto : Math.max(0, detalle.impuesto || 0),
+            descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
+            subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
+            fechaCreacion: fechasistema
+        }));
+        
+        await CompraDetalle.insertMany(detallesPreparados);
+        const headActualizada = await ComprasHead.findById(nuevaCompraHead._id);
+        
+        res.status(201).json({ 
+            success: true, 
+            message: `✅ Compras Factura ${nuevaCompraHead.nofactura} creada con ${detalles.length} producto(s)`, 
+            data: headActualizada 
+        });
+
+        await session.commitTransaction();
+        res.status(201).json({
+            success: true,
+            message: '✅ Compra registrada e inventarios (Costo Promedio en costo1) actualizados exitosamente',
+            data: headGuardada,
+            detalles: detallesGuardados
+        });
+    } catch (error) {
+        console.error('❌ Error POST /api/ventas/facturas/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al crear factura completa', error: error.message });
+    }
 });
 
-// POST: Reversión / Devolución de Compra (Maneja pago Efectivo / Crédito)
-app.post('/api/compras/reversal', async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const { nocompra, motivo } = req.body;
-    if (!nocompra) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ success: false, message: 'Número de compra es requerido' });
+
+app.get('/api/compras/head/todos', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+        console.log(`📥 GET /api/compras/heads/todos: fechaInicial=${fechaInicial}, fechaFinal=${fechaFinal}`);
+        
+        let filter = {};
+
+        if (fechaInicial && fechaFinal) {
+            filter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+            console.log(`📅 compras Filtering by date range: ${fechaInicial} to ${fechaFinal}`);
+        } else if (fechaInicial) {
+            filter.fechafactura = { $gte: fechaInicial };
+            console.log(`📅 compras  Filtering from: ${fechaInicial}`);
+        } else if (fechaFinal) {
+            filter.fechafactura = { $lte: fechaFinal };
+            console.log(`📅 compras Filtering to: ${fechaFinal}`);
+        } else {
+            console.log(`📅 No date filter applied`);
+        }
+
+        console.log(`🔍 Final filter: ${JSON.stringify(filter)}`);
+        
+        const ListaCompras = await ComprasHead.find(filter).sort({ fechafactura: -1, createdAt: -1 });
+        
+        console.log(`✅ Found ${ListaCompras.length} compras encontradas`);
+        
+        if (ListaCompras.length > 0) {
+            console.log(`📋 First Compras: ${JSON.stringify(ListaCompras[0])}`);
+        }
+        
+        res.json({
+            success: true,
+            message: `${ListaCompras.length} Compra(s) encontrada(s)`,
+            data: ListaCompras
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/head/todos:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error del servidor', 
+            error: error.message 
+        });
     }
+});
 
-    const compra = await CompraHead.findOne({ nocompra: nocompra.trim().toUpperCase() }).session(session);
-    if (!compra) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+// PUT: Actualizar compra completa
+app.put('/api/compras/completa/:nodocumento', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { nodocumento } = req.params;
+        const { head, detalles } = req.body;
+
+        const headActual = await ComprasHead.findOne({ nodocumento }).session(session);
+        if (!headActual) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+        }
+
+        // Actualizar cabecera
+        const headActualizada = await ComprasHead.findOneAndUpdate(
+            { nodocumento },
+            { $set: head },
+            { new: true, session }
+        );
+
+        // Reemplazar detalles
+        await CompraDetalle.deleteMany({ nodocumento }).session(session);
+
+        const detallesGuardados = [];
+        if (Array.isArray(detalles) && detalles.length > 0) {
+            for (const item of detalles) {
+                const nuevoDetalle = new CompraDetalle({
+                    ...item,
+                    nodocumento
+                });
+                const dGuardado = await nuevoDetalle.save({ session });
+                detallesGuardados.push(dGuardado);
+
+                // 🔹 Recalcular Costo Promedio (costo1) y actualizar stock
+                if (item.codproducto) {
+                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+
+                    if (itemInventario) {
+                        const cantActual = Number(itemInventario.cantidispo || 0);
+                        const costo1Actual = Number(itemInventario.costo1 || 0);
+                        const cantNueva = Number(item.cantidad || 0);
+                        const costoNuevo = Number(item.costo || 0);
+
+                        const totalCant = cantActual + cantNueva;
+
+                        let nuevoCostoPromedio = costoNuevo;
+                        if (totalCant > 0) {
+                            nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
+                        }
+
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: item.codproducto },
+                            {
+                                $inc: { cantidispo: cantNueva },
+                                $set: {
+                                    costo1: Math.round(nuevoCostoPromedio * 10000) / 10000
+                                }
+                            },
+                            { session }
+                        );
+                    }
+                }
+            }
+        }
+
+        await session.commitTransaction();
+        res.json({
+            success: true,
+            message: '✅ Compra e inventarios actualizados exitosamente',
+            data: headActualizada,
+            detalles: detallesGuardados
+        });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('❌ Error PUT /api/compras/completa:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar compra', error: error.message });
+    } finally {
+        session.endSession();
     }
+});
 
-    if (compra.estado === 'REVERTIDO' || compra.estado === 'ANULADO') {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({ success: false, message: 'La compra ya ha sido revertida o anulada previamente' });
+// PUT: Anular Compra (Maneja reversión según tipo de pago Crédito vs Contado)
+app.put('/api/compras/anular/head/:id', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { id } = req.params;
+
+        const compra = await ComprasHead.findOne({
+            $or: [{ _id: mongoose.Types.ObjectId.isValid(id) ? id : null }, { nodocumento: id }]
+        }).session(session);
+
+        if (!compra) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+        }
+
+        // Marcar compra como anulada
+        compra.estatuscompra = 'ANULADA';
+        await compra.save({ session });
+
+        // 🔹 Revertir existencias agregadas previamente
+        const detalles = await CompraDetalle.find({ nodocumento: compra.nodocumento }).session(session);
+        for (const item of detalles) {
+            if (item.codproducto) {
+                await Inventariosede.findOneAndUpdate(
+                    { idinventario: item.codproducto },
+                    { $inc: { cantidispo: -(item.cantidad || 0) } },
+                    { session }
+                );
+            }
+        }
+
+        await session.commitTransaction();
+        res.json({ success: true, message: '🗑️ Compra anulada y stock revertido correctamente' });
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('❌ Error PUT /api/compras/anular/head:', error);
+        res.status(500).json({ success: false, message: 'Error al anular compra', error: error.message });
+    } finally {
+        session.endSession();
     }
-
-    const detalles = await CompraDetalle.find({ nocompra: compra.nocompra }).session(session);
-
-    // 1. Revertir Stock en Inventarios
-    for (const item of detalles) {
-      await Inventariosede.findOneAndUpdate(
-        { idinventario: item.codproducto },
-        { $inc: { cantidispo: -item.cantidad } },
-        { session }
-      );
-    }
-
-    // 2. Lógica de Reversión según tipo de pago (Efectivo vs Crédito)
-    const esCredito = compra.formapago !== "01"; // Presumiendo '01' es contado/efectivo
-    
-    if (esCredito) {
-      // Ajustar saldo de cuenta por pagar del proveedor
-      compra.saldo = 0; 
-    }
-
-    compra.estado = 'REVERTIDO';
-    compra.observaciones = motivo ? `Revertido: ${motivo}` : 'Compra Revertida';
-    compra.fechaActualizacion = formatLocalYmd(new Date());
-    await compra.save({ session });
-
-    // 3. Registrar en Historial Devolución Proveedor
-    await Proveedor.findOneAndUpdate(
-      { idprov: compra.idprov },
-      { 
-        $inc: { compraprove: -compra.total },
-        $addToSet: { historialdevolucion: compra.nocompra }
-      },
-      { session }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.json({
-      success: true,
-      message: `✅ Reversión procesada correctamente (${esCredito ? 'Crédito reajustado' : 'Efectivo revertido'})`,
-      data: compra
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error('❌ Error POST /api/compras/reversal:', error);
-    res.status(500).json({ success: false, message: 'Error al procesar reversión de compra', error: error.message });
-  }
 });
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
