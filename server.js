@@ -4148,7 +4148,6 @@ app.get('/api/compras/head', async (req, res) => {
     }
 });
 
-
 app.post("/api/compras/head", async (req, res) => {
   try {
     const { nodocumento } = req.body;
