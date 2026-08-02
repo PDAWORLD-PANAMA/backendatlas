@@ -693,6 +693,105 @@ var Schemadetacompra = new mongoose.Schema({
 
 const CompraDetalle = mongoose.model('Schemareccompradeta',Schemadetacompra);
 
+
+var Schemaheadcompracosto = new mongoose.Schema({
+    nodocumento: {
+        type : String
+    },
+    fechadocumento: {
+        type : String
+    },
+    fechafactura: {
+        type : String
+    },
+     nofactura: {
+        type : String
+    },
+    codproveedor:{
+        type: String
+    },
+    condiciones: {
+        type : String
+    },
+    formapago: {
+        type : String
+    },
+    descuento: {
+        type : Number
+    },
+    subtotal1: {
+        type : Number
+    },
+    impuesto1: {
+        type : Number
+    },
+    impuesto2: {
+        type : Number
+    },
+    impuesto3: {
+        type : Number
+    },
+    impuesto: {
+        type : Number
+    },
+    subtotal2: {
+        type : Number
+    },
+    total: {
+        type : Number
+    },
+    costoadicional: {
+        type : Number
+    },
+    saldo: {
+        type : Number
+    },
+    nombreproveedor: {
+        type : String
+    }
+});
+
+const CostoCompraHed = mongoose.model('Schemareccompracostohead',Schemaheadcompracosto);
+
+
+var Schemadetacompracosto = new mongoose.Schema({
+    nodocumento: {
+        type : String
+    },
+    fechadocumento: {
+        type : String
+    },
+    fechafactura: {
+        type : String
+    },
+    nofactura: {
+        type : String
+    },
+    codproducto:{
+        type: String
+    },
+    descripcion :{
+        type : String
+    },
+    costo: {
+        type : Number
+    },
+    descuento: {
+        type : Number
+    },
+    cantidad: {
+        type : Number
+    },
+    arancel : {
+        type : Number
+    },
+    impuesto : {
+      type : Number
+  }
+});
+
+const CostoCompraDetalle = mongoose.model('Schemareccompradetacosto',Schemadetacompracosto);
+
 // ✅ Helper para calcular subtotal de línea
   
 // ============================================================================
