@@ -4148,6 +4148,33 @@ app.get('/api/compras/head', async (req, res) => {
     }
 });
 
+
+app.post("/api/compras/head", async (req, res) => {
+  try {
+    const { nodocumento } = req.body;
+    if (!nodocumento) {
+      return res.status(400).json({ success: false, message: "El número de documento es obligatorio." });
+    }
+
+    const existing = await ComprasHead.findOne({ nodocumento });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "El documento ya existe." });
+    }
+
+    const newHead = new ComprasHead(req.body);
+    const savedHead = await newHead.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Cabecera de compra creada exitosamente",
+      data: savedHead
+    });
+  } catch (error) {
+    console.error("❌ Error POST /api/compras/head:", error);
+    res.status(500).json({ success: false, message: "Error del servidor", error: error.message });
+  }
+});
+
 // GET: Obtener compra por ID o Número de documento
 app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
     try {
