@@ -4131,7 +4131,37 @@ app.delete('/api/compras/gastos/trans/:id', async (req, res) => {
 // ============================================================================
 // 🔹 RUTAS: COMPRAS HEAD & DETALLE
 // ============================================================================
+// POST /api/compras/head
+// Esta es la ruta que llama Android al presionar "Continuar"
+app.post("/api/compras/head", async (req, res) => {
+  try {
+    const { nodocumento } = req.body;
 
+    // Validación básica
+    if (!nodocumento) {
+      return res.status(400).json({ success: false, message: "El número de documento es obligatorio." });
+    }
+
+    // Verificar si ya existe
+    const existing = await ComprasHead.findOne({ nodocumento });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "El documento ya existe." });
+    }
+
+    // Crear y guardar la cabecera
+    const newHead = new ComprasHead(req.body);
+    const savedHead = await newHead.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Cabecera de compra creada exitosamente",
+      data: savedHead
+    });
+  } catch (error) {
+    console.error("❌ Error POST /api/compras/head:", error);
+    res.status(500).json({ success: false, message: "Error del servidor", error: error.message });
+  }
+});
 // GET: Obtener todas las compras
 app.get('/api/compras/head', async (req, res) => {
     try {
@@ -4148,58 +4178,7 @@ app.get('/api/compras/head', async (req, res) => {
     }
 });
 
-app.post("/api/compras/head", async (req, res) => {
-  try {
-    const { nodocumento } = req.body;
-    if (!nodocumento) {
-      return res.status(400).json({ success: false, message: "El número de documento es obligatorio." });
-    }
 
-    const existing = await ComprasHead.findOne({ nodocumento });
-    if (existing) {
-      return res.status(409).json({ success: false, message: "El documento ya existe." });
-    }
-
-    const newHead = new ComprasHead(req.body);
-    const savedHead = await newHead.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Cabecera de compra creada exitosamente",
-      data: savedHead
-    });
-  } catch (error) {
-    console.error("❌ Error POST /api/compras/head:", error);
-    res.status(500).json({ success: false, message: "Error del servidor", error: error.message });
-  }
-});
-
-// GET: Obtener compra por ID o Número de documento
-app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
-    try {
-        const { nodocumento } = req.params;
-        const compra = await ComprasHead.findOne({ nodocumento: nodocumento.trim() });
-        if (!compra) {
-            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
-        }
-        res.json({ success: true, data: compra });
-    } catch (error) {
-        console.error('❌ Error GET /api/compras/head/nro:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
-
-// GET: Obtener detalle por número de documento
-app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
-    try {
-        const { nodocumento } = req.params;
-        const detalles = await CompraDetalle.find({ nodocumento: nodocumento.trim() });
-        res.json({ success: true, data: detalles });
-    } catch (error) {
-        console.error('❌ Error GET /api/compras/detalle/nro:', error);
-        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
-    }
-});
 // POST: Crear compra completa (Head + Detalles)
 app.post('/api/compras/completa', async (req, res) => {
     const session = await mongoose.startSession();
@@ -4368,6 +4347,35 @@ app.get('/api/compras/head/todos', async (req, res) => {
         });
     }
 });
+
+
+// GET: Obtener compra por ID o Número de documento
+app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
+    try {
+        const { nodocumento } = req.params;
+        const compra = await ComprasHead.findOne({ nodocumento: nodocumento.trim() });
+        if (!compra) {
+            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+        }
+        res.json({ success: true, data: compra });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/head/nro:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// GET: Obtener detalle por número de documento
+app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
+    try {
+        const { nodocumento } = req.params;
+        const detalles = await CompraDetalle.find({ nodocumento: nodocumento.trim() });
+        res.json({ success: true, data: detalles });
+    } catch (error) {
+        console.error('❌ Error GET /api/compras/detalle/nro:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
 
 // PUT: Actualizar compra completa
 app.put('/api/compras/completa/:nodocumento', async (req, res) => {
