@@ -4576,7 +4576,7 @@ app.put('/api/compras/anular/head/:id', async (req, res) => {
         }
 
         // Marcar compra como anulada
-        compra.estatuscompra = 'ANULADA';
+        compra.estatuscompra = 'E';
         await compra.save({ session });
 
         // 🔹 Revertir existencias agregadas previamente
