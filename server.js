@@ -4608,6 +4608,7 @@ app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
 
 
 // PUT: Actualizar compra completa
+// PUT: Actualizar compra completa
 app.put('/api/compras/completa/:nodocumento', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -4615,10 +4616,14 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
         const { nodocumento } = req.params;
         const { head, detalles } = req.body;
 
+        // 🔹 Definir fecha y hora local antes de procesar los bloques
+        const fechasistema = formatLocalYmd(new Date());
+        const workhora = new Date().toLocaleTimeString();
+
         const headActual = await ComprasHead.findOne({ nodocumento }).session(session);
         if (!headActual) {
             await session.abortTransaction();
-            return res.status(404).json({ success: false, message: 'Compra no encontrada vomplete nodocumento ' });
+            return res.status(404).json({ success: false, message: 'Compra no encontrada con nodocumento' });
         }
 
         // Actualizar cabecera
@@ -4672,17 +4677,15 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
                 }
             }
         }
-//%%%%%%%%%%%%%%%%%%%%%%%%%%  CREAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
- if (Array.isArray(detalles) && detalles.length > 0) {
+        //%%%%%%%%%%%%%%%%%%%%%%%%%% CREAR / ACTUALIZAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+        if (Array.isArray(detalles) && detalles.length > 0) {
             for (const item of detalles) {
                 if (item.codproducto) {
                     const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
                     
                     if (itemInventario) {
-                        const cantActual = Number(itemInventario.cantidispo || 0);
                         const costo1Actual = Number(itemInventario.costo1 || 0);
-                        
                         const cantNueva = Number(item.cantidad || 0);
                         const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
 
@@ -4714,14 +4717,15 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
                                         fechatransaccion: fechasistema,
                                         horatransaccion: workhora
                                     }
-                                }
+                                },
+                                { session }
                             );
                         }
                     }
                 }
             }
         }
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+        //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
         await session.commitTransaction();
         res.json({
@@ -4783,6 +4787,8 @@ app.put('/api/compras/anular/head/:id', async (req, res) => {
         session.endSession();
     }
 });
+
+
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
