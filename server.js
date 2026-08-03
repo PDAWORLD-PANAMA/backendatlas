@@ -4672,6 +4672,56 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
                 }
             }
         }
+//%%%%%%%%%%%%%%%%%%%%%%%%%%  CREAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+
+ if (Array.isArray(detalles) && detalles.length > 0) {
+            for (const item of detalles) {
+                if (item.codproducto) {
+                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+                    
+                    if (itemInventario) {
+                        const cantActual = Number(itemInventario.cantidispo || 0);
+                        const costo1Actual = Number(itemInventario.costo1 || 0);
+                        
+                        const cantNueva = Number(item.cantidad || 0);
+                        const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
+
+                        // Verificar existencia en CostoDifer
+                        const registroExistente = await CostoDifer.findOne({ codproducto: item.codproducto }).session(session);
+
+                        if (!registroExistente) {
+                            const nuevoCostoDifer = new CostoDifer({
+                                codproducto: itemInventario.idinventario || item.codproducto,
+                                descripcion: itemInventario.inventarionombre || item.descripcion || '',
+                                cantidad: cantNueva,
+                                costonvo: costoNuevo,
+                                costoant: costo1Actual,
+                                nuevocosto: costoNuevo,
+                                fechatransaccion: fechasistema,
+                                horatransaccion: workhora
+                            });
+
+                            await nuevoCostoDifer.save({ session });
+                        } else {
+                            await CostoDifer.findOneAndUpdate(
+                                { codproducto: item.codproducto },
+                                {
+                                    $set: {
+                                        cantidad: cantNueva,
+                                        costonvo: costoNuevo,
+                                        costoant: costo1Actual,
+                                        nuevocosto: costoNuevo,
+                                        fechatransaccion: fechasistema,
+                                        horatransaccion: workhora
+                                    }
+                                }
+                            );
+                        }
+                    }
+                }
+            }
+        }
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
         await session.commitTransaction();
         res.json({
