@@ -4458,7 +4458,7 @@ app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
         }
         res.json({ success: true, data: compra });
     } catch (error) {
-        console.error('❌ Error GET /api/compras/head/nro:', error);
+        console.error('❌ Error GET /api/compras/head/nro:nodocumento', error);
         res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
     }
 });
@@ -4470,7 +4470,7 @@ app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
         const detalles = await CompraDetalle.find({ nodocumento: nodocumento.trim() });
         res.json({ success: true, data: detalles });
     } catch (error) {
-        console.error('❌ Error GET /api/compras/detalle/nro:', error);
+        console.error('❌ Error GET /api/compras/detalle/nro:nodocumento ', error);
         res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
     }
 });
@@ -4487,7 +4487,7 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
         const headActual = await ComprasHead.findOne({ nodocumento }).session(session);
         if (!headActual) {
             await session.abortTransaction();
-            return res.status(404).json({ success: false, message: 'Compra no encontrada' });
+            return res.status(404).json({ success: false, message: 'Compra no encontrada vomplete nodocumento ' });
         }
 
         // Actualizar cabecera
