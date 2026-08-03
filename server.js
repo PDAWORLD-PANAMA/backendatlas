@@ -4310,36 +4310,47 @@ app.get('/api/compras/head', async (req, res) => {
 
 
 // POST: Crear compra completa (Head + Detalles)
+// POST: Crear compra completa (Head + Detalles + Inventario + CostoDifer)
 app.post('/api/compras/completa', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
 
- try {
-       const { head, detalles } = req.body;
+    try {
+        const { head, detalles } = req.body;
 
         if (!head || !head.nodocumento || !head.codproveedor || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
             await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ success: false, message: 'Faltan datos obligatorios en la cabecera o detalle de la compra' });
         }
-       const existing = await ComprasHead.findOne({ nodocumento: head.nodocumento }).session(session);
+
+        const existing = await ComprasHead.findOne({ nodocumento: head.nodocumento }).session(session);
         if (existing) {
             await session.abortTransaction();
+            session.endSession();
             return res.status(409).json({ success: false, message: 'Ya existe una compra con este número de documento' });
         }
+
         const detallecompraJson = JSON.stringify(detalles.map(d => ({
-            codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
-            costo: d.costo, descuento: d.descuento, impuesto: d.impuesto,
+            codproducto: d.codproducto,
+            descripcion: d.descripcion,
+            cantidad: d.cantidad,
+            costo: d.costo,
+            descuento: d.descuento,
+            impuesto: d.impuesto,
             subtotal: (d.cantidad || 1) * (d.costo || 0) * (1 - (d.descuento || 0) / 100),
             unidad: d.unidad
         })));
         
         var fechasistema = formatLocalYmd(new Date());
-         var workhora = new Date().toLocaleTimeString();
-        const nuevaCompraHead = await ComprasHead.create({
+        var workhora = new Date().toLocaleTimeString();
+
+        // 1. Guardar ComprasHead
+        const nuevaCompraHead = await ComprasHead.create([{
             ...head,
-            nodocumento : head.nodocumento,
+            nodocumento: head.nodocumento,
             nofactura: head.nofactura,
-            fechadocumento:fechasistema,
+            fechadocumento: fechasistema,
             fechafactura: head.fechafactura,
             fechavencimiento: head.fechavencimiento,
             codproveedor: head.codproveedor?.trim().toUpperCase() || '',
@@ -4349,126 +4360,125 @@ app.post('/api/compras/completa', async (req, res) => {
             transaccion: head.transaccion?.trim().toUpperCase() || '',
             detallecompra: detallecompraJson,
             estatuscompra: 'A',
-            condiciones : head.condiciones,
-            formapago : head.formapago,
-            subtotal1: 0, descuento : 0, saldo : 0, impuesto: 0, impuesto1 :0, impuesto2:0, impuesto3: 0, subtotal2: 0, total: 0
-        });
+            condiciones: head.condiciones,
+            formapago: head.formapago,
+            subtotal1: 0, descuento: 0, saldo: 0, impuesto: 0, impuesto1: 0, impuesto2: 0, impuesto3: 0, subtotal2: 0, total: 0
+        }], { session });
 
-// WITHOUT SESSION (Direct Execution)
-//--------------------------------------------------------------------//
-if (Array.isArray(detalles) && detalles.length > 0) {
-    for (const item of detalles) {
-        if (item.codproducto) {
-            // 🔹 Buscar inventario directamente sin session
-            const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto });
-            
-            if (itemInventario) {
-                const cantActual = Number(itemInventario.cantidispo || 0);
-                const costo1Actual = Number(itemInventario.costo1 || 0);
-                
-                const cantNueva = Number(item.cantidad || 0);
-                const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
+        // 2. Procesar Inventario y CostoDifer
+        if (Array.isArray(detalles) && detalles.length > 0) {
+            for (const item of detalles) {
+                if (item.codproducto) {
+                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+                    
+                    if (itemInventario) {
+                        const cantActual = Number(itemInventario.cantidispo || 0);
+                        const costo1Actual = Number(itemInventario.costo1 || 0);
+                        
+                        const cantNueva = Number(item.cantidad || 0);
+                        const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
 
-                const totalCant = cantActual + cantNueva;
+                        const totalCant = cantActual + cantNueva;
 
-                let nuevoCostoPromedio = costoNuevo;
-                if (totalCant > 0) {
-                    nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
-                }
-
-                // 1. Actualizar inventario
-                await Inventariosede.findOneAndUpdate(
-                    { idinventario: item.codproducto },
-                    {
-                        $inc: { cantidispo: cantNueva },
-                        $set: {
-                            costo1: Math.round(nuevoCostoPromedio * 10000) / 10000
+                        let nuevoCostoPromedio = costoNuevo;
+                        if (totalCant > 0) {
+                            nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
                         }
-                    }
-                );
 
-                // 2. Verificar existencia en CostoDifer
-                const registroExistente = await CostoDifer.findOne({ codproducto: item.codproducto });
+                        // Actualizar inventario (Stock y costo1)
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: item.codproducto },
+                            {
+                                $inc: { cantidispo: cantNueva },
+                                $set: {
+                                    costo1: Math.round(nuevoCostoPromedio * 10000) / 10000
+                                }
+                            },
+                            { session }
+                        );
 
-                if (!registroExistente) {
-                    // SI NO EXISTE: Guardar nuevo
-                    const nuevoCostoDifer = new CostoDifer({
-                        codproducto: itemInventario.idinventario || item.codproducto,
-                        descripcion: itemInventario.inventarionombre || item.descripcion || '',
-                        cantidad: cantNueva,
-                        costonvo: costoNuevo,
-                        costoant: costo1Actual,
-                        nuevocosto: costoNuevo,
-                        fechatransaccion: fechasistema,
-                        horatransaccion: workhora
-                    });
+                        // Verificar existencia en CostoDifer
+                        const registroExistente = await CostoDifer.findOne({ codproducto: item.codproducto }).session(session);
 
-                    await nuevoCostoDifer.save();
-                } else {
-                    // SI EXISTE: Actualizar existente
-                    await CostoDifer.findOneAndUpdate(
-                        { codproducto: item.codproducto },
-                        {
-                            $set: {
+                        if (!registroExistente) {
+                            const nuevoCostoDifer = new CostoDifer({
+                                codproducto: itemInventario.idinventario || item.codproducto,
+                                descripcion: itemInventario.inventarionombre || item.descripcion || '',
                                 cantidad: cantNueva,
                                 costonvo: costoNuevo,
                                 costoant: costo1Actual,
                                 nuevocosto: costoNuevo,
                                 fechatransaccion: fechasistema,
                                 horatransaccion: workhora
-                            }
+                            });
+
+                            await nuevoCostoDifer.save({ session });
+                        } else {
+                            await CostoDifer.findOneAndUpdate(
+                                { codproducto: item.codproducto },
+                                {
+                                    $set: {
+                                        cantidad: cantNueva,
+                                        costonvo: costoNuevo,
+                                        costoant: costo1Actual,
+                                        nuevocosto: costoNuevo,
+                                        fechatransaccion: fechasistema,
+                                        horatransaccion: workhora
+                                    }
+                                },
+                                { session }
+                            );
                         }
-                    );
+                    }
                 }
             }
         }
-    }
-}
-//-------------------------------------------------------------------//
 
-//-------------------------------------------------------------------//
-        
+        // 3. Preparar e Insertar CompraDetalle
         const detallesPreparados = detalles.map(detalle => ({
             ...detalle,
-            nodocumento : nuevaCompraHead.nodocumento,
-            nofactura: nuevaCompraHead.nofactura,
-            fechadocumento : fechasistema,
-            codproveedor : nuevaCompraHead.codproveedor,
+            nodocumento: head.nodocumento,
+            nofactura: head.nofactura,
+            fechadocumento: fechasistema,
+            codproveedor: head.codproveedor,
             codproducto: detalle.codproducto?.trim().toUpperCase(),
             descripcion: detalle.descripcion?.trim().toUpperCase(),
-            detalle : detalle.detalle?.trim().toUpperCase(),
+            detalle: detalle.detalle?.trim().toUpperCase(),
             cantidad: Math.max(1, detalle.cantidad || 1),
             costo: Math.max(0, detalle.costo || 0),
-            tarifa : Math.max(0, detalle.tarifa || 0),
-            hora : workhora,
-            impuesto : Math.max(0, detalle.impuesto || 0),
+            tarifa: Math.max(0, detalle.tarifa || 0),
+            hora: workhora,
+            impuesto: Math.max(0, detalle.impuesto || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
-            subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
+            subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.costo || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
             fechaCreacion: fechasistema
         }));
-        
-        await CompraDetalle.insertMany(detallesPreparados);
-        const headActualizada = await ComprasHead.findById(nuevaCompraHead._id);
-        
-        res.status(201).json({ 
-            success: true, 
-            message: `✅ Compras Factura ${nuevaCompraHead.nofactura} creada con ${detalles.length} producto(s)`, 
-            data: headActualizada 
-        });
 
+        const detallesGuardados = await CompraDetalle.insertMany(detallesPreparados, { session });
+
+        // 4. Confirmar transacción
         await session.commitTransaction();
-        res.status(201).json({
+        session.endSession();
+
+        // 5. UNA SOLA RESPUESTA FINAL
+        return res.status(201).json({
             success: true,
-            message: '✅ Compra registrada e inventarios (Costo Promedio en costo1) actualizados exitosamente',
-            data: headGuardada,
+            message: `✅ Compras Factura ${head.nofactura} e inventarios actualizados exitosamente`,
+            data: nuevaCompraHead[0],
             detalles: detallesGuardados
         });
+
     } catch (error) {
-        console.error('❌ Error POST /api/ventas/facturas/completa:', error);
-        res.status(500).json({ success: false, message: 'Error al crear factura completa', error: error.message });
+        await session.abortTransaction();
+        session.endSession();
+        console.error('❌ Error POST /api/compras/completa:', error);
+        return res.status(500).json({ 
+            success: false, 
+            message: 'Error al crear la compra completa', 
+            error: error.message 
+        });
     }
 });
-
 
 app.get('/api/compras/head/todos', async (req, res) => {
     try {
