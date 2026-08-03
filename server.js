@@ -792,6 +792,37 @@ var Schemadetacompracosto = new mongoose.Schema({
 
 const CostoCompraDetalle = mongoose.model('Schemareccompradetacosto',Schemadetacompracosto);
 
+var Schemacostodifereport = new mongoose.Schema({
+    codproducto: {
+        type : String
+    },
+    descripcion: {
+        type : String
+    },
+    cantidad: {
+        type : Number
+    },
+    costonvo: {
+        type : Number
+    },
+    costoant: {
+        type : Number
+    },
+    id : {
+      type: mongoose.Schema.Types.ObjectId 
+    },
+    nuevocosto: {
+        type : Number
+    },
+    fechatransaccion: {
+        type : String
+    },
+    horatransaccion: {
+        type : String
+    }
+});
+const CostoDifer  = mongoose.model('Schemarecdcostodiferente',Schemacostodifereport);
+
 // ✅ Helper para calcular subtotal de línea
   
 // ============================================================================
@@ -4324,39 +4355,74 @@ app.post('/api/compras/completa', async (req, res) => {
         });
 
 //--------------------------------------------------------------------//
+//--------------------------------------------------------------------//
 if (Array.isArray(detalles) && detalles.length > 0) {
-            for (const item of detalles) {
-                // 🔹 Actualizar stock (cantidispo) y costo1 (costo promedio)
-                if (item.codproducto) {
-                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
-                    if (itemInventario) {
-                        const cantActual = Number(itemInventario.cantidispo || 0);
-                        const costo1Actual = Number(itemInventario.costo1 || 0);
-                        const cantNueva = Number(item.cantidad || 0);
-                        const costoNuevo = Number(item.costo || 0);
+    for (const item of detalles) {
+        // 🔹 Actualizar stock (cantidispo) y costo1 (costo promedio)
+        if (item.codproducto) {
+            const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+            if (itemInventario) {
+                const cantActual = Number(itemInventario.cantidispo || 0);
+                const costo1Actual = Number(itemInventario.costo1 || 0);
+                const cantNueva = Number(item.cantidad || 0);
+                const costoNuevo = Number(item.costo || 0);
 
-                        const totalCant = cantActual + cantNueva;
+                const totalCant = cantActual + cantNueva;
 
-                        // Cálculo del Costo Promedio (costo1)
-                        let nuevoCostoPromedio = costoNuevo;
-                        if (totalCant > 0) {
-                            nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
+                // Cálculo del Costo Promedio (costo1)
+                let nuevoCostoPromedio = costoNuevo;
+                if (totalCant > 0) {
+                    nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
+                }
+
+                await Inventariosede.findOneAndUpdate(
+                    { idinventario: item.codproducto },
+                    {
+                        $inc: { cantidispo: cantNueva },
+                        $set: {
+                            costo1: Math.round(nuevoCostoPromedio * 10000) / 10000 // Costo Promedio siempre en costo1
                         }
+                    },
+                    { session }
+                );
 
-                        await Inventariosede.findOneAndUpdate(
-                            { idinventario: item.codproducto },
-                            {
-                                $inc: { cantidispo: cantNueva },
-                                $set: {
-                                    costo1: Math.round(nuevoCostoPromedio * 10000) / 10000 // Costo Promedio siempre en costo1
-                                }
-                            },
-                            { session }
-                        );
-                    }
+                // 🔹 Buscar / Insertar / Actualizar Registro en CostoDifer (Schemarecdcostodiferente)
+                const registroCostoDifer = await CostoDifer.findOne({ codproducto: item.codproducto }).session(session);
+
+                if (!registroCostoDifer) {
+                    // Si NO existe, crear un nuevo registro
+                    const nuevoCostoDifer = new CostoDifer({
+                        codproducto: itemInventario.idinventario || item.codproducto,
+                        descripcion: itemInventario.inventarionombre || item.descripcion || '',
+                        cantidad: cantNueva,
+                        costonvo: costoNuevo,
+                        costoant: costo1Actual,
+                        nuevocosto: costoNuevo,
+                        fechatransaccion: fechasistema,
+                        horatransaccion: workhora
+                    });
+
+                    await nuevoCostoDifer.save({ session });
+                } else {
+                    // Si SÍ existe, actualizar los campos correspondientes
+                    await CostoDifer.findOneAndUpdate(
+                        { codproducto: item.codproducto },
+                        {
+                            $set: {
+                                costonvo: costoNuevo,
+                                costoant: costo1Actual,
+                                fechatransaccion: fechasistema,
+                                horatransaccion: workhora
+                            }
+                        },
+                        { session }
+                    );
                 }
             }
         }
+    }
+}
+//-------------------------------------------------------------------//
 
 //-------------------------------------------------------------------//
         
