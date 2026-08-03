@@ -4354,43 +4354,44 @@ app.post('/api/compras/completa', async (req, res) => {
             subtotal1: 0, descuento : 0, saldo : 0, impuesto: 0, impuesto1 :0, impuesto2:0, impuesto3: 0, subtotal2: 0, total: 0
         });
 
-//--------------------------------------------------------------------//
+// WITHOUT SESSION (Direct Execution)
 //--------------------------------------------------------------------//
 if (Array.isArray(detalles) && detalles.length > 0) {
     for (const item of detalles) {
-        // 🔹 Actualizar stock (cantidispo) y costo1 (costo promedio)
         if (item.codproducto) {
-            const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+            // 🔹 Buscar inventario directamente sin session
+            const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto });
+            
             if (itemInventario) {
                 const cantActual = Number(itemInventario.cantidispo || 0);
                 const costo1Actual = Number(itemInventario.costo1 || 0);
+                
                 const cantNueva = Number(item.cantidad || 0);
-                const costoNuevo = Number(item.costo || 0);
+                const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
 
                 const totalCant = cantActual + cantNueva;
 
-                // Cálculo del Costo Promedio (costo1)
                 let nuevoCostoPromedio = costoNuevo;
                 if (totalCant > 0) {
                     nuevoCostoPromedio = ((cantActual * costo1Actual) + (cantNueva * costoNuevo)) / totalCant;
                 }
 
+                // 1. Actualizar inventario
                 await Inventariosede.findOneAndUpdate(
                     { idinventario: item.codproducto },
                     {
                         $inc: { cantidispo: cantNueva },
                         $set: {
-                            costo1: Math.round(nuevoCostoPromedio * 10000) / 10000 // Costo Promedio siempre en costo1
+                            costo1: Math.round(nuevoCostoPromedio * 10000) / 10000
                         }
-                    },
-                    { session }
+                    }
                 );
 
-                // 🔹 Buscar / Insertar / Actualizar Registro en CostoDifer (Schemarecdcostodiferente)
-                const registroCostoDifer = await CostoDifer.findOne({ codproducto: item.codproducto }).session(session);
+                // 2. Verificar existencia en CostoDifer
+                const registroExistente = await CostoDifer.findOne({ codproducto: item.codproducto });
 
-                if (!registroCostoDifer) {
-                    // Si NO existe, crear un nuevo registro
+                if (!registroExistente) {
+                    // SI NO EXISTE: Guardar nuevo
                     const nuevoCostoDifer = new CostoDifer({
                         codproducto: itemInventario.idinventario || item.codproducto,
                         descripcion: itemInventario.inventarionombre || item.descripcion || '',
@@ -4402,20 +4403,21 @@ if (Array.isArray(detalles) && detalles.length > 0) {
                         horatransaccion: workhora
                     });
 
-                    await nuevoCostoDifer.save({ session });
+                    await nuevoCostoDifer.save();
                 } else {
-                    // Si SÍ existe, actualizar los campos correspondientes
+                    // SI EXISTE: Actualizar existente
                     await CostoDifer.findOneAndUpdate(
                         { codproducto: item.codproducto },
                         {
                             $set: {
+                                cantidad: cantNueva,
                                 costonvo: costoNuevo,
                                 costoant: costo1Actual,
+                                nuevocosto: costoNuevo,
                                 fechatransaccion: fechasistema,
                                 horatransaccion: workhora
                             }
-                        },
-                        { session }
+                        }
                     );
                 }
             }
