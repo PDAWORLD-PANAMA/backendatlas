@@ -4514,6 +4514,42 @@ app.get('/api/compras/head/todos', async (req, res) => {
 });
 
 
+// ============================================================================
+// 🔹 RUTAS: COSTO DIFERENTE REPORT - OBTENER REGISTROS POR FECHAS
+// ============================================================================
+app.get('/api/compras/costodifer', async (req, res) => {
+  try {
+    const { fechaInicial, fechaFinal } = req.query;
+    let filter = {};
+
+    if (fechaInicial && fechaFinal) {
+      filter.fechatransaccion = {
+        $gte: fechaInicial,
+        $lte: fechaFinal
+      };
+    } else if (fechaInicial) {
+      filter.fechatransaccion = { $gte: fechaInicial };
+    } else if (fechaFinal) {
+      filter.fechatransaccion = { $lte: fechaFinal };
+    }
+
+    const registros = await CostoDifer.find(filter).sort({ fechatransaccion: -1, horatransaccion: -1 });
+
+    res.json({
+      success: true,
+      message: `${registros.length} registro(s) encontrado(s)`,
+      data: registros
+    });
+  } catch (error) {
+    console.error('❌ Error GET /api/compras/costodifer:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al obtener reporte de costos diferentes',
+      error: error.message
+    });
+  }
+});
+
 // GET: Obtener compra por ID o Número de documento
 app.get('/api/compras/head/nro/:nodocumento', async (req, res) => {
     try {
