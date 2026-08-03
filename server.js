@@ -4396,6 +4396,24 @@ app.post('/api/compras/completa', async (req, res) => {
                             },
                             { session }
                         );
+                    }
+                }
+            }
+        }
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%  CREAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+
+ if (Array.isArray(detalles) && detalles.length > 0) {
+            for (const item of detalles) {
+                if (item.codproducto) {
+                    const itemInventario = await Inventariosede.findOne({ idinventario: item.codproducto }).session(session);
+                    
+                    if (itemInventario) {
+                        const cantActual = Number(itemInventario.cantidispo || 0);
+                        const costo1Actual = Number(itemInventario.costo1 || 0);
+                        
+                        const cantNueva = Number(item.cantidad || 0);
+                        const costoNuevo = Number(item.costo1 !== undefined ? item.costo1 : (item.costo || 0));
 
                         // Verificar existencia en CostoDifer
                         const registroExistente = await CostoDifer.findOne({ codproducto: item.codproducto }).session(session);
@@ -4425,15 +4443,14 @@ app.post('/api/compras/completa', async (req, res) => {
                                         fechatransaccion: fechasistema,
                                         horatransaccion: workhora
                                     }
-                                },
-                                { session }
+                                }
                             );
                         }
                     }
                 }
             }
         }
-
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
         // 3. Preparar e Insertar CompraDetalle
         const detallesPreparados = detalles.map(detalle => ({
             ...detalle,
