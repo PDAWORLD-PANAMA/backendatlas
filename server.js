@@ -2864,11 +2864,11 @@ if ( diffInDays <= 3 ) {
             });
         }
 
-        return res.status(200).json({
-            success: true,
-            message: "Factura Anulada exitosamente",
-            data: updatedCotizacion
-        });
+         return res.status(200).json({
+             success: true,
+             message: "Factura Anulada exitosamente",
+             data: updatedFacturaAnular // <--- CORREGIDO
+         });
       }
     } catch (error) {
         console.error("❌ Error Anular Factura :", error);
@@ -3594,7 +3594,7 @@ app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
         const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
         if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
         
-        factura.estado = 'Anulada';
+        factura.estado = 'E';
         await factura.save();
         
         res.json({ success: true, message: `Factura anulada. Motivo: ${motivo}`, data: factura });
@@ -4801,84 +4801,6 @@ app.put('/api/compras/anular/head/:id', async (req, res) => {
 // 🔹 HELPERS INTERNOS (CORREGIDOS Y SEGUROS)
 // Reemplaza TODAS las funciones anteriores de Grabaelcufe, fdescuentapac y facumulavendedor
 // ============================================================================
-
-async function Grabaelcufe(montoreten, fenundocfiscal, cufeHandle, qrHandle, wfechaEmision, wfechaSalida, codigoHandle, msgHandle, fecharecepHandle, protocoloHandle, optel, telcliente, baseclienteuno) {
-    try {
-        const cleanQrHandle = qrHandle ? qrHandle.replace(/amp;/g, '') : '';
-
-        // 1. Actualizar la factura usando el modelo FacturaHead YA DEFINIDO en server.js
-        await FacturaHead.findOneAndUpdate(
-            { nofactura: fenundocfiscal },
-            {
-                facturaelectronica: cufeHandle,
-                facturaqr: cleanQrHandle,
-                fechaEmision: wfechaEmision,
-                fechaSalida: wfechaSalida,
-                fechadgiauto: fecharecepHandle,
-                autorizandgi: protocoloHandle, // Corregido: el schema usa 'autorizandgi'
-                montoretencion: parseFloat(montoreten) || 0,
-                estado: 'Aceptada'
-            }
-        );
-        console.log("✅ Factura actualizada con datos de DGI:", fenundocfiscal);
-
-        // 2. Ejecutar funciones auxiliares de forma segura (sin bloquear el flujo si fallan)
-        try { await fdescuentapac(); } catch (e) { console.warn("⚠️ fdescuentapac falló:", e.message); }
-        try { await facumulavendedor(fenundocfiscal); } catch (e) { console.warn("⚠️ facumulavendedor falló:", e.message); }
-
-        // NOTA: Las funciones de impresión y audio no están definidas en este archivo. 
-        // Las omitimos con un log para evitar el crash (Error 500).
-        console.log("ℹ️ Funciones de impresión/audio omitidas (no definidas en server.js)");
-
-    } catch (error) {
-        console.error("❌ Error crítico en Grabaelcufe:", error);
-        // No rechazamos la promesa para no bloquear la respuesta 200 al cliente si solo falló el post-proceso
-    }
-}
-
-function fdescuentapac() {
-    return new Promise(async (resolve) => {
-        try {
-            console.log("Dentro de descuenta folios Pac");
-            // Usamos el modelo EmpresaConfig YA DEFINIDO en server.js
-            const doc = await EmpresaConfig.findOne({});
-            if (doc && doc.nofoliospac > 0) {
-                doc.nofoliospac -= 1;
-                await doc.save();
-                console.log("✅ Folios PAC actualizados:", doc.nofoliospac);
-            }
-            resolve();
-        } catch (error) {
-            console.error("❌ Error en fdescuentapac:", error);
-            resolve(); // Resolvemos para no romper el flujo principal
-        }
-    });
-}
-
-function facumulavendedor(fenundocfiscal) {
-    return new Promise(async (resolve) => {
-        try {
-            console.log("Acumula Ventas Vendedor");
-            // Usamos los modelos YA DEFINIDOS en server.js (Corregido el typo Facturahead -> FacturaHead)
-            const factura = await FacturaHead.findOne({ nofactura: fenundocfiscal });
-            if (!factura || !factura.codvendedor) {
-                console.log("ℹ️ No hay vendedor o factura para acumular");
-                return resolve();
-            }
-
-            // Sumar el total de la factura al vendedor usando $inc
-            await Vendedor.findOneAndUpdate(
-                { idvendedor: factura.codvendedor },
-                { $inc: { ventasvende: factura.total || 0 } }
-            );
-            console.log("✅ Ventas acumuladas para vendedor:", factura.codvendedor);
-            resolve();
-        } catch (error) {
-            console.error("❌ Error en facumulavendedor:", error);
-            resolve(); // Resolvemos para no romper el flujo principal
-        }
-    });
-}
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 async function actualizarTotalesCabecera(nocotiza) {
