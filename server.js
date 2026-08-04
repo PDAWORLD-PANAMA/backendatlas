@@ -2778,31 +2778,39 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
         const dayjs = require('dayjs');
         let today = dayjs();
         const { nofactura, codcliente, fechafactura } = req.body;
+        
         if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
             return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
         }
-        const clienterecord = await Cliente.findOne({idcliente:codcliente});
 
+        // ✅ CORRECCIÓN: Buscar el cliente de forma segura
+        const clienterecord = await Cliente.findOne({ idcliente: codcliente.trim().toUpperCase() });
+        
         var fechasistema = formatLocalYmd(new Date());
         const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
         if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+
         const newHead = await FacturaHead.create({
             ...req.body,
             nofactura: nofactura.trim().toUpperCase(),
             codcliente: codcliente.trim().toUpperCase(),
             nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
             ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
-            correocliefe : clienterecord.emailcliente,
-            naturalezaoperacion : '01',
-            digitoverificadoruc : clienterecord.digitoverificador,
-            codvendedor: clienterecord.vendedorcliente,
+            
+            // ✅ CORRECCIÓN: Usar optional chaining (?.) para evitar el crash si clienterecord es null
+            correocliefe: clienterecord?.emailcliente || '',
+            naturalezaoperacion: '01',
+            digitoverificadoruc: clienterecord?.digitoverificador || '',
+            codvendedor: clienterecord?.vendedorcliente || req.body.codvendedor?.trim().toUpperCase() || '',
+            
             tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-            estado: 'A',
+            estado: 'A', // O 'Pendiente' según tu flujo
             fechaCreacion: fechasistema,
-            fechaEmision : today.format(),
-            fechaSalida :  today.format(),
+            fechaEmision: today.format(),
+            fechaSalida: today.format(),
             fechaActualizacion: fechasistema,
         });
+
         res.status(201).json({ success: true, message: '✅ Cabecera de factura creada', data: newHead });
     } catch (error) {
         console.error('❌ Error POST /api/ventas/facturas/head:', error);
@@ -2810,7 +2818,6 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al crear factura', error: error.message });
     }
 });
-
 // ───────── OBTENER FACTURA POR NÚMERO ─────────
 app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
     try {
@@ -3600,34 +3607,7 @@ app.get('/api/ventas/facturas/head', async (req, res) => {
 });
 
 // ───────── CREAR CABECERA DE FACTURA ─────────
-app.post('/api/ventas/facturas/head', async (req, res) => {
-    try {
-        const { nofactura, codcliente, fechafactura } = req.body;
-        if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
-            return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
-        }
-        var fechasistema = formatLocalYmd(new Date());
-        const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
-        if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
-        const newHead = await FacturaHead.create({
-            ...req.body,
-            nofactura: nofactura.trim().toUpperCase(),
-            codcliente: codcliente.trim().toUpperCase(),
-            nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
-            ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
-            codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
-            tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-            estado: 'Pendiente',
-            fechaCreacion: fechasistema,
-            fechaActualizacion: fechasistema,
-        });
-        res.status(201).json({ success: true, message: '✅ Cabecera de factura creada', data: newHead });
-    } catch (error) {
-        console.error('❌ Error POST /api/ventas/facturas/head:', error);
-        if (error.code === 11000) return res.status(409).json({ success: false, message: '❌ El número de factura ya está registrado' });
-        res.status(500).json({ success: false, message: 'Error al crear factura', error: error.message });
-    }
-});
+
 
 // ───────── OBTENER FACTURA POR NÚMERO ─────────
 app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
