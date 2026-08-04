@@ -4818,27 +4818,6 @@ async function Grabaelcufe(montoreten, fenundocfiscal, cufeHandle, qrHandle, wfe
             })
             .then(() => {
                 console.log("Numero de Factura :", fenundocfiscal);
-                // Step 2: Generate PDF
-                if (parseInt(docadicional[0]?.parm20) == 2) {
-                    try{
-                        if (optel == "1") {
-                           return fimprimeprinter(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente);
-                        }
-                        if (optel == "2") {
-                      setTimeout(function() {
-                        return  fimprimecomprobante(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente,baseclienteuno);
-                     }, 25000);  
-                        }
-                    }catch (error) {
-                        console.error("Error: registro no encontrado imprimiendo en thermal printer  ", error);
-                      }                 
-                     }
- //*******//                    
- if (parseInt(docadicional[0]?.parm20) == 1) {
-                return fimprimecomprobante(fenundocfiscal, codigoHandle, msgHandle, cufeHandle, qrHandle, fecharecepHandle, protocoloHandle, optel, telcliente,baseclienteuno);
-                     }
-            })
-            .then(() => {
                 // Step 3: Run post-PDF operations
                 return Promise.all([
                     fdescuentapac(),
@@ -4881,6 +4860,196 @@ async function Grabaelcufe(montoreten, fenundocfiscal, cufeHandle, qrHandle, wfe
     });
 }
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+function fdescuentapac() {
+    return new Promise((resolve, reject) => {       
+        console.log("Dentro de descuenta foliso Pac")
+ const empresaSchema = new mongoose.Schema({
+  empresa: { type: String, required: true, trim: true },
+  rucempresa: { type: String, required: true, unique: true, trim: true },
+  dir1empresa: { type: String, trim: true },
+  dir2empresa: { type: String, trim: true },
+  telefonoempresa: { type: String, trim: true },
+  emailempresa: { type: String, lowercase: true, trim: true },
+  faxempresa: { type: String, trim: true },
+  webempresa: { type: String, trim: true },
+  countordencompra: { type: String, default: "0" },
+  countfactura: { type: String, default: "0" },
+  countnotacredito: { type: String, default: "0" },
+  countcompras: { type: String, default: "0" },
+  countcxcobrar: { type: String, default: "0" },
+  countcxpagar: { type: String, default: "0" },
+  countdevolu: { type: String, default: "0" },
+  countctacorriente: { type: String, default: "0" },
+  countgastos: { type: String, default: "0" },
+  countrequisi: { type: String, default: "0" },
+  countdespacho: { type: String, default: "0" },
+  countdeposito: { type: String, default: "0" },
+  countrecnotas: { type: String, default: "0" },
+  countranspagonotas: { type: String, default: "0" },
+  interescxc: { type: String, default: "0" },
+  sistemaprecio: { type: String, default: "1" },
+  sistemavendedor: { type: String, default: "1" },
+  tipodefactura: { type: String, default: "1" },
+  codigosucemisor: { type: String, trim: true },
+  tokenempresa: { type: String, trim: true },
+  tokenclave: { type: String, trim: true },
+  nofoliospac: { type: Number, default: 0 },
+  firmadigitalemision: { type: String, trim: true },
+  firmadigitalexpira: { type: String, trim: true },
+  vigencialicencia: { type: String, trim: true }
+}, { timestamps: true });
+
+const EmpresaConfig = mongoose.model('EmpresaConfig', empresaSchema);
+
+        EmpresaConfig.find().then(docsempre => {
+            var foliopac = docsempre[0].nofoliospac;
+            var logid = docsempre[0]._id;
+            var resultadopac = parseFloat(foliopac) - 1;
+            return EmpresaConfig.updateOne({ _id: logid }, { nofoliospac: parseInt(resultadopac) });
+        })
+        .then(() => {
+            console.log("Update folios pac");
+            resolve();
+        })
+        .catch(reject);
+    });
+}
+
+//
+function facumulavendedor(fenundocfiscal) {
+    return new Promise((resolve, reject) => {
+       
+        console.log("Acumula Ventas Vendedor ")
+        var Vendedorschema = mongoose.Schema;
+// Los campos del Schema deben tener el mismo name, que dice el form de datos a capturar
+//
+const facturaSchema = new mongoose.Schema({
+   nofactura: { type: String},
+    facturaelectronica:{ type:String},
+    facturaqr:{ type:String },
+    fechafactura:{ type:String },
+    fechavencimiento:{ type:String},
+    fechainicial:{ type:String },
+    fechafinal:{ type:String},
+    procesoalquiler:{ type:String},
+    fechaEmision:{ type:String},
+    fechaSalida:{ type:String},
+    duraciondias:{ type :Number},
+    retenedor:{ type :String},
+    montoretencion: { type : Number},
+    codcliente:{type : String},
+    idglobalcorporp:{ type : String},
+    globalnombre :{ type : String },
+    tipoclientefe:{ type : String },
+    correocliefe : {type: String },
+    naturalezaoperacion : { type : String },
+    tipooperacion : {type : String},
+    destinooperacion : { type : String },
+    formatocafe : { type : String },
+    entregacafe : { type : String },
+    enviocontenedor : { type : String },
+    procesogeneracion : { type : String},
+    ruccliente : { type :  String},
+    digitoverificadoruc : { type : String},
+    codigosucemisor: { type :String},
+    tiposucursal: { type : String},
+    tipoemision: { type :String},
+    tipodocumento: { type :String},
+    puntodefacturacion: { type :  String},
+    tipoventa: { type :String},
+    razonsocial: { type : String},
+    direccioncontribuyente: { type : String},
+    provincia: { type : String},
+    distrito: { type : String},
+    corregimiento: { type : String},
+    pais: { type :String},
+    paisotro: { type :String},
+    ubicacionid: { type : String},
+    tipoidclientefe: { type : String},
+    numeroidextranjero: { type :String},
+    telefonowhatsapp: { type :String },
+    codigoubicacion: { type :String},
+    tipoidentificacion: { type :String},
+    identificacionextranjero:{ type : String},
+    paisextranjero: { type : String},
+    codicionesentrega: { type : String},
+    monedaexportacion: { type :String},
+    modenaexportanodef: { type :String},
+    tipodecambio:{ type :  String},
+    monedaextranjera: { type : String},
+    fechaemisiondocreferenciado: { type :String},
+    cufereferenciado: { type :String},
+    nrofacturapapel: { type :String},
+    nofacturaimpfiscal: { type : String},
+    tipocontribuyente: { type :String},
+    codvendedor: { type :String},
+    condiciones: { type :String},
+    consignacion: { type :String},
+    formapago: { type :String},
+    descuento: { type : Number},
+    subtotal1: { type : Number},
+    cotiitbms: { type :String},
+    impuesto: { type : Number},
+    impuesto1: { type : Number},
+    impuesto2: { type : Number},
+    impuesto3: { type : Number},
+    subtotal2: { type : Number},
+    total: { type : Number},
+    saldo: { type : Number},
+    entregado: { type : Number},
+    cambio: { type : Number},
+    clasefactura: { type : String},
+    nombreclie: { type :String},
+    seriefiscal: { type : String},
+    detallefactura: { type :String},
+    fechadgiauto: { type : String},
+    autorizandgi: { type : String},
+    imagen:{ type : String},
+    centrocosto: { type :String},
+    historialnotacredito : [String],
+    historialnotacambio: [String],
+    historialnotadebito: [String],
+    clasecliente: { type : String},
+    estado: { type : String },
+    fechaCreacion: { type : String},
+    fechaActualizacion: { type : String}
+}) 
+const FacturaHead = mongoose.model('FacturaHead', facturaSchema);
+
+var SchemadelVendedor = new Vendedorschema({
+    idvendedor: { type : String },
+    vendenombre: { type : String, uppercase: true },
+   tipovendedor: { type : String},
+   dir1vende: { type : String, uppercase: true },
+   dir2vende: { type : String, uppercase: true },
+   telvende: { type : String },
+   emailvende: { type : String },
+   ventasvende: { type : Number }
+});
+const Vendedor = mongoose.model('Vendedor', SchemadelVendedor);
+
+        Promise.all([
+           Facturahead.find({ nofactura: fenundocfiscal }),
+            Vendedor.find()
+        ])
+        .then(([Recdeventas, RecdeVendedores]) => {
+            // ... your accumulation logic ...
+            var buscavendedor = Recdeventas[0]?.codvendedor;
+            var totalacumula = 0;
+            for (var x = 0; x < Recdeventas.length; x++) {
+                totalacumula += parseFloat(Recdeventas[x].total || 0);
+            }
+            return Vendedor.updateOne(
+                { idvendedor: buscavendedor },
+                { ventasvende: parseFloat(totalacumula) }
+            );
+        })
+        .then(() => resolve())
+        .catch(reject);
+    });
+}
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 async function actualizarTotalesCabecera(nocotiza) {
   try {
     const porcentajeImpuesto = ITBMS_PORCENTAJE;
