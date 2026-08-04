@@ -2775,10 +2775,14 @@ app.get('/api/ventas/facturas/head', async (req, res) => {
 // ───────── CREAR CABECERA DE FACTURA ─────────
 app.post('/api/ventas/facturas/head', async (req, res) => {
     try {
+        const dayjs = require('dayjs');
+        let today = dayjs();
         const { nofactura, codcliente, fechafactura } = req.body;
         if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
             return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
         }
+        const clienterecord = await Cliente.findOne({idcliente:req.body.codcliente});
+
         var fechasistema = formatLocalYmd(new Date());
         const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
         if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
@@ -2788,10 +2792,15 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
             codcliente: codcliente.trim().toUpperCase(),
             nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
             ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
-            codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
+            correocliefe : clienterecord.emailcliente,
+            naturalezaoperacion : '01',
+            digitoverificadoruc : clienterecord.digitoverificador,
+            codvendedor: clienterecord.vendedorcliente,
             tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-            estado: 'Pendiente',
+            estado: 'A',
             fechaCreacion: fechasistema,
+            fechaEmision : today.format(),
+            fechaSalida :  today.format(),
             fechaActualizacion: fechasistema,
         });
         res.status(201).json({ success: true, message: '✅ Cabecera de factura creada', data: newHead });
