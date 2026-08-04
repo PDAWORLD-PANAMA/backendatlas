@@ -2784,11 +2784,12 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
         }
 
         // ✅ CORRECCIÓN: Buscar el cliente de forma segura
-        const clienterecord = await Cliente.findOne({ idcliente: codcliente.trim().toUpperCase() });
-        
+             
         var fechasistema = formatLocalYmd(new Date());
         const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
         if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
+        const clienterecord = await Cliente.findOne({ idcliente: codcliente.trim().toUpperCase() });
+        
 
         const newHead = await FacturaHead.create({
             ...req.body,
@@ -2798,10 +2799,10 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
             ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
             
             // ✅ CORRECCIÓN: Usar optional chaining (?.) para evitar el crash si clienterecord es null
-            correocliefe: clienterecord?.emailcliente || '',
+            correocliefe: clienterecord?.emailcliente || 'pdaworldfdwpanama@yahoo.com',
             naturalezaoperacion: '01',
-            digitoverificadoruc: clienterecord?.digitoverificador || '',
-            codvendedor: clienterecord?.vendedorcliente || req.body.codvendedor?.trim().toUpperCase() || '',
+            digitoverificadoruc: clienterecord?.digitoverificador || '00',
+            codvendedor: clienterecord?.vendedorcliente || req.body.codvendedor?.trim().toUpperCase() || '0123',
             
             tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
             estado: 'A', // O 'Pendiente' según tu flujo
