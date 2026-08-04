@@ -3532,40 +3532,7 @@ console.log("MENSAJE: ", msgHandle);
 if (codigoHandle !== "200") {
     console.error("❌ SOAP Response Body (Error de TheFactory):", body);
 }
-                if (codigoHandle === "200") {
-                    let wfechaEmision = new Date().toISOString().slice(0, 10);
-                    let wfechaSalida = new Date().toISOString().slice(0, 10);
-
-                    if (typeof Grabaelcufe === 'function') {
-                        await Grabaelcufe(
-                            montoreten,
-                            fenundocfiscal,
-                            cufeHandle,
-                            qrHandle,
-                            wfechaEmision,
-                            wfechaSalida,
-                            codigoHandle,
-                            msgHandle,
-                            fecharecepHandle,
-                            protocoloHandle,
-                            head.telefonocliente || '',
-                            head.telefonocliente || ''
-                        );
-                    }
-
-                    return resolve({
-                        codigo: codigoHandle,
-                        mensaje: msgHandle,
-                        cufe: cufeHandle,
-                        qr: qrHandle,
-                        protocolo: protocoloHandle
-                    });
-                } else {
-                    const err = new Error(`SOAP Error ${codigoHandle}: ${msgHandle}`);
-                    err.codigo = codigoHandle;
-                    err.mensaje = msgHandle;
-                    return reject(err);
-                }
+                
             });
         });
 
