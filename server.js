@@ -2781,7 +2781,7 @@ app.post('/api/ventas/facturas/head', async (req, res) => {
         if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
             return res.status(400).json({ success: false, message: 'N° Factura, Cliente y Fecha son obligatorios' });
         }
-        const clienterecord = await Cliente.findOne({idcliente:req.body.codcliente});
+        const clienterecord = await Cliente.findOne({idcliente:codcliente});
 
         var fechasistema = formatLocalYmd(new Date());
         const exists = await FacturaHead.findOne({ nofactura: nofactura.trim().toUpperCase() });
