@@ -2758,70 +2758,69 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
 // ============================================================================
 
 // ───────── LISTAR FACTURAS ─────────
-// ───────── CREAR CABECERA DE FACTURA (100% INDEPENDIENTE) ─────────
-app.post('/api/ventas/facturas/head', async (req, res) => {
-    try {
-        const dayjs = require('dayjs');
-        let today = dayjs();
-        const { nofactura, codcliente, fechafactura } = req.body;
-        
-        // 1. Validación estricta
-        if (!nofactura?.trim() || !codcliente?.trim() || !fechafactura?.trim()) {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'N° Factura, Cliente y Fecha son obligatorios' 
-            });
-        }
+// ============================================================================
+// 🔹 RUTAS: FACTURA HEAD (ELECTRÓNICA)
+// ============================================================================
 
-        const nofacturaUpper = nofactura.trim().toUpperCase();
-        const codclienteUpper = codcliente.trim().toUpperCase();
-
-        // 2. Verificar si ya existe
-        const exists = await FacturaHead.findOne({ nofactura: nofacturaUpper });
-        if (exists) {
-            return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
-        }
-
-        const fechasistema = formatLocalYmd(new Date());
-
-        // 3. Crear la factura usando SOLO los datos que envía el frontend (req.body)
-        // Esto elimina la necesidad de consultar la tabla de Clientes y evita cualquier crash.
-        const newHead = await FacturaHead.create({
-            ...req.body, // Incluye todos los campos que Android envía (nombreclie, ruccliente, codvendedor, etc.)
-            nofactura: nofacturaUpper,
-            codcliente: codclienteUpper,
-            nombreclie: req.body.nombreclie?.trim().toUpperCase() || 'CLIENTE GENERAL',
-            ruccliente: req.body.ruccliente?.trim().toUpperCase() || '000000000',
-            codvendedor: req.body.codvendedor?.trim().toUpperCase() || '0000',
-            correocliefe: req.body.correocliefe?.trim() || '',
-            naturalezaoperacion: req.body.naturalezaoperacion || '01',
-            digitoverificadoruc: req.body.digitoverificadoruc || '00',
-            tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '1',
-            estado: 'Pendiente',
-            fechaCreacion: fechasistema,
-            fechaEmision: today.format(),
-            fechaSalida: today.format(),
-            fechaActualizacion: fechasistema,
-        });
-
-        console.log('✅ Factura creada exitosamente:', newHead.nofactura);
-        res.status(201).json({ 
-            success: true, 
-            message: '✅ Cabecera de factura creada exitosamente', 
-            data: newHead 
-        });
-    } catch (error) {
-        console.error('❌ Error POST /api/ventas/facturas/head:', error);
-        if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: '❌ El número de factura ya está registrado' });
-        }
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error interno al crear factura', 
-            error: error.message 
-        });
+app.get("/api/ventas/facturas/head", async (req, res) => {
+  try {
+    const { nofactura } = req.query;
+    let query = {};
+    if (nofactura) {
+      query.nofactura = { $regex: nofactura, $options: "i" };
     }
+    const facturas = await FacturaHead.find(query).sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      message: `${facturas.length} factura(s) encontrada(s)`,
+      data: facturas
+    });
+  } catch (error) {
+    console.error("❌ Error GET /api/ventas/facturas/head:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor al obtener facturas",
+      error: error.message
+    });
+  }
 });
+
+app.post("/api/ventas/facturas/head", async (req, res) => {
+  try {
+    const data = { ...req.body };
+    const fechaISO = new Date().toISOString();
+
+    // Asegurar valores predeterminados para campos de control
+    if (!data.fechaCreacion) data.fechaCreacion = fechaISO;
+    if (!data.fechaActualizacion) data.fechaActualizacion = fechaISO;
+    if (!data.estado) data.estado = "A";
+
+    // Sanitizar numéricos si vienen nulos o indefinidos
+    data.subtotal1 = data.subtotal1 || 0.0;
+    data.subtotal2 = data.subtotal2 || 0.0;
+    data.impuesto = data.impuesto || 0.0;
+    data.total = data.total || 0.0;
+    data.descuento = data.descuento || 0.0;
+
+    const nuevaFacturaHead = new FacturaHead(data);
+    const guardada = await nuevaFacturaHead.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Cabecera de factura creada exitosamente",
+      data: guardada
+    });
+  } catch (error) {
+    console.error("❌ Error POST /api/ventas/facturas/head:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error interno al crear cabecera de factura: " + error.message,
+      error: error.message
+    });
+  }
+});
+//***************************************************************//
+
 app.get('/api/ventas/facturas/head', async (req, res) => {
     try {
         const { nofactura, codcliente } = req.query;
