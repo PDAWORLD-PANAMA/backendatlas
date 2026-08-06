@@ -3350,7 +3350,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         
         // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
         const facturaActualizada = await FacturaHead.findByIdAndUpdate(
-            head._id,
+            factura._id,
             {
                 $set: {
                     facturaelectronica: resultadoSOAP.cufeHandle,
