@@ -3315,44 +3315,53 @@ app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => 
         let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
 
         // 4. EJECUTAR LLAMADA SOAP (CORREGIDO: La promesa ahora resuelve correctamente)
- const resultadoSOAP = await new Promise((resolve, reject) => {
-            const options = {
-                url: 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc',
-                method: 'POST',
-                body: xmlenviar,
-                headers: {
-                    'User-agent': 'NODEJS',
-                    'Content-Type': 'text/xml;charset=utf-8',
-                    'SOAPAction': "http://tempuri.org/IService/Enviar"
-                }
-            };
+          let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc'
 
-            request(options, (error, response, body) => {
-                if (error) return reject(error);
-                if (response.statusCode !== 200) return reject(new Error(`SOAP Status: ${response.statusCode}`));
-
-                const extractTag = (xml, tag) => {
-                    const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
-                    const match = xml.match(regex);
-                    return match ? match[1].trim() : "";
-                };
-
-                resolve({
-                    cufeHandle: extractTag(body, "cufe"),
-                    qrHandle: extractTag(body, "qr").replace(/amp;/g, ''),
-                    codigoHandle: extractTag(body, "codigo"),
-                    msgHandle: extractTag(body, "mensaje"),
-                    fecharecepHandle: extractTag(body, "fechaRecepcionDGI"),
-                    protocoloHandle: extractTag(body, "nroProtocoloAutorizacion")
-                });
-            });
+        const soapResponse = await fetch(soapUrl, {
+            method: 'POST',
+            body: xmlenviar,
+            headers: {
+                'User-Agent': 'NODEJS-FETCH',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'SOAPAction': 'http://tempuri.org/IService/Enviar'
+            }
         });
 
-        // 3. VALIDAR Y ACTUALIZAR USANDO findByIdAndUpdate (MÁS EFICIENTE)
-        const today = new Date().toISOString().slice(0, 10);
+        if (!soapResponse.ok) {
+            throw new Error(`SOAP failed with status ${soapResponse.status}: ${soapResponse.statusText}`);
+        }
+
+        const bodyXml = await soapResponse.text();
         
+        // Parsear respuesta XML
+        const extractTag = (xml, tag) => {
+            const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+            const match = xml.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const resultadoSOAP = {
+            cufeHandle: extractTag(bodyXml, "cufe"),
+            qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
+            codigoHandle: extractTag(bodyXml, "codigo"),
+            msgHandle: extractTag(bodyXml, "mensaje"),
+            fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
+            protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
+        };
+
+        console.log("CUFE:", resultadoSOAP.cufeHandle);
+        console.log("CODIGO:", resultadoSOAP.codigoHandle);
+        console.log("MENSAJE:", resultadoSOAP.msgHandle);
+
+        if (resultadoSOAP.codigoHandle !== "200") {
+            console.error("❌ SOAP Response Body (Error de TheFactory):", bodyXml);
+        }
+
+        // 3. ACTUALIZAR EN MONGODB ATLAS (Usando findByIdAndUpdate)
+        const today = new Date().toISOString().slice(0, 10);
+
         if (resultadoSOAP.codigoHandle === "200") {
-            // ✅ ACTUALIZACIÓN DIRECTA EN BD - Sin cargar el documento completo
+            // ✅ ÉXITO: Guardar CAE, QR y estado en Atlas
             const facturaActualizada = await FacturaHead.findByIdAndUpdate(
                 factura._id,
                 {
@@ -3364,32 +3373,24 @@ app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => 
                         fechadgiauto: resultadoSOAP.fecharecepHandle,
                         autorizandgi: resultadoSOAP.protocoloHandle,
                         montoretencion: parseFloat(montoreten) || 0,
-                        estado: 'Aceptada',
-                        fechaActualizacion: new Date().toISOString()
+                        estado: 'A',
+                        fechaActualizacion: new Date().toISOString().slice(0, 10)
                     }
                 },
-                { 
-                    new: true,           // Devuelve el documento actualizado
-                    runValidators: true  // Ejecuta validaciones del schema
-                }
+                { new: true, runValidators: true }
             );
 
-            if (!facturaActualizada) {
-                return res.status(404).json({ success: false, message: 'Factura no encontrada para actualizar' });
-            }
-
-            return res.json({ 
-                success: true, 
-                message: 'Factura aceptada por TheFactory', 
+            return res.status(200).json({
+                success: true,
+                message: 'Factura electrónica aceptada por TheFactory',
                 data: facturaActualizada,
                 cae: resultadoSOAP.cufeHandle,
-                qr: resultadoSOAP.qrHandle,
-                protocolo: resultadoSOAP.protocoloHandle
+                qr: resultadoSOAP.qrHandle
             });
-            
+
         } else {
-            // Si TheFactory la rechaza
-            const facturaRechazada = await FacturaHead.findByIdAndUpdate(
+            // ❌ RECHAZADA: Guardar estado de error
+            await FacturaHead.findByIdAndUpdate(
                 factura._id,
                 {
                     $set: {
@@ -3399,22 +3400,26 @@ app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => 
                         fechaActualizacion: new Date().toISOString()
                     }
                 },
-                { new: true, runValidators: true }
+                { new: true }
             );
-            
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Rechazada por TheFactory', 
-                error: resultadoSOAP.msgHandle, 
-                codigo: resultadoSOAP.codigoHandle,
-                data: facturaRechazada
+
+            return res.status(400).json({
+                success: false,
+                message: 'Rechazada por TheFactory',
+                error: resultadoSOAP.msgHandle,
+                codigo: resultadoSOAP.codigoHandle
             });
         }
 
     } catch (error) {
-        console.error('❌ Error enviar-facttory:', error);
-        res.status(500).json({ success: false, message: 'Error al enviar a Facttory', error: error.message });
+        console.error('❌ Error enviar-Thefactory:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error interno al procesar la factura electrónica',
+            error: error.message
+        });
     }
+ 
 });
 // ───────── ANULAR FACTURA ─────────
 app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
