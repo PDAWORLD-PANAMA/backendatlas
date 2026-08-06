@@ -823,7 +823,6 @@ var Schemacostodifereport = new mongoose.Schema({
     }
 });
 const CostoDifer  = mongoose.model('Schemarecdcostodiferente',Schemacostodifereport);
-const request = require("request"); // Asegúrate de tenerlo al inicio de tu server.js
 const dayjs = require('dayjs');
 
 // ✅ Helper para calcular subtotal de línea
