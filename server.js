@@ -2554,7 +2554,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       ruccliente: head.ruccliente?.trim().toUpperCase(),
       codvendedor: head.codvendedor?.trim().toUpperCase(),
       detallecoti: detallecotiJson,
-      activo: "S",
+      activo: "A",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2602,7 +2602,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     // Buscar si la cotización ya existe
     let existingHead = await CotizaHead.findOne({ 
       nocotiza: nocotizaUpper,
-      $or: [{ activo: "S" }]
+      $or: [{ activo: "A" }]
     });
     
     let headFinal;
@@ -2627,7 +2627,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         codvendedor: head.codvendedor?.trim().toUpperCase() || '',
         tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
         detallecoti: detallecotiJson,
-        activo: "S",
+        activo: "A",
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
@@ -2740,7 +2740,8 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
       },
       items: detalles.map(d => ({
         codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
-        unidad: d.unidad, precio: d.precio, descuento: d.descuento, subtotal: d.subtotal
+        precio: d.precio, descuento: d.descuento, subtotal: d.subtotal,
+         unidad: d.unidad
       })),
       totales: { subtotal: head.subtotal1, descuento: head.descuentoglob, impuesto: head.impuesto, total: head.total },
       metadata: { generado: fechasistema, empresa: process.env.EMPRESA_NOMBRE || 'ERP Bipymes' }
@@ -2970,7 +2971,9 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
             precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
             subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
-            unidad: d.unidad
+             unidad: d.unidad, impuesto: d.impuesto, impuesto1 : d.impuesto1, impuesto2 : d.impuesto2,
+             impuesto3 : d.impuesto3, modelo : d.modelo, pormayor : d.pormayor, tasaisc : d.tasaisc,
+             codigobienes : d.codigobienes, fechafabricacion : d.fechafabricacion, fechaexpiracion : d.fechaexpiracion
         })));
         
         var fechasistema = formatLocalYmd(new Date());
@@ -2994,6 +2997,16 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             nofactura: nuevaHead.nofactura,
             codproducto: detalle.codproducto?.trim().toUpperCase(),
             descripcion: detalle.descripcion?.trim().toUpperCase(),
+             impuesto: detalle.impuesto || 0,
+                        impuesto1: detalle.impuesto1 || 0,
+                        impuesto2: detalle.impuesto2 || 0,
+                        impuesto3: detalle.impuesto3 || 0,
+                        pormayor: detalle.pormayor || 0,
+                        unidad: detalle.unidad || 'UND',
+                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        fechafabricacion : detalle.fechafabricacion,
+                        fechaexpiracion : detalle.fechaexpiracion,
+                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
             cantidad: Math.max(1, detalle.cantidad || 1),
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
@@ -3036,7 +3049,9 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
                 precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
                 subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
-                unidad: d.unidad
+                 unidad: d.unidad, impuesto: d.impuesto, impuesto1 : d.impuesto1, impuesto2 : d.impuesto2,
+             impuesto3 : d.impuesto3, modelo : d.modelo, pormayor : d.pormayor, tasaisc : d.tasaisc,
+             codigobienes : d.codigobienes, fechafabricacion : d.fechafabricacion, fechaexpiracion : d.fechaexpiracion
             })));
             headFinal = await FacturaHead.create({
                 ...head,
@@ -3089,8 +3104,17 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         precio: Math.max(0, detalle.precio || 0),
                         descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
                         impuesto: detalle.impuesto || 0,
-                        subtotal: subtotalCalculado,
+                        impuesto1: detalle.impuesto1 || 0,
+                        impuesto2: detalle.impuesto2 || 0,
+                        impuesto3: detalle.impuesto3 || 0,
+                        pormayor: detalle.pormayor || 0,
                         descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
+                         unidad: detalle.unidad || 'UNIDAD',
+                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        fechafabricacion : detalle.fechafabricacion,
+                        fechaexpiracion : detalle.fechaexpiracion,
+                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
+                        subtotal: subtotalCalculado,
                         fechaActualizacion: fechasistema
                     }
                 });
@@ -3102,9 +3126,18 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     cantidad: Math.max(1, detalle.cantidad || 1),
                     precio: Math.max(0, detalle.precio || 0),
                     descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
-                    impuesto: detalle.impuesto || 0,
+                     impuesto: detalle.impuesto || 0,
+                        impuesto1: detalle.impuesto1 || 0,
+                        impuesto2: detalle.impuesto2 || 0,
+                        impuesto3: detalle.impuesto3 || 0,
+                        pormayor: detalle.pormayor || 0,
+                        descripcion: detalle.descripcion?.trim().toUpperCase(),
+                         unidad: detalle.unidad || 'UNIDAD',
+                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        fechafabricacion : detalle.fechafabricacion,
+                        fechaexpiracion : detalle.fechaexpiracion,
+                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
                     subtotal: subtotalCalculado,
-                    unidad: detalle.unidad || 'UNIDAD',
                     fechaCreacion: fechasistema
                 });
             }
@@ -3359,7 +3392,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                     fechaSalida: today,
                     fechadgiauto: resultadoSOAP.fecharecepHandle,
                     autorizandgi: resultadoSOAP.protocoloHandle,
-                    estado: 'Aceptada',
+                    estado: 'A',
                     fechaActualizacion: new Date().toISOString()
                 }
             },
@@ -3374,7 +3407,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         });
     } else {
         // Si TheFactory la rechaza
-        await FacturaHead.findByIdAndUpdate(head._id, { $set: { estado: 'Rechazada' } });
+        await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
         return res.status(400).json({
             success: false,
             message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
@@ -3498,7 +3531,9 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
             precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
             subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
-            unidad: d.unidad
+            unidad: d.unidad, impuesto: d.impuesto, impuesto1 : d.impuesto1, impuesto2 : d.impuesto2,
+             impuesto3 : d.impuesto3, modelo : d.modelo, pormayor : d.pormayor, tasaisc : d.tasaisc,
+             codigobienes : d.codigobienes, fechafabricacion : d.fechafabricacion, fechaexpiracion : d.fechaexpiracion
         })));
         
         var fechasistema = formatLocalYmd(new Date());
@@ -3511,7 +3546,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             codvendedor: head.codvendedor?.trim().toUpperCase() || '',
             tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
             detallefactura: detallefacturaJson,
-            estado: 'Pendiente',
+            estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
             subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
