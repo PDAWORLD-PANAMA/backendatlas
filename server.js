@@ -3135,7 +3135,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
 // ============================================================================
 // 🔹 ENVIAR FACTURA ELECTRÓNICA A FACTTORY CORP (SOAP - CORREGIDO Y FUNCIONAL)
 // ============================================================================
-app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => {
+app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const nofacturaUpper = nofactura.toUpperCase();
