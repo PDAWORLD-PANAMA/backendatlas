@@ -2754,11 +2754,6 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
 });
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LLAMADAS DE LAS FACTURAS DE VENTAS %%%%%%%%%%%%%%%%%
-
-// ============================================================================
-// 🔹 RUTAS: FACTURAS ELECTRÓNICAS
-// ============================================================================
-
 // ───────── LISTAR FACTURAS ─────────
 // ============================================================================
 // 🔹 RUTAS: FACTURA HEAD (ELECTRÓNICA)
@@ -3050,7 +3045,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 precio: d.precio, descuento: d.descuento, impuesto: d.impuesto,
                 subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
                  unidad: d.unidad, impuesto: d.impuesto, impuesto1 : d.impuesto1, impuesto2 : d.impuesto2,
-             impuesto3 : d.impuesto3, modelo : d.modelo, pormayor : d.pormayor, tasaisc : d.tasaisc,
+             impuesto3 : d.impuesto3, modelo : d.modelo, pormayor : d.pormayor, tasaisc : d.tasaisc,detventa: d.detventa?.toString() || '1',
              codigobienes : d.codigobienes, fechafabricacion : d.fechafabricacion, fechaexpiracion : d.fechaexpiracion
             })));
             headFinal = await FacturaHead.create({
@@ -3115,6 +3110,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         fechaexpiracion : detalle.fechaexpiracion,
                         codigobienes : detalle.codigobienes?.trim().toUpperCase(),
                         subtotal: subtotalCalculado,
+                        tasaisc = detalle.tasaisc,
+                        detventa = detalle.detventa,
                         fechaActualizacion: fechasistema
                     }
                 });
@@ -3131,13 +3128,14 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         impuesto2: detalle.impuesto2 || 0,
                         impuesto3: detalle.impuesto3 || 0,
                         pormayor: detalle.pormayor || 0,
-                        descripcion: detalle.descripcion?.trim().toUpperCase(),
                          unidad: detalle.unidad || 'UNIDAD',
                         modelo : detalle.modelo?.trim().toUpperCase(),
                         fechafabricacion : detalle.fechafabricacion,
                         fechaexpiracion : detalle.fechaexpiracion,
                         codigobienes : detalle.codigobienes?.trim().toUpperCase(),
                     subtotal: subtotalCalculado,
+                    tasaisc : detalle.tasaisc,
+                    detventa = detalle.detventa,
                     fechaCreacion: fechasistema
                 });
             }
@@ -3209,10 +3207,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         
         // Reemplazo de variable global gcorreo2
         if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
-
-        let wnumdocfiscal = factura.nofactura;
-        let wceroscadena = "0".repeat(Math.max(0, 10 - wnumdocfiscal.length));
-        let fenundocfiscal = wceroscadena + wnumdocfiscal;
+        let fenundocfiscal = factura.nofactura;
 
         let fetiempopago = factura.condiciones !== "1" ? "2" : "1";
 
