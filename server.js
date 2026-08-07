@@ -3104,14 +3104,14 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         impuesto3: detalle.impuesto3 || 0,
                         pormayor: detalle.pormayor || 0,
                         descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
-                         unidad: detalle.unidad || 'UNIDAD',
+                        unidad: detalle.unidad || 'UND',
                         modelo : detalle.modelo?.trim().toUpperCase(),
                         fechafabricacion : detalle.fechafabricacion,
                         fechaexpiracion : detalle.fechaexpiracion,
                         codigobienes : detalle.codigobienes?.trim().toUpperCase(),
                         subtotal: subtotalCalculado,
-                        tasaisc = detalle.tasaisc,
-                        detventa = detalle.detventa,
+                        tasaisc : detalle.tasaisc,
+                        detventa : detalle.detventa,
                         fechaActualizacion: fechasistema
                     }
                 });
@@ -3135,7 +3135,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         codigobienes : detalle.codigobienes?.trim().toUpperCase(),
                     subtotal: subtotalCalculado,
                     tasaisc : detalle.tasaisc,
-                    detventa = detalle.detventa,
+                    detventa : detalle.detventa,
                     fechaCreacion: fechasistema
                 });
             }
@@ -3208,10 +3208,12 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         // Reemplazo de variable global gcorreo2
         if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
         let fenundocfiscal = factura.nofactura;
-
-        let fetiempopago = factura.condiciones !== "1" ? "2" : "1";
-
-        let feubicacion = "8-8-6"; let feprovincia = "PANAMA"; let fedistrito = "PANAMA"; let fecorregimiento = "BETHANIA";
+        var fetiempopago = "";
+        var condicionventatmp = factura.condiciones; 
+        if (condicionventatmp !== null){
+         fetiempopago = condicionventatmp;
+        }
+        var feubicacion = "8-8-6"; var feprovincia = "PANAMA"; var fedistrito = "PANAMA"; var fecorregimiento = "BETHANIA";
         if (fetipoclientefe === "03") {
             feubicacion = factura.ubicacionid || feubicacion;
             const ubi = tablaUbicacion.find(u => u.ubicacionid === feubicacion);
