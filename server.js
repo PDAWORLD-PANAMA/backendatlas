@@ -2554,7 +2554,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       ruccliente: head.ruccliente?.trim().toUpperCase(),
       codvendedor: head.codvendedor?.trim().toUpperCase(),
       detallecoti: detallecotiJson,
-      activo: "A",
+      activo: "S",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2602,7 +2602,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     // Buscar si la cotización ya existe
     let existingHead = await CotizaHead.findOne({ 
       nocotiza: nocotizaUpper,
-      $or: [{ activo: "A" }]
+      $or: [{ activo: "S" }]
     });
     
     let headFinal;
@@ -2627,7 +2627,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         codvendedor: head.codvendedor?.trim().toUpperCase() || '',
         tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
         detallecoti: detallecotiJson,
-        activo: "A",
+        activo: "S",
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
@@ -2740,8 +2740,7 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
       },
       items: detalles.map(d => ({
         codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
-        precio: d.precio, descuento: d.descuento, subtotal: d.subtotal,
-         unidad: d.unidad
+        unidad: d.unidad, precio: d.precio, descuento: d.descuento, subtotal: d.subtotal
       })),
       totales: { subtotal: head.subtotal1, descuento: head.descuentoglob, impuesto: head.impuesto, total: head.total },
       metadata: { generado: fechasistema, empresa: process.env.EMPRESA_NOMBRE || 'ERP Bipymes' }
