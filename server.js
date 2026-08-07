@@ -505,6 +505,7 @@ const facturadetalleSchema = new mongoose.Schema({
     descripcion: { type : String},
     precio: { type : Number},
     descuento: { type : Number},
+    impuesto: { type : Number},
     impuesto1: { type : Number},
     impuesto2: { type : Number},
     impuesto3: { type : Number},
