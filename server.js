@@ -3507,8 +3507,6 @@ app.post('/api/ventas/notascredito/completa', async (req, res) => {
         const facturaOriginal = await FacturaHead.findOne({ nofactura: nofacturaUpper });
         if (!facturaOriginal) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
         if (facturaOriginal.estado === 'E') return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
-
-        const empresa = await EmpresaConfig.findOne({});
         // ✅ GENERAR NÚMERO SECUENCIAL DE 10 DÍGITOS DESDE EmpresaConfig
 const empresa = await EmpresaConfig.findOne({});
 if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
