@@ -54,6 +54,7 @@ const empresaSchema = new mongoose.Schema({
   countordencompra: { type: String, default: "0" },
   countfactura: { type: String, default: "0" },
   countnotacredito: { type: String, default: "0" },
+  countnotadebito: { type: String, default: "0" },
   countcompras: { type: String, default: "0" },
   countcxcobrar: { type: String, default: "0" },
   countcxpagar: { type: String, default: "0" },
@@ -195,30 +196,12 @@ const BienServicio = mongoose.model('BienServicio', bienesSchema);
 
 const Schemageoubicacion = new mongoose.Schema({
   ubicacionid: { type: String },
-    noidprov: {
-       type : String
-//
-   },
-    provincia: {
-       type : String
-//
-   },
-   noidistri: {
-    type : String
-//
-},
-   distrito: {
-    type : String
-//
-},
-noidcorre: {
-  type : String
-//
-},
-corregimiento: {
-  type : String
-//
-},
+    noidprov: { type : String },
+    provincia: { type : String },
+   noidistri: { type : String },
+   distrito: { type : String },
+noidcorre: { type : String },
+corregimiento: { type : String },
 descripubicacion : { type : String}
 });
 
@@ -564,81 +547,31 @@ const Schemagastotran = new mongoose.Schema({
 const GastoTrans = mongoose.model('Schemarecgastotran', Schemagastotran);
 
 var Schemaheadcompra = new mongoose.Schema({
-    nodocumento: {
-        type : String
-    },
-    fechadocumento: {
-        type : String
-    },
-    fechafactura: {
-        type : String
-    },
-    fechavencimiento: {
-        type : String
-    },
-    nofactura: {
-        type : String
-    },
-    codproveedor:{
-        type: String
-    },
-    condiciones: {
-        type : String
-    },
-    formapago: {
-        type : String
-    },
-    descuento: {
-        type : Number
-    },
-    subtotal1: {
-        type : Number
-    },
-    impuesto1: {
-        type : Number
-    },
-    impuesto2: {
-        type : Number
-    },
-    impuesto3: {
-        type : Number
-    },
-    impuesto: {
-        type : Number
-    },
-    subtotal2: {
-        type : Number
-    },
-    total: {
-        type : Number
-    },
-    costoadicional: {
-        type : Number
-    },
-    saldo: {
-        type : Number
-    },
-    nombreproveedor: {
-        type : String
-    },
-    tipocompra: {
-        type : String
-    },
-    rucproveedor: {
-        type : String
-    },
-    seriefiscal: {
-        type : String
-    },
-    transaccion: {
-        type : String
-    },
-    estatuscompra: {
-        type : String
-    },
-    detallecompra: {
-        type : String
-    },
+    nodocumento: { type : String },
+    fechadocumento: { type : String },
+    fechafactura: { type : String },
+    fechavencimiento: { type : String },
+    nofactura: { type : String },
+    codproveedor:{ type: String },
+    condiciones: { type : String },
+    formapago: { type : String },
+    descuento: { type : Number },
+    subtotal1: { type : Number },
+    impuesto1: { type : Number },
+    impuesto2: { type : Number },
+    impuesto3: { type : Number },
+    impuesto: {  type : Number },
+    subtotal2: { type : Number },
+    total: { type : Number },
+    costoadicional: { type : Number },
+    saldo: { type : Number },
+    nombreproveedor: { type : String  },
+    tipocompra: {  type : String },
+    rucproveedor: { type : String },
+    seriefiscal: { type : String  },
+    transaccion: { type : String  },
+    estatuscompra: {  type : String  },
+    detallecompra: { type : String },
     historialdevolucion: [String]
 });
 
@@ -646,184 +579,332 @@ const ComprasHead = mongoose.model('Schemareccomprahead',Schemaheadcompra);
 
 
 var Schemadetacompra = new mongoose.Schema({
-    nodocumento: {
-        type : String
-    },
-    fechadocumento: {
-        type : String
-    },
-    fechafactura: {
-        type : String
-    },
-    nofactura: {
-        type : String
-    },
-    codproducto:{
-        type: String
-    },
-    descripcion :{
-        type : String
-    },
-    codproveedor: {
-        type : String
-    },
-    costo: {
-        type : Number
-    },
-    tarifa : {
-        type : Number
-    },
-    impuesto: {
-        type : Number
-    },
-    descuento: {
-        type : Number
-    },
-    cantidad: {
-        type : Number
-    },
-    hora : {
-        type : String
-    },
-    costoadicional: {
-        type : Number
-    },
-    detalle :{
-        type : String
-    },
+    nodocumento: { type : String },
+    fechadocumento: { type : String  },
+    fechafactura: { type : String },
+    nofactura: { type : String },
+    codproducto:{ type: String },
+    descripcion :{ type : String },
+    codproveedor: { type : String },
+    costo: { type : Number },
+    tarifa : { type : Number },
+    impuesto: { type : Number },
+    descuento: { type : Number  },
+    cantidad: { type : Number  },
+    hora : { type : String },
+    costoadicional: { type : Number },
+    detalle :{  type : String  }
 });
 
 const CompraDetalle = mongoose.model('Schemareccompradeta',Schemadetacompra);
 
 
 var Schemaheadcompracosto = new mongoose.Schema({
-    nodocumento: {
-        type : String
-    },
-    fechadocumento: {
-        type : String
-    },
-    fechafactura: {
-        type : String
-    },
-     nofactura: {
-        type : String
-    },
-    codproveedor:{
-        type: String
-    },
-    condiciones: {
-        type : String
-    },
-    formapago: {
-        type : String
-    },
-    descuento: {
-        type : Number
-    },
-    subtotal1: {
-        type : Number
-    },
-    impuesto1: {
-        type : Number
-    },
-    impuesto2: {
-        type : Number
-    },
-    impuesto3: {
-        type : Number
-    },
-    impuesto: {
-        type : Number
-    },
-    subtotal2: {
-        type : Number
-    },
-    total: {
-        type : Number
-    },
-    costoadicional: {
-        type : Number
-    },
-    saldo: {
-        type : Number
-    },
-    nombreproveedor: {
-        type : String
-    }
+    nodocumento: { type : String },
+    fechadocumento: { type : String },
+    fechafactura: { type : String  },
+     nofactura: { type : String  },
+    codproveedor:{  type: String  },
+    condiciones: { type : String  },
+    formapago: { type : String   },
+    descuento: { type : Number  },
+    subtotal1: {  type : Number  },
+    impuesto1: { type : Number  },
+    impuesto2: { type : Number  },
+    impuesto3: { type : Number  },
+    impuesto: { type : Number   },
+    subtotal2: { type : Number  },
+    total: { type : Number },
+    costoadicional: { type : Number },
+    saldo: { type : Number },
+    nombreproveedor: { type : String }
 });
 
 const CostoCompraHed = mongoose.model('Schemareccompracostohead',Schemaheadcompracosto);
 
 
 var Schemadetacompracosto = new mongoose.Schema({
-    nodocumento: {
-        type : String
-    },
-    fechadocumento: {
-        type : String
-    },
-    fechafactura: {
-        type : String
-    },
-    nofactura: {
-        type : String
-    },
-    codproducto:{
-        type: String
-    },
-    descripcion :{
-        type : String
-    },
-    costo: {
-        type : Number
-    },
-    descuento: {
-        type : Number
-    },
-    cantidad: {
-        type : Number
-    },
-    arancel : {
-        type : Number
-    },
-    impuesto : {
-      type : Number
-  }
+    nodocumento: {type : String  },
+    fechadocumento: {  type : String },
+    fechafactura: {  type : String },
+    nofactura: { type : String },
+    codproducto:{ type: String },
+    descripcion :{ type : String },
+    costo: { type : Number },
+    descuento: {  type : Number  },
+    cantidad: { type : Number },
+    arancel : { type : Number  },
+    impuesto : { type : Number  }
 });
 
 const CostoCompraDetalle = mongoose.model('Schemareccompradetacosto',Schemadetacompracosto);
 
 var Schemacostodifereport = new mongoose.Schema({
-    codproducto: {
-        type : String
-    },
-    descripcion: {
-        type : String
-    },
-    cantidad: {
-        type : Number
-    },
-    costonvo: {
-        type : Number
-    },
-    costoant: {
-        type : Number
-    },
-    id : {
-      type: mongoose.Schema.Types.ObjectId 
-    },
-    nuevocosto: {
-        type : Number
-    },
-    fechatransaccion: {
-        type : String
-    },
-    horatransaccion: {
-        type : String
-    }
+    codproducto: { type : String },
+    descripcion: { type : String },
+    cantidad: { type : Number  },
+    costonvo: { type : Number  },
+    costoant: { type : Number  },
+    id : { type: mongoose.Schema.Types.ObjectId },
+    nuevocosto: { type : Number },
+    fechatransaccion: { type : String },
+    horatransaccion: {  type : String }
 });
 const CostoDifer  = mongoose.model('Schemarecdcostodiferente',Schemacostodifereport);
+//   DETALLE DE NOTA DE CREDITO 
+//============================================================================//
+var Schemadetcredito = new mongoose.Schema({
+    nocredito: { type : String },
+    fechacredito:  {  type : String  },
+    codcliente: {  type : String  },
+    codvendedor: { type : String  },
+    codproducto: { type : String  },
+    cantidad: { type : Number  },
+    descripcion: {  type : String  },
+    descuento: { type : Number  },
+    impuesto: { type : Number   },
+    impuesto2: { type : Number  },
+    impuesto3: { type : Number  },
+    codtasaisc: { type : String },
+    tasaisc: { type : Number },
+    precio: { type : Number  },
+    fechafabricacion : { type : String },
+    fechaexpiracion : { type : String  },
+    codigobienes : { type : String  },
+    codigogtin : { type : Number },
+    codigogtininven : { type : Number },
+    cantigtin : { type : Number },
+    tasaitbmscod : { type : Number },
+    tasaisc : { type : Number },
+    valorisc : { type : Number },
+    tasaoti : { type : Number  },
+    valortasaotro : { type : Number },
+    ancho: { type : Number },
+    alto: { type : Number  },
+    numerolote: {  type : String },
+    cantiprodlote: { type : Number },
+    unidad: { type : String },
+    mercancia : { type : String },
+    hora : { type : String  },
+    acabados: { type : String },
+    linea : { type :String  }
+});
+
+const NotaCreditoDetalle  = mongoose.model('Schemareccreditodeta',Schemadetcredito);
+
+
+var Schemaheadcredito = new mongoose.Schema({
+    nocredito: {type : String  },
+    nofactura: { type : String  },
+nodocumento:{ type : String },
+codigosucemisor: { type : String },
+    facturaelectronica: { type : String  },
+    facturaqr: {  type : String  },
+    fechafactura: {  type : String  },
+    fechacredito: { type : String  },
+    fechavencimiento: { type : String },
+    fechaEmision: {  type : String  },
+    fechaSalida: { type : String   },
+    tipoclientefe: { type : String },
+    codcliente: { type : String  },
+    idglobalcorpo: { type : String },
+    globalnombre: { type : String  },
+    naturalezaoperacion: { type : String  },
+    tipooperacion: {  type : String  },
+    destinooperacion: { type : String },
+    formatocafe: {  type : String },
+    entregacafe: {  type : String  },
+    enviocontenedor: {  type : String  },
+    procesogeneracion: {  type : String  },
+    ruccliente: { type : String  },
+    correocliefe: { type : String  },
+    digitoverificadoruc: { type : String  },
+    codigosucemisor: {  type : String  },
+    tiposucursal: { type : String },
+    tipoemision: {  type : String  },
+    tipodocumento: { type : String  },
+    puntodefacturacion: { type : String },
+        tipoventa: { type : String },
+        razonsocial:{ type: String },
+        direccioncontribuyente:{ type: String  },
+    //!!!!!!!!!!!!!!!!!! cuando tipo de cliente de factura es 01 /03
+        provincia:{ type: String  },
+        distrito:{  type: String  },
+        corregimiento:{  type: String  },
+        pais:{ type: String },
+        paisotro:{ type: String  },
+        ubicacionid : { type: String },
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Esto es condicional
+        tipoidclientefe:{ type: String },
+        numeroidextranjero:{ type: String },
+        paisextranjero:{ type: String },
+    //!!!!!!!!!!!! solo cuando cliente de factura electronica 01 / 03
+    codigoubicacion:{ type: String },
+    tipoidentificacion:{  type: String },
+    // esto es condicional si   factura electronicao es    04
+    identificacionextranjero :{  type: String },
+    paisextranjero:{  type: String  },
+    //!!!!!!!!!!!!! Datos de factura deExportacion//////
+    codicionesentrega:{ type: String },
+    monedaexportacion:{ type: String },
+    modenaexportanodef:{ type: String  },
+    tipodecambio:{ type: String  },
+    monedaextranjera:{  type: String  },
+    //    Documento fiscal Referenciado
+    fechaemisiondocreferenciado :{  type: String  },
+    cufereferenciado:{ type: String  },
+    nrofacturapapel:{  type: String  },
+    nofacturaimpfiscal:{ type: String  },
+    // Autorizado descarga Fe
+    tipocontribuyente:{ type: String },
+    codvendedor:{ type: String  },
+    condiciones: { type : String  },
+    formapago: {  type : String   },
+    descuento: {  type : Number   },
+    subtotal1: { type : Number   },
+    cotiitbms: { type : String   },
+    impuesto: { type : Number  },
+    subtotal2: { type : Number  },
+    total: { type : Number  },
+    saldo: { type : Number  },
+    nombreclie: { type : String  },
+    ruccliente: { type : String  },
+    asignadoa :{  type : String   },
+    cedulasignadoa :{ type : String  },
+    realizado :{ type : String },
+    utilizado :{ type : String },
+    cedulautilizado :{ type : String  },
+    fechautilizado :{  type :String   },
+    facturautilizado :{  type :String  },
+    estado:{ type : String  },
+    detallecredito: { type : String }
+});
+
+const NotaCreditoHead = mongoose.model('Schemareccreditohead',Schemaheadcredito);
+
+var Schemaheaddebito = new mongoose.Schema({
+    nofactura: { type : String  },
+    nodebito: {  type : String  },
+    nodocumento: { type : String },
+    facturaelectronica: { type : String },
+    fechafactura: { type : String },
+    fechadebito: { type : String  },
+    fechavencimiento: {  type : String },
+    fechaEmision: { type : String },
+    fechaSalida: {  type : String  },
+    formatocafe: {  type : String  },
+    entregacafe: {  type : String  },
+    procesogeneracion: { type : String },
+    tipocontribuyente:{   type: String  },
+    tipoventa: { type : String },
+    codigosucemisor: { type : String  },
+    tiposucursal: { type : String },
+    tipoclientefe: { type : String },
+    razonsocial:{ type: String  },
+    direccioncontribuyente:{ type: String },
+    globalnombre: { type : String },
+    correocliefe: { type : String  },
+    provincia:{ type: String },
+    distrito:{  type: String  },
+    corregimiento:{  type: String  },
+    pais:{  type: String },
+    paisotro:{ type: String  },
+    ubicacionid:{ type: String },
+    naturalezaoperacion: { type : String },
+    tipooperacion: { type : String },
+    puntodefacturacion: { type : String },
+    tipoidclientefe:{ type: String },
+    tipoemision: { type : String  },
+    tipodocumento: { type : String },
+    codcliente: { type : String },
+    estado : {  type : String },
+    idglobalcorpo: { type : String },
+    globalnombre: { type : String  },
+    asignadoa :{ type :String },
+    cedulasignadoa :{ type :String },
+    realizado :{ type :String },
+    utilizado :{ type :String },
+    cedulautilizado :{ type :String },
+    codvendedor:{  type: String  },
+    condiciones: { type : String  },
+    formapago: { type : String  },
+    descuento: { type : Number  },
+    subtotal1: { type : Number  },
+    cotiitbms: {  type : String  },
+    impuesto: { type : Number },
+    subtotal2: { type : Number },
+    total: { type : Number },
+    saldo: { type : Number },
+    coticonvertido: { type : String },
+    nombreclie: {  type : String  },
+    ruccliente: { type : String   },
+    digitoverificadoruc: {type : String  },
+    detalledebito: { type : String }
+});
+
+const NotaDebitoHead = mongoose.model('Schemarecdebitohead',Schemaheaddebito);
+
+var Schemadetanotadebito = new mongoose.Schema({
+    nofactura: { type : String },
+    nodebito: {  type : String  },
+    fechafactura: { type : String  },
+    codcliente: {  type : String  },
+    codvendedor: { type : String  },
+    codproducto: { type : String  },
+    cantidad: { type : Number  },
+    descripcion: { type : String  },
+    precio: { type : Number },
+    ancho: {  type : Number },
+    alto: {  type : Number  },
+    unidad: { type : String },
+    mercancia : { type : String },
+    hora : { type : String },
+    acabados: { type : String  }
+});
+
+const NotaDebitoDetalle  = mongoose.model('Schemarecnotadebitodeta',Schemadetanotadebito);
+
+var Schematranaplicredito = new mongoose.Schema({
+    notransaccion: { type : Number },
+    nocredito: { type : String  },
+    nofactura: { type : String  },
+    fechacredito: { type : String  },
+    fechatransaccion: { type : String },
+    fechavencimiento: { type : String  },
+       facturaplicada : { type : String  },  
+    codcliente: { type : String },
+    codglobal: { type : String  },
+    cliente: { type : String    },
+utilizado: { type : String },
+cedulautilizado: { type : String },
+    formapago: { type : String },
+    saldoanterior: { type : Number },
+    montotran: { type : Number },
+comentario:{ type : String }
+});
+
+const NotaAplicaCredito = mongoose.model('Schemarectranaplicredito',Schematranaplicredito);
+
+var Schematranaplidebito = new mongoose.Schema({
+    notransaccion: { type : Number },
+    nodebito: { type : String },
+    nofactura: { type : String },
+    fechadebito: { type : String },
+    fechatransaccion: { type : String },
+    fechavencimiento: { type : String  },
+       facturaplicada : { type : String },
+    codcliente: { type : String },
+    codglobal: { type : String  },
+    cliente: { type : String   },
+utilizado: { type : String } ,
+cedulautilizado: { type : String },
+    formapago: { type : String  },
+    saldoanterior: { type : Number },
+    montotran: { type : Number },
+comentario:{ type : String }
+});
+
+const NotaAplicaDebito = mongoose.model('Schemarectranaplidebito',Schematranaplidebito);
 
 // ✅ Helper para calcular subtotal de línea
   
@@ -2884,7 +2965,7 @@ if ( diffInDays <= 3 ) {
 
         const updatedFacturaAnular = await FacturaHead.findByIdAndUpdate(
             id,
-            { $set: { estado : "S" }},
+            { $set: { estado : "E" }},
             { new: true, runValidators: true }
         );
 
@@ -3395,7 +3476,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
             },
             { new: true } // Devuelve el documento ya actualizado
         );
-
+           await descontarFolioPAC();
         // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
         return res.status(200).json({
             success: true,
@@ -3417,25 +3498,60 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
 }
  
 });
-// ───────── ANULAR FACTURA ─────────
-app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
+
+app.post('/api/ventas/notascredito/completa', async (req, res) => {
     try {
-        const { nofactura } = req.params;
-        const { motivo } = req.body;
-        if (!motivo?.trim()) return res.status(400).json({ success: false, message: 'El motivo de anulación es obligatorio' });
+        const { head, detalles, tipoNota, montoTotal } = req.body;
+        const nofacturaUpper = head.nofactura.toUpperCase();
         
-        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
-        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        const facturaOriginal = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        if (!facturaOriginal) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
+        if (facturaOriginal.estado === 'E') return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
+
+        const empresa = await EmpresaConfig.findOne({});
+        // ✅ GENERAR NÚMERO SECUENCIAL DE 10 DÍGITOS DESDE EmpresaConfig
+const empresa = await EmpresaConfig.findOne({});
+if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+const countNC = parseInt(empresa.countnotacredito) || 0;
+const nocredito = String(countNC).padStart(10, '0');  // ✅ 10 dígitos: "0000000001"
+
+// ✅ INCREMENTAR Y GUARDAR EL CONTADOR INMEDIATAMENTE (evita duplicados)
+await EmpresaConfig.findByIdAndUpdate(empresa._id, {
+    $set: { countnotacredito: String(countNC + 1) }
+});
         
-        factura.estado = 'E';
-        await factura.save();
+        // Aquí iría la llamada SOAP a TheFactory HKA para Nota de Crédito (tipoDocumento = 02)
+        // Por brevedad, simulamos éxito y guardamos en DB. 
+        // En producción, usa el XML de Enviar pero con <ser:tipoDocumento>02</ser:tipoDocumento> y <ser:cufeReferenciado>
         
-        res.json({ success: true, message: `Factura anulada. Motivo: ${motivo}`, data: factura });
+        const cufeSimulado = `CUFE-NC-${Date.now()}`;
+        const qrSimulado = `QR-NC-${Date.now()}`;
+
+        const nuevaHead = await NotaCreditoHead.create({
+            ...head,
+            nocredito: nocredito,
+            facturaelectronica: cufeSimulado,
+            facturaqr: qrSimulado,
+            cufereferenciado: facturaOriginal.facturaelectronica,
+            fechacredito: formatLocalYmd(new Date()),
+            estado: 'A',
+            tipoNota: tipoNota,
+            total: tipoNota === '2' ? (montoTotal || 0) : head.total
+        });
+
+        if (tipoNota === '1' && detalles && detalles.length > 0) {
+            const detallesPreparados = detalles.map(d => ({ ...d, nocredito: nocredito }));
+            await NotaCreditoDetalle.insertMany(detallesPreparados);
+        }
+
+        res.status(201).json({ success: true, message: 'Nota de Crédito generada exitosamente', data: nuevaHead });
     } catch (error) {
-        console.error('❌ Error anular factura:', error);
-        res.status(500).json({ success: false, message: 'Error al anular factura', error: error.message });
+        console.error('❌ Error creando Nota de Crédito:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
+
 
 // ============================================================================
 // 🔹 RUTAS: FACTURAS ELECTRÓNICAS
@@ -3604,27 +3720,1189 @@ app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => 
 });
 
 // ───────── ANULAR FACTURA ─────────
-app.post('/api/ventas/facturas/:nofactura/anular', async (req, res) => {
+// ============================================================================
+// 🔹 ANULAR FACTURA ELECTRÓNICA (SOAP TheFactory HKA + INVENTARIO)
+// ============================================================================
+app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const { motivo } = req.body;
-        if (!motivo?.trim()) return res.status(400).json({ success: false, message: 'El motivo de anulación es obligatorio' });
-        
-        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
+        const nofacturaUpper = nofactura.toUpperCase();
+
+        // 1. OBTENER FACTURA
+        const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
         if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+
+        // 2. VALIDAR PERIODO DE ANULACIÓN (MÁXIMO 5 DÍAS)
+        const fechaFacturaStr = factura.fechafactura;
+        if (!fechaFacturaStr) return res.status(400).json({ success: false, message: 'La factura no tiene fecha de emisión' });
+
+        const [year, month, day] = fechaFacturaStr.split('-').map(Number);
+        const fechaFacturaDate = new Date(year, month - 1, day);
         
-        factura.estado = 'Anulada';
-        await factura.save();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        res.json({ success: true, message: `Factura anulada. Motivo: ${motivo}`, data: factura });
+        const diffInMs = Math.abs(today.getTime() - fechaFacturaDate.getTime());
+        const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+        if (diffInDays > 5) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'FACTURA VENCIO PERIODO DE ANULACION' 
+            });
+        }
+
+        // 3. OBTENER DETALLES PARA REVERTIR INVENTARIO
+        const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+
+        // 4. LLAMADA SOAP A THEFACTORY HKA (ANULACIÓN)
+        const empresa = await EmpresaConfig.findOne({});
+        if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+        const hcodigosucursal = empresa.codigosucemisor || "001";
+        const htokenempresa = (empresa.tokenempresa || "").trim();
+        const htokenclave = (empresa.tokenclave || "").trim();
+        const motivoAnulacion = (motivo || "Anulacion de factura").trim();
+
+        const xmlanular = `
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.Model">
+        <soapenv:Header/>
+        <soapenv:Body>
+           <tem:AnulacionDocumento>
+              <tem:tokenEmpresa>${htokenempresa}</tem:tokenEmpresa>
+              <tem:tokenPassword>${htokenclave}</tem:tokenPassword>
+              <tem:motivoAnulacion>${motivoAnulacion}</tem:motivoAnulacion>
+              <tem:datosDocumento>
+                 <ser:codigoSucursalEmisor>${hcodigosucursal}</ser:codigoSucursalEmisor>
+                 <ser:numeroDocumentoFiscal>${nofacturaUpper}</ser:numeroDocumentoFiscal>
+                 <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
+                 <ser:tipoDocumento>01</ser:tipoDocumento>
+                 <ser:tipoEmision>01</ser:tipoEmision>
+              </tem:datosDocumento>
+           </tem:AnulacionDocumento>
+        </soapenv:Body>
+     </soapenv:Envelope>`;
+
+        const soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+        const soapResponse = await fetch(soapUrl, {
+            method: 'POST',
+            body: xmlanular,
+            headers: {
+                'User-Agent': 'NODEJS-FETCH',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'SOAPAction': 'http://tempuri.org/IService/AnulacionDocumento'
+            }
+        });
+
+        if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+        
+        const bodyXml = await soapResponse.text();
+        
+        const extractTag = (xml, tag) => {
+            const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+            const match = xml.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const codigoHandle = extractTag(bodyXml, "codigo");
+        const msgHandle = extractTag(bodyXml, "mensaje");
+
+        // 5. VALIDAR RESPUESTA SOAP
+        if (codigoHandle === "200") {
+            // ÉXITO: Revertir inventario y actualizar estado
+            for (const det of detalles) {
+                if (det.codproducto) {
+                    await Inventariosede.findOneAndUpdate(
+                        { idinventario: det.codproducto },
+                        { $inc: { cantidispo: -(det.cantidad || 0) } }
+                    );
+                }
+            }
+
+            const facturaActualizada = await FacturaHead.findByIdAndUpdate(
+                factura._id, 
+                { $set: { estado: 'E' } }, 
+                { new: true }
+            );
+             await descontarFolioPAC();
+            return res.status(200).json({
+                success: true,
+                message: 'Factura anulada exitosamente.',
+                data: facturaActualizada
+            });
+        } else {
+            // FALLO SOAP: No tocar inventario, devolver error
+            return res.status(400).json({
+                success: false,
+                message: `Rechazada por TheFactory: ${msgHandle || 'Error desconocido'}`,
+                data: null
+            });
+        }
+
     } catch (error) {
-        console.error('❌ Error anular factura:', error);
-        res.status(500).json({ success: false, message: 'Error al anular factura', error: error.message });
+        console.error('❌ Error anular factura electrónica:', error);
+        res.status(500).json({ success: false, message: 'Error interno al anular factura', error: error.message });
     }
 });
 
-//%%%%%%%%%%%%%%%%%%%%%%%% MANEJO DE GASTO %%%%%%%%%%%%%%%%%%%%%%%%%%%//
+// ============================================================================
+// 🔹 ENVIAR NOTA DE CRÉDITO A THEFACTORY CORP (SOAP)
+// ============================================================================
+// ============================================================================
+// 🔹 ENVIAR NOTA DE CRÉDITO A THEFACTORY CORP (SOAP)
+// 🔹 tipodocumento: "04" = Transacción, "06" = Monto
+// ============================================================================
+app.post('/api/ventas/notascredito/enviar-Thefactory/:nofactura', async (req, res) => {
+try {
+const { nofactura } = req.params;
+const { tipoNota, motivo, detalles, montoTotal } = req.body;
+const nofacturaUpper = nofactura.toUpperCase();
+    // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
+const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+if (!factura) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
+if (factura.estado === 'E' || factura.estado === 'Anulada') {
+    return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
+}
 
+const detallesFactura = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+if (!detallesFactura || detallesFactura.length === 0) {
+    return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+}
+
+// ✅ OBTENER EMPRESA Y GENERAR NÚMERO SECUENCIAL
+const empresa = await EmpresaConfig.findOne({});
+if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+const countNC = parseInt(empresa.countnotacredito) || 0;
+const nocredito = String(countNC).padStart(10, '0');  // ✅ 10 dígitos
+
+// ✅ INCREMENTAR CONTADOR INMEDIATAMENTE
+await EmpresaConfig.findByIdAndUpdate(empresa._id, {
+    $set: { countnotacredito: String(countNC + 1) }
+});
+
+const tablaUbicacion = await Ubicacion.find({});
+
+// 2. GENERAR FECHAS
+var fechasistema = formatLocalYmd(new Date());
+const fetipodocumento = tipoNota === "1" ? "04" : "06";
+
+     // 3. CREAR REGISTROS EN BD - NOTA CREDITO HEAD
+     const detallecreditoJson = JSON.stringify(
+         (tipoNota === "1" && detalles && detalles.length > 0 ? detalles : []).map(d => ({
+             codproducto: d.codproducto,
+             descripcion: d.descripcion,
+             cantidad: d.cantidad,
+             precio: d.precio,
+             descuento: d.descuento,
+             subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
+             unidad: d.unidad
+         }))
+     );
+
+     const totalNC = tipoNota === "2"
+         ? (montoTotal || 0)
+         : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0) * (1 - (d.descuento || 0) / 100)), 0);
+
+     const impuestoNC = tipoNota === "2"
+         ? ((montoTotal || 0) - ((montoTotal || 0) / 1.07))
+         : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0) * (1 - (d.descuento || 0) / 100) * 0.07), 0);
+
+     const nuevaNCHead = await NotaCreditoHead.create({
+         nocredito: nocredito,
+         nofactura: nofacturaUpper,
+         nodocumento: nocredito,
+         codigosucemisor: factura.codigosucemisor || empresa.codigosucemisor || "001",
+         facturaelectronica: '',
+         facturaqr: '',
+         fechafactura: factura.fechafactura,
+         fechacredito: fechasistema,
+         fechavencimiento: factura.fechavencimiento,
+         fechaEmision: fechasistema,
+         fechaSalida: fechasistema,
+         tipoclientefe: factura.tipoclientefe,
+         codcliente: factura.codcliente,
+         idglobalcorpo: factura.idglobalcorporp,
+         globalnombre: factura.globalnombre,
+         naturalezaoperacion: factura.naturalezaoperacion,
+         tipooperacion: factura.tipooperacion,
+         destinooperacion: factura.destinooperacion,
+         formatocafe: factura.formatocafe,
+         entregacafe: factura.entregacafe,
+         enviocontenedor: factura.enviocontenedor,
+         procesogeneracion: factura.procesogeneracion,
+         ruccliente: factura.ruccliente,
+         correocliefe: factura.correocliefe,
+         digitoverificadoruc: factura.digitoverificadoruc,
+         tiposucursal: factura.tiposucursal,
+         tipoemision: factura.tipoemision,
+         tipodocumento: fetipodocumento,
+         puntodefacturacion: factura.puntodefacturacion,
+         tipoventa: factura.tipoventa,
+         razonsocial: factura.razonsocial,
+         direccioncontribuyente: factura.direccioncontribuyente,
+         provincia: factura.provincia,
+         distrito: factura.distrito,
+         corregimiento: factura.corregimiento,
+         pais: factura.pais,
+         paisotro: factura.paisotro,
+         ubicacionid: factura.ubicacionid,
+         tipoidclientefe: factura.tipoidclientefe,
+         numeroidextranjero: factura.numeroidextranjero,
+         paisextranjero: factura.paisextranjero,
+         codigoubicacion: factura.codigoubicacion,
+         tipoidentificacion: factura.tipoidentificacion,
+         identificacionextranjero: factura.identificacionextranjero,
+         codicionesentrega: factura.codicionesentrega,
+         monedaexportacion: factura.monedaexportacion,
+         modenaexportanodef: factura.modenaexportanodef,
+         tipodecambio: factura.tipodecambio,
+         monedaextranjera: factura.monedaextranjera,
+         fechaemisiondocreferenciado: factura.fechafactura,
+         cufereferenciado: factura.facturaelectronica || '',
+         nrofacturapapel: factura.nrofacturapapel,
+         nofacturaimpfiscal: factura.nofacturaimpfiscal,
+         tipocontribuyente: factura.tipocontribuyente,
+         codvendedor: factura.codvendedor,
+         condiciones: factura.condiciones,
+         formapago: factura.formapago,
+         descuento: factura.descuento,
+         subtotal1: totalNC,
+         cotiitbms: factura.cotiitbms,
+         impuesto: impuestoNC,
+         subtotal2: totalNC - impuestoNC,
+         total: totalNC,
+         saldo: 0,
+         nombreclie: factura.nombreclie,
+         asignadoa: factura.asignadoa,
+         cedulasignadoa: factura.cedulasignadoa,
+         realizado: factura.realizado,
+         utilizado: factura.utilizado,
+         cedulautilizado: factura.cedulautilizado,
+         fechautilizado: factura.fechautilizado,
+         facturautilizado: factura.facturautilizado,
+         estado: 'A',
+         detallecredito: detallecreditoJson,
+         tipoNota: tipoNota,
+         fechaCreacion: fechasistema,
+         fechaActualizacion: fechasistema
+     });
+
+     // 4. CREAR REGISTROS EN BD - NOTA CREDITO DETALLE
+     if (tipoNota === "1" && detalles && detalles.length > 0) {
+         const detallesPreparados = detalles.map(d => ({
+             nocredito: nocredito,
+             fechacredito: fechasistema,
+             codcliente: factura.codcliente,
+             codvendedor: factura.codvendedor,
+             codproducto: d.codproducto?.trim().toUpperCase() || '',
+             cantidad: parseFloat(d.cantidad) || 0,
+             descripcion: d.descripcion?.trim().toUpperCase() || '',
+             descuento: parseFloat(d.descuento) || 0,
+             impuesto: parseFloat(d.impuesto) || 0,
+             impuesto2: parseFloat(d.impuesto2) || 0,
+             impuesto3: parseFloat(d.impuesto3) || 0,
+             codtasaisc: d.codtasaisc || '',
+             tasaisc: parseFloat(d.tasaisc) || 0,
+             precio: parseFloat(d.precio) || 0,
+             fechafabricacion: d.fechafabricacion || fechasistema,
+             fechaexpiracion: d.fechaexpiracion || fechasistema,
+             codigobienes: d.codigobienes || '',
+             codigogtin: parseFloat(d.codigogtin) || 0,
+             codigogtininven: parseFloat(d.codigogtininven) || 0,
+             cantigtin: parseFloat(d.cantigtin) || 0,
+             tasaitbmscod: parseFloat(d.tasaitbmscod) || 0,
+             valorisc: parseFloat(d.valorisc) || 0,
+             tasaoti: parseFloat(d.tasaoti) || 0,
+             valortasaotro: parseFloat(d.valortasaotro) || 0,
+             ancho: parseFloat(d.ancho) || 0,
+             alto: parseFloat(d.alto) || 0,
+             numerolote: d.numerolote || '',
+             cantiprodlote: parseFloat(d.cantiprodlote) || 0,
+             unidad: d.unidad || 'UND',
+             mercancia: d.mercancia || '',
+             hora: new Date().toLocaleTimeString(),
+             acabados: d.acabados || '',
+             linea: d.linea || '',
+             subtotal: parseFloat(((d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100)).toFixed(2))
+         }));
+         await NotaCreditoDetalle.insertMany(detallesPreparados);
+     } else if (tipoNota === "2") {
+         await NotaCreditoDetalle.create({
+             nocredito: nocredito,
+             fechacredito: fechasistema,
+             codcliente: factura.codcliente,
+             codvendedor: factura.codvendedor,
+             codproducto: 'NC-MONTO',
+             cantidad: 1,
+             descripcion: motivo || 'Nota de Crédito por Monto',
+             descuento: 0,
+             impuesto: impuestoNC,
+             precio: montoTotal || 0,
+             unidad: 'UND',
+             subtotal: montoTotal || 0
+         });
+     }
+
+     // 5. PREPARAR VARIABLES PARA SOAP
+     const escapeXml = (unsafe) => {
+         if (!unsafe) return '';
+         return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+     };
+
+     const wkimptocontrol = impuestoNC || 0;
+     let fenaturalezaop = factura.naturalezaoperacion || '01';
+     let fetipoventa = factura.tipoventa || '1';
+     let fetipoclientefe = factura.tipoclientefe || '01';
+     let fetipocontribuyente = factura.tipocontribuyente || '1';
+     let ferucprt = factura.ruccliente || '';
+     let fedigiverificaprt = factura.digitoverificadoruc || '';
+     let ferazonsocialprt = factura.razonsocial || '';
+     let fedireccionprt = factura.direccioncontribuyente || '';
+     let feemailprt = factura.correocliefe || '';
+
+     if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
+
+     let fenundocfiscal = nocredito;
+     var fetiempopago = "";
+     var condicionventatmp = factura.condiciones;
+     if (condicionventatmp !== null) {
+         fetiempopago = condicionventatmp;
+     }
+
+     var feubicacion = "8-8-6";
+     var feprovincia = "PANAMA";
+     var fedistrito = "PANAMA";
+     var fecorregimiento = "BETHANIA";
+
+     if (fetipoclientefe === "03") {
+         feubicacion = factura.ubicacionid || feubicacion;
+         const ubi = tablaUbicacion.find(u => u.ubicacionid === feubicacion);
+         if (ubi) {
+             feprovincia = ubi.provincia;
+             fedistrito = ubi.distrito;
+             fecorregimiento = ubi.corregimiento;
+         }
+     }
+
+     let fesucursalemisor = empresa.codigosucemisor || "001";
+     let fetokenempresa = (empresa.tokenempresa || "").trim();
+     let fetokenclave = (empresa.tokenclave || "").trim();
+
+     // 6. CONSTRUIR XML SOAP
+     let xmlniv1 = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
+<soapenv:Header/>
+<soapenv:Body>
+<tem:Enviar>
+<tem:tokenEmpresa>${fetokenempresa}</tem:tokenEmpresa>
+<tem:tokenPassword>${fetokenclave}</tem:tokenPassword>
+<tem:documento>
+<ser:codigoSucursalEmisor>${fesucursalemisor}</ser:codigoSucursalEmisor>
+<ser:tipoSucursal>1</ser:tipoSucursal>
+<ser:datosTransaccion>
+<ser:tipoEmision>01</ser:tipoEmision>
+<ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
+<ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal>
+<ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
+<ser:fechaEmision>${fechasistema}</ser:fechaEmision>
+<ser:fechaSalida>${fechasistema}</ser:fechaSalida>
+<ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion>
+<ser:tipoOperacion>1</ser:tipoOperacion>
+<ser:destinoOperacion>1</ser:destinoOperacion>
+<ser:formatoCAFE>1</ser:formatoCAFE>
+<ser:entregaCAFE>1</ser:entregaCAFE>
+<ser:envioContenedor>1</ser:envioContenedor>
+<ser:procesoGeneracion>1</ser:procesoGeneracion>
+<ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
+<ser:informacionInteres>${escapeXml(motivo || 'Nota de Credito')}</ser:informacionInteres>
+<ser:cufeReferenciado>${factura.facturaelectronica || ''}</ser:cufeReferenciado>
+<ser:cliente>
+<ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE>
+<ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
+<ser:numeroRUC>${ferucprt}</ser:numeroRUC>
+<ser:digitoVerificadorRUC>${fedigiverificaprt}</ser:digitoVerificadorRUC>
+<ser:razonSocial>${escapeXml(ferazonsocialprt)}</ser:razonSocial>
+<ser:direccion>${escapeXml(fedireccionprt)}</ser:direccion>
+<ser:codigoUbicacion>${feubicacion}</ser:codigoUbicacion>
+<ser:provincia>${feprovincia}</ser:provincia>
+<ser:distrito>${fedistrito}</ser:distrito>
+<ser:corregimiento>${fecorregimiento}</ser:corregimiento>
+<ser:correoElectronico1>${feemailprt}</ser:correoElectronico1>
+<ser:pais>PA</ser:pais>
+</ser:cliente>
+</ser:datosTransaccion>`;
+
+     let xmlistseg = "\n<ser:listaItems>\n";
+     let xmlenviarlist = "";
+     let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
+
+     // Determinar qué items enviar al SOAP
+     const itemsParaSoap = tipoNota === "2"
+         ? [{
+             codproducto: 'NC-MONTO',
+             descripcion: motivo || 'Nota de Crédito por Monto',
+             cantidad: 1,
+             precio: montoTotal || 0,
+             descuento: 0,
+             impuesto1: factura.impuesto1 || 7,
+             impuesto2: factura.impuesto2 || 0,
+             impuesto3: factura.impuesto3 || 0,
+             unidad: 'UND',
+             modelo: '',
+             acabados: '',
+             fechafabricacion: fechasistema,
+             fechaexpiracion: fechasistema,
+             codigobienes: '',
+             tasaisc: 0,
+             pormayor: 1,
+             detventa: '1'
+         }]
+         : (detalles || []);
+
+     for (let det of itemsParaSoap) {
+         let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : fechasistema;
+         let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : fechasistema;
+         let descpor = parseFloat(det.descuento || 0) / 100;
+         let wpreciowk = parseFloat(det.precio || 0);
+         let wcantidaditem = parseFloat(det.cantidad || 0);
+         let wimpuestoitem = parseFloat(det.impuesto1 || 0) / 100;
+         let wtasaisc = parseFloat(det.tasaisc || 0);
+         let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
+         let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
+         let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+
+         let wtasaitbms = "00";
+         if (wcodimpuesto1 !== 0) wtasaitbms = "01";
+         if (wcodimpuesto2 !== 0) wtasaitbms = "02";
+         if (wcodimpuesto3 !== 0) wtasaitbms = "03";
+
+         let wvalordesc = 0;
+         let wprecioitem = wpreciowk * wcantidaditem;
+         if (descpor > 0) {
+             wvalordesc = wpreciowk * descpor;
+             wtotaldescuento += wvalordesc;
+             wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
+         }
+         wtotalprecioneto += wprecioitem;
+
+         let wvalorimpuestoitem = 0;
+         if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+         wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+         if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
+         if (wtasaitbms === "01") wtotalitbms += parseFloat(wvalorimpuestoitem);
+
+         let wtotlinitem = wprecioitem;
+         if (wtasaitbms === "01") wtotlinitem += wvalorimpuestoitem;
+
+         let wpormayor = parseFloat(det.pormayor || 0);
+         if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
+         let wentrega = wpormayor * wcantidaditem;
+         wtotaldefactura += wtotlinitem;
+
+         xmlenviarlist += `<ser:item>
+<ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
+<ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
+<ser:unidadMedida>${det.unidad || 'und'}</ser:unidadMedida>
+<ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
+<ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
+<ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
+
+         if (fetipoclientefe === "03" && det.codigobienes) {
+             xmlenviarlist += `<ser:codigoCPBSAbrev>${det.codigobienes.substring(0, 2)}</ser:codigoCPBSAbrev>
+<ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS>
+<ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
+         }
+
+         xmlenviarlist += `<ser:infoItem>modelo : ${escapeXml(det.modelo || '')}   ${escapeXml(det.acabados || '')}</ser:infoItem>
+<ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario>
+<ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
+<ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem>
+<ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
+
+         let xmlenviartasa = "";
+         if (wtasaitbms === "01") {
+             let wintermedio = Math.floor(wvalorimpuestoitem).toString();
+             let decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+             let winter2 = 9 - wintermedio.length;
+             xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS><ser:valorITBMS>${"0".repeat(Math.max(0, winter2)) + wintermedio + "." + decimalStr}</ser:valorITBMS>\n`;
+         } else {
+             xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS><ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+         }
+         xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
+     }
+
+     let xmltotal = `<ser:totalesSubTotales>
+<ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
+<ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
+<ser:totalMontoGravado>${wtotalitbms.toFixed(2)}</ser:totalMontoGravado>
+<ser:totalFactura>${wtotaldefactura.toFixed(2)}</ser:totalFactura>
+<ser:totalValorRecibido>${wtotaldefactura.toFixed(2)}</ser:totalValorRecibido>
+<ser:tiempoPago>${fetiempopago}</ser:tiempoPago>
+<ser:nroItems>${itemsParaSoap.length}</ser:nroItems>
+<ser:totalTodosItems>${wtotaldefactura.toFixed(2)}</ser:totalTodosItems>
+<ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${factura.formapago || '01'}</ser:formaPagoFact>
+<ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
+
+     let xmlineareten = "";
+     let montoreten = 0;
+     if (factura.retenedor && factura.retenedor !== "0") {
+         let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
+         montoreten = wtotalitbms * (tasareten / 100);
+         xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
+     }
+
+     let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
+     let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
+
+     // 7. EJECUTAR LLAMADA SOAP
+     let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+     const soapResponse = await fetch(soapUrl, {
+         method: 'POST',
+         body: xmlenviar,
+         headers: {
+             'User-Agent': 'NODEJS-FETCH',
+             'Content-Type': 'text/xml;charset=utf-8',
+             'SOAPAction': 'http://tempuri.org/IService/Enviar'
+         }
+     });
+
+     if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+     const bodyXml = await soapResponse.text();
+
+     const extractTag = (xml, tag) => {
+         const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+         const match = xml.match(regex);
+         return match ? match[1].trim() : "";
+     };
+
+     const resultadoSOAP = {
+         cufeHandle: extractTag(bodyXml, "cufe"),
+         qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
+         codigoHandle: extractTag(bodyXml, "codigo"),
+         msgHandle: extractTag(bodyXml, "mensaje"),
+         fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
+         protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
+     };
+
+     // 8. VALIDAR, ACTUALIZAR BD Y RESPONDER
+     if (resultadoSOAP.codigoHandle === "200") {
+         const ncActualizada = await NotaCreditoHead.findByIdAndUpdate(
+             nuevaNCHead._id,
+             {
+                 $set: {
+                     facturaelectronica: resultadoSOAP.cufeHandle,
+                     facturaqr: resultadoSOAP.qrHandle,
+                     fechaEmision: fechasistema,
+                     fechaSalida: fechasistema,
+                     fechadgiauto: resultadoSOAP.fecharecepHandle,
+                     autorizandgi: resultadoSOAP.protocoloHandle,
+                     estado: 'A',
+                     fechaActualizacion: new Date().toISOString()
+                 }
+             },
+             { new: true }
+         );
+
+         // Agregar al historial de la factura original
+         await FacturaHead.findByIdAndUpdate(factura._id, {
+             $addToSet: { historialnotacredito: nocredito }
+         });
+
+         await descontarFolioPAC();   // ✅ ← AGREGAR ESTA LÍNEA
+
+         return res.status(200).json({
+             success: true,
+             message: 'Nota de Crédito aceptada por TheFactory',
+             data: ncActualizada
+         });
+     } else {
+         await NotaCreditoHead.findByIdAndUpdate(nuevaNCHead._id, { $set: { estado: 'Rechazada' } });
+         return res.status(400).json({
+             success: false,
+             message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
+             data: null
+         });
+     }
+
+} catch (error) {
+     console.error('❌ Error enviar-Thefactory NotaCredito:', error);
+     return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
+}
+});
+
+//%%%%%%%%%%%%%%%%%%%%%%%% NOTA DE CREDITO   %%%%%%%%%%%%%%%%%%%%%%%%%%%//
+        app.post('/api/ventas/notascredito/completa', async (req, res) => {
+    try {
+        const { head, detalles, tipoNota, montoTotal } = req.body;
+        const nofacturaUpper = head.nofactura.toUpperCase();
+        
+        const facturaOriginal = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        if (!facturaOriginal) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
+        if (facturaOriginal.estado === 'E') return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
+
+        // ✅ GENERAR NÚMERO SECUENCIAL DE 10 DÍGITOS DESDE EmpresaConfig
+const empresa = await EmpresaConfig.findOne({});
+if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+const countNC = parseInt(empresa.countnotacredito) || 0;
+const nocredito = String(countNC).padStart(10, '0');  // ✅ 10 dígitos: "0000000001"
+
+// ✅ INCREMENTAR Y GUARDAR EL CONTADOR INMEDIATAMENTE (evita duplicados)
+await EmpresaConfig.findByIdAndUpdate(empresa._id, {
+    $set: { countnotacredito: String(countNC + 1) }
+});
+        
+        // Aquí iría la llamada SOAP a TheFactory HKA para Nota de Crédito (tipoDocumento = 02)
+        // Por brevedad, simulamos éxito y guardamos en DB. 
+        // En producción, usa el XML de Enviar pero con <ser:tipoDocumento>02</ser:tipoDocumento> y <ser:cufeReferenciado>
+        
+      
+
+        const nuevaHead = await NotaCreditoHead.create({
+            ...head,
+            nocredito: nocredito,
+            facturaelectronica: facturaOriginal.facturaelectronica,
+            facturaqr: facturaOriginal.facturaqr,
+            cufereferenciado: facturaOriginal.facturaelectronica,
+            fechacredito: formatLocalYmd(new Date()),
+            estado: 'A',
+            tipoNota: tipoNota,
+            total: tipoNota === '2' ? (montoTotal || 0) : head.total
+        });
+
+        if (tipoNota === '1' && detalles && detalles.length > 0) {
+            const detallesPreparados = detalles.map(d => ({ ...d, nocredito: nocredito }));
+            await NotaCreditoDetalle.insertMany(detallesPreparados);
+        }
+
+        res.status(201).json({ success: true, message: 'Nota de Crédito generada exitosamente', data: nuevaHead });
+    } catch (error) {
+        console.error('❌ Error creando Nota de Crédito:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
+// 1. Obtener cantidades ya acreditadas para una factura
+app.get('/api/ventas/notascredito/detalle/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const nofacturaUpper = nofactura.toUpperCase();
+        
+        const creditNotes = await NotaCreditoHead.find({ nofactura: nofacturaUpper, estado: { $ne: 'E' } });
+        const nocreditos = creditNotes.map(nc => nc.nocredito);
+        
+        const detallesCredito = await NotaCreditoDetalle.find({ nocredito: { $in: nocreditos } });
+        
+        const creditedQuantities = {};
+        detallesCredito.forEach(det => {
+            const cod = det.codproducto;
+            creditedQuantities[cod] = (creditedQuantities[cod] || 0) + (det.cantidad || 0);
+        });
+        
+        res.json({ success: true, data: creditedQuantities });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
+//=============================================================================
+//           NOTADEBITO FACTURA ELECTRONICA 
+//=============================================================================
+// ============================================================================
+// 🔹 OBTENER CANTIDADES YA DEBITADAS PARA UNA FACTURA
+// ============================================================================
+app.get('/api/ventas/notasdebito/detalle/nro/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const nofacturaUpper = nofactura.toUpperCase();
+
+        const debitNotes = await NotaDebitoHead.find({ nofactura: nofacturaUpper, estado: { $ne: 'E' } });
+        const nodebitos = debitNotes.map(nd => nd.nodebito);
+
+        const detallesDebito = await NotaDebitoDetalle.find({ nodebito: { $in: nodebitos } });
+
+        const debitedQuantities = {};
+        detallesDebito.forEach(det => {
+            const cod = det.codproducto;
+            debitedQuantities[cod] = (debitedQuantities[cod] || 0) + (det.cantidad || 0);
+        });
+
+        res.json({ success: true, data: debitedQuantities });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 ENVIAR NOTA DE DÉBITO A THEFACTORY CORP (SOAP)
+// 🔹 tipodocumento: "05" = Cantidades, "07" = Monto
+// ============================================================================
+app.post('/api/ventas/notasdebito/enviar-Thefactory/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const { tipoNota, motivo, detalles, montoTotal } = req.body;
+        const nofacturaUpper = nofactura.toUpperCase();
+
+       // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
+const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+if (!factura) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
+if (factura.estado === 'E' || factura.estado === 'Anulada') {
+    return res.status(400).json({ success: false, message: 'No se puede aplicar ND a una factura anulada' });
+}
+
+const detallesFactura = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+if (!detallesFactura || detallesFactura.length === 0) {
+    return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+}
+
+// ✅ OBTENER EMPRESA Y GENERAR NÚMERO SECUENCIAL
+const empresa = await EmpresaConfig.findOne({});
+if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+const countND = parseInt(empresa.countnotadebito) || 0;
+const nodebito = String(countND).padStart(10, '0');  // ✅ 10 dígitos
+
+// ✅ INCREMENTAR CONTADOR INMEDIATAMENTE
+await EmpresaConfig.findByIdAndUpdate(empresa._id, {
+    $set: { countnotadebito: String(countND + 1) }
+});
+
+const tablaUbicacion = await Ubicacion.find({});
+
+// 2. GENERAR FECHAS
+var fechasistema = formatLocalYmd(new Date());
+const fetipodocumento = tipoNota === "1" ? "05" : "07";
+
+        // 3. CREAR REGISTROS EN BD - NOTA DEBITO HEAD
+        const detalledebitoJson = JSON.stringify(
+            (tipoNota === "1" && detalles && detalles.length > 0 ? detalles : []).map(d => ({
+                codproducto: d.codproducto,
+                descripcion: d.descripcion,
+                cantidad: d.cantidad,
+                precio: d.precio,
+                subtotal: (d.cantidad || 1) * (d.precio || 0),
+                unidad: d.unidad
+            }))
+        );
+
+        const totalND = tipoNota === "2"
+            ? (montoTotal || 0)
+            : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0)), 0);
+
+        const impuestoND = tipoNota === "2"
+            ? ((montoTotal || 0) - ((montoTotal || 0) / 1.07))
+            : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0) * 0.07), 0);
+
+        const nuevaNDHead = await NotaDebitoHead.create({
+            nodebito: nodebito,
+            nofactura: nofacturaUpper,
+            nodocumento: nodebito,
+            codigosucemisor: factura.codigosucemisor || empresa.codigosucemisor || "001",
+            facturaelectronica: '',
+            fechafactura: factura.fechafactura,
+            fechadebito: fechasistema,
+            fechavencimiento: factura.fechavencimiento,
+            fechaEmision: fechasistema,
+            fechaSalida: fechasistema,
+            formatocafe: factura.formatocafe,
+            entregacafe: factura.entregacafe,
+            procesogeneracion: factura.procesogeneracion,
+            tipocontribuyente: factura.tipocontribuyente,
+            tipoventa: factura.tipoventa,
+            tiposucursal: factura.tiposucursal,
+            tipoclientefe: factura.tipoclientefe,
+            razonsocial: factura.razonsocial,
+            direccioncontribuyente: factura.direccioncontribuyente,
+            globalnombre: factura.globalnombre,
+            correocliefe: factura.correocliefe,
+            provincia: factura.provincia,
+            distrito: factura.distrito,
+            corregimiento: factura.corregimiento,
+            pais: factura.pais,
+            paisotro: factura.paisotro,
+            ubicacionid: factura.ubicacionid,
+            naturalezaoperacion: factura.naturalezaoperacion,
+            tipooperacion: factura.tipooperacion,
+            puntodefacturacion: factura.puntodefacturacion,
+            tipoidclientefe: factura.tipoidclientefe,
+            tipoemision: factura.tipoemision,
+            tipodocumento: fetipodocumento,
+            codcliente: factura.codcliente,
+            estado: 'A',
+            idglobalcorpo: factura.idglobalcorporp,
+            asignadoa: factura.asignadoa,
+            cedulasignadoa: factura.cedulasignadoa,
+            realizado: factura.realizado,
+            utilizado: factura.utilizado,
+            cedulautilizado: factura.cedulautilizado,
+            codvendedor: factura.codvendedor,
+            condiciones: factura.condiciones,
+            formapago: factura.formapago,
+            descuento: factura.descuento,
+            subtotal1: totalND,
+            cotiitbms: factura.cotiitbms,
+            impuesto: impuestoND,
+            subtotal2: totalND - impuestoND,
+            total: totalND,
+            saldo: 0,
+            coticonvertido: factura.coticonvertido,
+            nombreclie: factura.nombreclie,
+            ruccliente: factura.ruccliente,
+            digitoverificadoruc: factura.digitoverificadoruc,
+            detalledebito: detalledebitoJson
+        });
+
+        // 4. CREAR REGISTROS EN BD - NOTA DEBITO DETALLE
+        if (tipoNota === "1" && detalles && detalles.length > 0) {
+            const detallesPreparados = detalles.map(d => ({
+                nofactura: nofacturaUpper,
+                nodebito: nodebito,
+                fechafactura: factura.fechafactura,
+                codcliente: factura.codcliente,
+                codvendedor: factura.codvendedor,
+                codproducto: d.codproducto?.trim().toUpperCase() || '',
+                cantidad: parseFloat(d.cantidad) || 0,
+                descripcion: d.descripcion?.trim().toUpperCase() || '',
+                precio: parseFloat(d.precio) || 0,
+                ancho: parseFloat(d.ancho) || 0,
+                alto: parseFloat(d.alto) || 0,
+                unidad: d.unidad || 'UND',
+                mercancia: d.mercancia || '',
+                hora: new Date().toLocaleTimeString(),
+                acabados: d.acabados || ''
+            }));
+            await NotaDebitoDetalle.insertMany(detallesPreparados);
+        } else if (tipoNota === "2") {
+            await NotaDebitoDetalle.create({
+                nofactura: nofacturaUpper,
+                nodebito: nodebito,
+                fechafactura: factura.fechafactura,
+                codcliente: factura.codcliente,
+                codvendedor: factura.codvendedor,
+                codproducto: 'ND-MONTO',
+                cantidad: 1,
+                descripcion: motivo || 'Nota de Débito por Monto',
+                precio: montoTotal || 0,
+                unidad: 'UND',
+                hora: new Date().toLocaleTimeString()
+            });
+        }
+
+        // 5. PREPARAR VARIABLES PARA SOAP
+        const escapeXml = (unsafe) => {
+            if (!unsafe) return '';
+            return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        };
+
+        const wkimptocontrol = impuestoND || 0;
+        let fenaturalezaop = factura.naturalezaoperacion || '01';
+        let fetipoventa = factura.tipoventa || '1';
+        let fetipoclientefe = factura.tipoclientefe || '01';
+        let fetipocontribuyente = factura.tipocontribuyente || '1';
+        let ferucprt = factura.ruccliente || '';
+        let fedigiverificaprt = factura.digitoverificadoruc || '';
+        let ferazonsocialprt = factura.razonsocial || '';
+        let fedireccionprt = factura.direccioncontribuyente || '';
+        let feemailprt = factura.correocliefe || '';
+
+        if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
+
+        let fenundocfiscal = nodebito;
+        var fetiempopago = "";
+        var condicionventatmp = factura.condiciones;
+        if (condicionventatmp !== null) {
+            fetiempopago = condicionventatmp;
+        }
+
+        var feubicacion = "8-8-6";
+        var feprovincia = "PANAMA";
+        var fedistrito = "PANAMA";
+        var fecorregimiento = "BETHANIA";
+
+        if (fetipoclientefe === "03") {
+            feubicacion = factura.ubicacionid || feubicacion;
+            const ubi = tablaUbicacion.find(u => u.ubicacionid === feubicacion);
+            if (ubi) {
+                feprovincia = ubi.provincia;
+                fedistrito = ubi.distrito;
+                fecorregimiento = ubi.corregimiento;
+            }
+        }
+
+        let fesucursalemisor = empresa.codigosucemisor || "001";
+        let fetokenempresa = (empresa.tokenempresa || "").trim();
+        let fetokenclave = (empresa.tokenclave || "").trim();
+
+        // 6. CONSTRUIR XML SOAP
+        let xmlniv1 = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
+<soapenv:Header/>
+<soapenv:Body>
+<tem:Enviar>
+<tem:tokenEmpresa>${fetokenempresa}</tem:tokenEmpresa>
+<tem:tokenPassword>${fetokenclave}</tem:tokenPassword>
+<tem:documento>
+<ser:codigoSucursalEmisor>${fesucursalemisor}</ser:codigoSucursalEmisor>
+<ser:tipoSucursal>1</ser:tipoSucursal>
+<ser:datosTransaccion>
+<ser:tipoEmision>01</ser:tipoEmision>
+<ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
+<ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal>
+<ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
+<ser:fechaEmision>${fechasistema}</ser:fechaEmision>
+<ser:fechaSalida>${fechasistema}</ser:fechaSalida>
+<ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion>
+<ser:tipoOperacion>1</ser:tipoOperacion>
+<ser:destinoOperacion>1</ser:destinoOperacion>
+<ser:formatoCAFE>1</ser:formatoCAFE>
+<ser:entregaCAFE>1</ser:entregaCAFE>
+<ser:envioContenedor>1</ser:envioContenedor>
+<ser:procesoGeneracion>1</ser:procesoGeneracion>
+<ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
+<ser:informacionInteres>${escapeXml(motivo || 'Nota de Debito')}</ser:informacionInteres>
+<ser:cufeReferenciado>${factura.facturaelectronica || ''}</ser:cufeReferenciado>
+<ser:cliente>
+<ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE>
+<ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
+<ser:numeroRUC>${ferucprt}</ser:numeroRUC>
+<ser:digitoVerificadorRUC>${fedigiverificaprt}</ser:digitoVerificadorRUC>
+<ser:razonSocial>${escapeXml(ferazonsocialprt)}</ser:razonSocial>
+<ser:direccion>${escapeXml(fedireccionprt)}</ser:direccion>
+<ser:codigoUbicacion>${feubicacion}</ser:codigoUbicacion>
+<ser:provincia>${feprovincia}</ser:provincia>
+<ser:distrito>${fedistrito}</ser:distrito>
+<ser:corregimiento>${fecorregimiento}</ser:corregimiento>
+<ser:correoElectronico1>${feemailprt}</ser:correoElectronico1>
+<ser:pais>PA</ser:pais>
+</ser:cliente>
+</ser:datosTransaccion>`;
+
+        let xmlistseg = "\n<ser:listaItems>\n";
+        let xmlenviarlist = "";
+        let wtotalprecioneto = 0, wtotalitbms = 0, wtotaldescuento = 0, wtotaldefactura = 0;
+
+        const itemsParaSoap = tipoNota === "2"
+            ? [{
+                codproducto: 'ND-MONTO',
+                descripcion: motivo || 'Nota de Débito por Monto',
+                cantidad: 1,
+                precio: montoTotal || 0,
+                descuento: 0,
+                impuesto1: factura.impuesto1 || 7,
+                impuesto2: factura.impuesto2 || 0,
+                impuesto3: factura.impuesto3 || 0,
+                unidad: 'UND',
+                modelo: '',
+                acabados: '',
+                fechafabricacion: fechasistema,
+                fechaexpiracion: fechasistema,
+                codigobienes: '',
+                tasaisc: 0,
+                pormayor: 1,
+                detventa: '1'
+            }]
+            : (detalles || []).map(d => ({
+                codproducto: d.codproducto,
+                descripcion: d.descripcion,
+                cantidad: d.cantidad,
+                precio: d.precio,
+                descuento: 0,
+                impuesto1: factura.impuesto1 || 7,
+                impuesto2: factura.impuesto2 || 0,
+                impuesto3: factura.impuesto3 || 0,
+                unidad: d.unidad || 'UND',
+                modelo: '',
+                acabados: '',
+                fechafabricacion: fechasistema,
+                fechaexpiracion: fechasistema,
+                codigobienes: '',
+                tasaisc: 0,
+                pormayor: 1,
+                detventa: '1'
+            }));
+
+        for (let det of itemsParaSoap) {
+            let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : fechasistema;
+            let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : fechasistema;
+            let descpor = parseFloat(det.descuento || 0) / 100;
+            let wpreciowk = parseFloat(det.precio || 0);
+            let wcantidaditem = parseFloat(det.cantidad || 0);
+            let wimpuestoitem = parseFloat(det.impuesto1 || 0) / 100;
+            let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
+            let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
+            let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+
+            let wtasaitbms = "00";
+            if (wcodimpuesto1 !== 0) wtasaitbms = "01";
+            if (wcodimpuesto2 !== 0) wtasaitbms = "02";
+            if (wcodimpuesto3 !== 0) wtasaitbms = "03";
+
+            let wvalordesc = 0;
+            let wprecioitem = wpreciowk * wcantidaditem;
+            if (descpor > 0) {
+                wvalordesc = wpreciowk * descpor;
+                wtotaldescuento += wvalordesc;
+                wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
+            }
+            wtotalprecioneto += wprecioitem;
+
+            let wvalorimpuestoitem = 0;
+            if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+            wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+            if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
+            if (wtasaitbms === "01") wtotalitbms += parseFloat(wvalorimpuestoitem);
+
+            let wtotlinitem = wprecioitem;
+            if (wtasaitbms === "01") wtotlinitem += wvalorimpuestoitem;
+
+            let wpormayor = parseFloat(det.pormayor || 0);
+            if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
+            let wentrega = wpormayor * wcantidaditem;
+            wtotaldefactura += wtotlinitem;
+
+            xmlenviarlist += `<ser:item>
+<ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
+<ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
+<ser:unidadMedida>${det.unidad || 'und'}</ser:unidadMedida>
+<ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
+<ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
+<ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
+
+            if (fetipoclientefe === "03" && det.codigobienes) {
+                xmlenviarlist += `<ser:codigoCPBSAbrev>${det.codigobienes.substring(0, 2)}</ser:codigoCPBSAbrev>
+<ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS>
+<ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
+            }
+
+            xmlenviarlist += `<ser:infoItem>modelo : ${escapeXml(det.modelo || '')}   ${escapeXml(det.acabados || '')}</ser:infoItem>
+<ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario>
+<ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
+<ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem>
+<ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
+
+            let xmlenviartasa = "";
+            if (wtasaitbms === "01") {
+                let wintermedio = Math.floor(wvalorimpuestoitem).toString();
+                let decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+                let winter2 = 9 - wintermedio.length;
+                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS><ser:valorITBMS>${"0".repeat(Math.max(0, winter2)) + wintermedio + "." + decimalStr}</ser:valorITBMS>\n`;
+            } else {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS><ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+            }
+            xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
+        }
+
+        let xmltotal = `<ser:totalesSubTotales>
+<ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
+<ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
+<ser:totalMontoGravado>${wtotalitbms.toFixed(2)}</ser:totalMontoGravado>
+<ser:totalFactura>${wtotaldefactura.toFixed(2)}</ser:totalFactura>
+<ser:totalValorRecibido>${wtotaldefactura.toFixed(2)}</ser:totalValorRecibido>
+<ser:tiempoPago>${fetiempopago}</ser:tiempoPago>
+<ser:nroItems>${itemsParaSoap.length}</ser:nroItems>
+<ser:totalTodosItems>${wtotaldefactura.toFixed(2)}</ser:totalTodosItems>
+<ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${factura.formapago || '01'}</ser:formaPagoFact>
+<ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
+
+        let xmlineareten = "";
+        let montoreten = 0;
+        if (factura.retenedor && factura.retenedor !== "0") {
+            let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
+            montoreten = wtotalitbms * (tasareten / 100);
+            xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
+        }
+
+        let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
+        let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
+
+        // 7. EJECUTAR LLAMADA SOAP
+        let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+        const soapResponse = await fetch(soapUrl, {
+            method: 'POST',
+            body: xmlenviar,
+            headers: {
+                'User-Agent': 'NODEJS-FETCH',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'SOAPAction': 'http://tempuri.org/IService/Enviar'
+            }
+        });
+
+        if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+        const bodyXml = await soapResponse.text();
+
+        const extractTag = (xml, tag) => {
+            const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+            const match = xml.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const resultadoSOAP = {
+            cufeHandle: extractTag(bodyXml, "cufe"),
+            qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
+            codigoHandle: extractTag(bodyXml, "codigo"),
+            msgHandle: extractTag(bodyXml, "mensaje"),
+            fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
+            protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
+        };
+
+        // 8. VALIDAR, ACTUALIZAR BD Y RESPONDER
+        if (resultadoSOAP.codigoHandle === "200") {
+            // ✅ SUMAR CANTIDAD AL INVENTARIO (solo para ND por cantidades)
+            if (tipoNota === "1" && detalles && detalles.length > 0) {
+                for (const det of detalles) {
+                    if (det.codproducto) {
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: det.codproducto },
+                            { $inc: { cantidispo: Math.abs(det.cantidad || 0) } }
+                        );
+                    }
+                }
+            }
+
+            const ndActualizada = await NotaDebitoHead.findByIdAndUpdate(
+                nuevaNDHead._id,
+                {
+                    $set: {
+                        facturaelectronica: resultadoSOAP.cufeHandle,
+                        fechaEmision: fechasistema,
+                        fechaSalida: fechasistema,
+                        estado: 'A',
+                        fechaActualizacion: new Date().toISOString()
+                    }
+                },
+                { new: true }
+            );
+
+            // Agregar al historial de la factura original
+            await FacturaHead.findByIdAndUpdate(factura._id, {
+                $addToSet: { historialnotadebito: nodebito }
+            });
+
+            // ✅ DESCONTAR FOLIO PAC
+            await descontarFolioPAC();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Nota de Débito aceptada por TheFactory',
+                data: ndActualizada
+            });
+        } else {
+            await NotaDebitoHead.findByIdAndUpdate(nuevaNDHead._id, { $set: { estado: 'Rechazada' } });
+            return res.status(400).json({
+                success: false,
+                message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
+                data: null
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error enviar-Thefactory NotaDebito:', error);
+        return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
+    }
+});
 
 // ============================================================================
 // 🔹 RUTAS: GASTOS MAESTROS (HEAD)
@@ -4483,6 +5761,143 @@ app.put('/api/compras/anular/head/:id', async (req, res) => {
     }
 });
 
+// ============================================================================
+// 🔹 RUTAS: APLICA NOTA DE CRÉDITO
+// ============================================================================
+
+// 1) LISTAR NotaCreditoHead por rango de fechas (fechacredito)
+app.get('/api/ventas/notascredito/head', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+        let filter = {};
+        if (fechaInicial && fechaFinal) {
+            filter.fechacredito = { $gte: fechaInicial, $lte: fechaFinal };
+        } else if (fechaInicial) {
+            filter.fechacredito = { $gte: fechaInicial };
+        } else if (fechaFinal) {
+            filter.fechacredito = { $lte: fechaFinal };
+        }
+        const notas = await NotaCreditoHead.find(filter).sort({ fechacredito: -1 });
+        res.json({
+            success: true,
+            message: `${notas.length} nota(s) de crédito encontrada(s)`,
+            data: notas
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/notascredito/head:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// 2) OBTENER detalles de una Nota de Crédito por su nocredito
+app.get('/api/ventas/notascredito/detalles/nocredito/:nocredito', async (req, res) => {
+    try {
+        const { nocredito } = req.params;
+        const detalles = await NotaCreditoDetalle.find({ nocredito: nocredito.trim() });
+        res.json({
+            success: true,
+            message: `${detalles.length} detalle(s) encontrado(s)`,
+            data: detalles
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/notascredito/detalles/nocredito:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// 3) APLICAR crédito como pago (actualiza NotaCreditoHead + crea transacción)
+app.post('/api/ventas/notascredito/aplicar/:nocredito', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { nocredito } = req.params;
+        const {
+            asignadoa, cedulasignadoa, realizado, utilizado, cedulautilizado,
+            fechautilizado, facturautilizado, montotran, comentario, formapago
+        } = req.body;
+
+        const notaCredito = await NotaCreditoHead.findOne({ nocredito: nocredito.trim() }).session(session);
+        if (!notaCredito) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Nota de crédito no encontrada' });
+        }
+
+        // Calcular saldo disponible = total - suma de transacciones previas
+        const transaccionesPrevias = await NotaAplicaCredito.find({ nocredito: nocredito.trim() }).session(session);
+        const totalAplicadoPrevio = transaccionesPrevias.reduce((sum, t) => sum + (t.montotran || 0), 0);
+        const saldoDisponible = (notaCredito.total || 0) - totalAplicadoPrevio;
+
+        const montoAplicar = parseFloat(montotran) || 0;
+        if (montoAplicar <= 0) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'El monto a aplicar debe ser mayor a 0' });
+        }
+        if (montoAplicar > saldoDisponible) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: `El monto excede el saldo disponible (${saldoDisponible.toFixed(2)})` });
+        }
+
+        // Generar número de transacción consecutivo
+        const lastTran = await NotaAplicaCredito.findOne().sort({ notransaccion: -1 }).session(session);
+        const notransaccion = (lastTran && lastTran.notransaccion ? lastTran.notransaccion : 0) + 1;
+        const fechasistema = formatLocalYmd(new Date());
+
+        // Crear la transacción
+        const nuevaTransaccion = new NotaAplicaCredito({
+            notransaccion: notransaccion,
+            nocredito: notaCredito.nocredito,
+            nofactura: notaCredito.nofactura,
+            fechacredito: notaCredito.fechacredito,
+            fechatransaccion: fechasistema,
+            fechavencimiento: notaCredito.fechavencimiento,
+            facturaplicada: facturautilizado || '',
+            codcliente: notaCredito.codcliente,
+            codglobal: notaCredito.idglobalcorpo || '',
+            cliente: notaCredito.nombreclie,
+            utilizado: utilizado || '',
+            cedulautilizado: cedulautilizado || '',
+            formapago: formapago || '06',
+            saldoanterior: saldoDisponible,
+            montotran: montoAplicar,
+            comentario: comentario || ''
+        });
+        await nuevaTransaccion.save({ session });
+
+        // Actualizar NotaCreditoHead con los campos de asignación + nuevo saldo
+        const nuevoSaldo = saldoDisponible - montoAplicar;
+        await NotaCreditoHead.findOneAndUpdate(
+            { nocredito: nocredito.trim() },
+            {
+                $set: {
+                    asignadoa: asignadoa || '',
+                    cedulasignadoa: cedulasignadoa || '',
+                    realizado: realizado || '',
+                    utilizado: utilizado || '',
+                    cedulautilizado: cedulautilizado || '',
+                    fechautilizado: fechautilizado || fechasistema,
+                    facturautilizado: facturautilizado || '',
+                    saldo: nuevoSaldo,
+                    fechaActualizacion: new Date().toISOString()
+                }
+            },
+            { new: true, session }
+        );
+
+        await session.commitTransaction();
+        res.status(200).json({
+            success: true,
+            message: '✅ Crédito aplicado exitosamente',
+            data: nuevaTransaccion
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('❌ Error POST /api/ventas/notascredito/aplicar:', error);
+        res.status(500).json({ success: false, message: 'Error al aplicar crédito', error: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
 
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
@@ -4495,7 +5910,24 @@ app.put('/api/compras/anular/head/:id', async (req, res) => {
 // 🔹 HELPERS INTERNOS (CORREGIDOS Y SEGUROS)
 // Reemplaza TODAS las funciones anteriores de Grabaelcufe, fdescuentapac y facumulavendedor
 // ============================================================================
-
+// ============================================================================
+// 🔹 HELPER: DESCONTAR FOLIO PAC (en cada envío exitoso a TheFactory código 200)
+// ============================================================================
+async function descontarFolioPAC() {
+    try {
+        const empresa = await EmpresaConfig.findOne({});
+        if (empresa) {
+            const nuevosFolios = Math.max(0, (empresa.nofoliospac || 0) - 1);
+            await EmpresaConfig.findByIdAndUpdate(
+                empresa._id,
+                { $set: { nofoliospac: nuevosFolios } }
+            );
+            console.log(`✅ Folio PAC descontado. Folios restantes: ${nuevosFolios}`);
+        }
+    } catch (error) {
+        console.error('❌ Error descontando folio PAC:', error);
+    }
+}
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 async function actualizarTotalesCabecera(nocotiza) {
   try {
