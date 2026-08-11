@@ -2339,7 +2339,7 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 app.get("/api/ventas/cotizaciones/head", async (req, res) => {
   try {
     const { nocotiza } = req.query;
-    let query = { activo: { $ne: "N" } };
+    let query = { activo: { $eq: "A" } };
 
     if (nocotiza && nocotiza.trim() !== "") {
       query.nocotiza = { $regex: nocotiza.trim(), $options: "i" };
