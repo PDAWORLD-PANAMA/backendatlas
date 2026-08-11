@@ -907,10 +907,6 @@ comentario:{ type : String }
 const NotaAplicaDebito = mongoose.model('Schemarectranaplidebito',Schematranaplidebito);
 
 // ✅ Helper para calcular subtotal de línea
-  
-// ============================================================================
-// 🔹 RUTAS: DASHBOARD
-// ============================================================================
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD (CON DATOS REALES DE CotizaHead Y FacturaHead)
 // ============================================================================
@@ -919,7 +915,7 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     // 🔹 1. CALCULAR DATOS REALES DE COTIZACIONES
     // ═══════════════════════════════════════════════════════
-    const todasCotizaciones = await CotizaHead.find({ activo: { $ne: "N" } });
+    const todasCotizaciones = await CotizaHead.find({ activo: { $eq: "A" } });
     const cotizacionesTotal = todasCotizaciones.length;
 
     // Contar cotizaciones convertidas (coticonvertido = "S" o "SI")
@@ -954,17 +950,17 @@ app.get("/api/dashboard", async (req, res) => {
     // Consultar facturas por fecha (excluir anuladas)
     const facturasHoy = await FacturaHead.find({
       fechafactura: todayStr,
-      estado: { $ne: 'A' }
+      estado: { $eq: 'A' }
     });
 
     const facturasAyer = await FacturaHead.find({
       fechafactura: yesterdayStr,
-      estado: { $ne: 'A' }
+      estado: { $eq: 'A' }
     });
 
     const facturasMes = await FacturaHead.find({
       fechafactura: { $regex: `^${currentMonthStr}` },
-      estado: { $ne: 'A' }
+      estado: { $eq: 'A' }
     });
 
     // Calcular totales de ventas
@@ -2383,7 +2379,7 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
       ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
       codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
       tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
-      activo : "S",
+      activo : "A",
       fechaCreacion:fechasistema,
       fechaActualizacion: fechasistema,
     });
@@ -2413,7 +2409,7 @@ app.get('/api/ventas/cotizaciones/head/nro/:nocotiza', async (req, res) => {
     const { nocotiza } = req.params; 
 const head = await CotizaHead.findOne({ 
     nocotiza: nocotiza.toUpperCase(), 
-    $or: [{ activo: "S" }] 
+    $or: [{ activo: "A" }] 
 });
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: 'Cotización obtenida', data: head });
@@ -2636,7 +2632,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       ruccliente: head.ruccliente?.trim().toUpperCase(),
       codvendedor: head.codvendedor?.trim().toUpperCase(),
       detallecoti: detallecotiJson,
-      activo: "S",
+      activo: "A",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
       subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
@@ -2684,7 +2680,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
     // Buscar si la cotización ya existe
     let existingHead = await CotizaHead.findOne({ 
       nocotiza: nocotizaUpper,
-      $or: [{ activo: "S" }]
+      $or: [{ activo: "A" }]
     });
     
     let headFinal;
@@ -2709,7 +2705,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         codvendedor: head.codvendedor?.trim().toUpperCase() || '',
         tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
         detallecoti: detallecotiJson,
-        activo: "S",
+        activo: "A",
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
@@ -2811,7 +2807,7 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     var fechasistema = formatLocalYmd(new Date());
-    const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: "S" });
+    const head = await CotizaHead.findOne({ nocotiza: nocotiza.toUpperCase(), activo: "A" });
     if (!head) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     const detalles = await CotizaDetalle.find({ nocotiza: nocotiza.toUpperCase()});
     const pdfData = {
