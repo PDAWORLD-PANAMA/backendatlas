@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatizador de Infraestructura - BYDBUS</title>
+    <style>
+        :root {
+            --primary: #0066cc;
+            --success: #28a745;
+            --bg: #f4f7f9;
+            --card: #ffffff;
+            --text: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #fafafa;
+        }
+
+        .step h3 {
+            margin-top: 0;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0052a3;
+        }
+
+        .output-box {
+            background-color: #272822;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .link-btn {
+            display: inline-block;
+            background-color: #6c757d;
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BYDBUS ERP</h1>
+    <p class="subtitle">Asistente de Automatización de Infraestructura (MongoDB, GitHub y Render)</p>
+
+    <!-- PASO 1: MONGODB ATLAS -->
+    <div class="step">
+        <h3>1. Configuración de MongoDB Atlas</h3>
+        <p>Asegúrate de haber creado tu clúster en <a href="https://cloud.mongodb.com" target="_blank" class="link-btn">MongoDB Atlas</a> e ingresa los datos a continuación:</p>
+        
+        <div class="form-group">
+            <label for="mongoUser">Usuario de Base de Datos:</label>
+            <input type="text" id="mongoUser" placeholder="ejemplo: usuario_erp">
+        </div>
+        <div class="form-group">
+            <label for="mongoPass">Contraseña de Base de Datos:</label>
+            <input type="password" id="mongoPass" placeholder="Tu Contraseña">
+        </div>
+        <div class="form-group">
+            <label for="mongoHost">Cluster Host (Host sin 'mongodb+srv://'):</label>
+            <input type="text" id="mongoHost" placeholder="ejemplo: cluster0.xxxxx.mongodb.net">
+        </div>
+        <div class="form-group">
+            <label for="mongoDB">Nombre de la Base de Datos:</label>
+            <input type="text" id="mongoDB" value="erpdb" placeholder="ejemplo: midatabase">
+        </div>
+
+        <button onclick="generarMongoURI()">Generar MONGO_URI Automatizada</button>
+
+        <div id="mongoUriContainer" style="display:none;">
+            <p><strong>Cadena de Conexión (`MONGO_URI`) Generada:</strong></p>
+            <div class="output-box" id="mongoUriOutput"></div>
+        </div>
+    </div>
+
+    <!-- PASO 2: GITHUB AUTOMATION -->
+    <div class="step">
+        <h3>2. Automatización de Fork en GitHub</h3>
+        <p>Genera un token de GitHub en <a href="https://github.com/settings/tokens/new?scopes=public_repo" target="_blank" class="link-btn">GitHub Token Generator</a> para automatizar la copia del repositorio.</p>
+
+        <div class="form-group">
+            <label for="githubToken">GitHub Personal Access Token (PAT):</label>
+            <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="form-group">
+            <label for="upstreamRepo">Repositorio Original (Owner/Repo):</label>
+            <input type="text" id="upstreamRepo" value="PROVEEDOR/backend-erp" placeholder="PROVEEDOR/backend-erp">
+        </div>
+
+        <button onclick="ejecutarForkGitHub()">Hacer Fork Automático del Repositorio</button>
+        <div id="githubStatus" class="status"></div>
+    </div>
+
+    <!-- PASO 3: RENDER AUTOMATION -->
+    <div class="step">
+        <h3>3. Despliegue Automático en Render</h3>
+        <p>Obtén tu API Key de Render en <a href="https://dashboard.render.com/u/settings#api-keys" target="_blank" class="link-btn">Render API Keys</a> para automatizar el Web Service.</p>
+
+        <div class="form-group">
+            <label for="renderToken">Render API Key:</label>
+            <input type="password" id="renderToken" placeholder="rnd_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="form-group">
+            <label for="githubUsername">Tu Usuario de GitHub:</label>
+            <input type="text" id="githubUsername" placeholder="tu_usuario_github">
+        </div>
+        <div class="form-group">
+            <label for="renderServiceName">Nombre del Servicio en Render:</label>
+            <input type="text" id="renderServiceName" value="bydbus-backend-app">
+        </div>
+
+        <button onclick="desplegarEnRender()">Desplegar Web Service con MONGO_URI</button>
+        <div id="renderStatus" class="status"></div>
+    </div>
+
+    <!-- PASO 4: RESULTADO FINAL -->
+    <div class="step" id="finalStep" style="display:none;">
+        <h3>4. Endpoint Generado para la App Android</h3>
+        <p>¡Infraestructura desplegada exitosamente! Copia esta URL e ingrésala en tu App Android BYDBUS:</p>
+        <div class="output-box" id="finalEndpointOutput"></div>
+    </div>
+</div>
+
+<script>
+    let globalMongoUri = "";
+
+    function generarMongoURI() {
+        const user = document.getElementById('mongoUser').value.trim();
+        const pass = encodeURIComponent(document.getElementById('mongoPass').value.trim());
+        const host = document.getElementById('mongoHost').value.trim();
+        const db = document.getElementById('mongoDB').value.trim();
+
+        if(!user || !pass || !host || !db) {
+            alert("Por favor completa todos los campos de MongoDB.");
+            return;
+        }
+
+        globalMongoUri = `mongodb+srv://${user}:${pass}@${host}/${db}?retryWrites=true&w=majority`;
+        document.getElementById('mongoUriOutput').innerText = globalMongoUri;
+        document.getElementById('mongoUriContainer').style.display = 'block';
+    }
+
+    async function ejecutarForkGitHub() {
+        const token = document.getElementById('githubToken').value.trim();
+        const repoPath = document.getElementById('upstreamRepo').value.trim();
+        const statusDiv = document.getElementById('githubStatus');
+
+        if(!token || !repoPath) {
+            alert("Por favor ingresa tu Token de GitHub y el Repositorio de origen.");
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status';
+        statusDiv.innerText = 'Ejecutando Fork en GitHub...';
+
+        try {
+            const response = await fetch(`https://api.github.com/repos/${repoPath}/forks`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+
+            if (response.ok || response.status === 202) {
+                const data = await response.json();
+                statusDiv.className = 'status success';
+                statusDiv.innerText = `¡Fork realizado con éxito! Repositorio creado: ${data.full_name}`;
+                document.getElementById('githubUsername').value = data.owner.login;
+            } else {
+                const errorData = await response.json();
+                statusDiv.className = 'status error';
+                statusDiv.innerText = `Error al hacer Fork: ${errorData.message || response.statusText}`;
+            }
+        } catch (error) {
+            statusDiv.className = 'status error';
+            statusDiv.innerText = `Error de red o CORS: ${error.message}`;
+        }
+    }
+
+    async function desplegarEnRender() {
+        const renderToken = document.getElementById('renderToken').value.trim();
+        const ghUser = document.getElementById('githubUsername').value.trim();
+        const serviceName = document.getElementById('renderServiceName').value.trim();
+        const statusDiv = document.getElementById('renderStatus');
+
+        if(!globalMongoUri) {
+            alert("Primero debes generar la MONGO_URI en el Paso 1.");
+            return;
+        }
+        if(!renderToken || !ghUser || !serviceName) {
+            alert("Por favor completa las credenciales de Render y GitHub.");
+            return;
+        }
+
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'status';
+        statusDiv.innerText = 'Creando Web Service en Render...';
+
+        const payload = {
+            type: "web_service",
+            name: serviceName,
+            ownerId: "", // Se detecta automáticamente por la API Key
+            repo: `https://github.com/${ghUser}/backend-erp`,
+            autoDeploy: "yes",
+            envVars: [
+                { key: "MONGO_URI", value: globalMongoUri }
+            ],
+            serviceDetails: {
+                env: "node",
+                buildCommand: "npm install",
+                startCommand: "npm start"
+            }
+        };
+
+        try {
+            const response = await fetch('https://api.render.com/v1/services', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${renderToken}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok || response.status === 201) {
+                const data = await response.json();
+                const serviceUrl = data.service.serviceDetails.url || `https://${serviceName}.onrender.com`;
+                
+                statusDiv.className = 'status success';
+                statusDiv.innerText = `¡Servicio desplegado en Render con éxito!`;
+
+                document.getElementById('finalEndpointOutput').innerText = serviceUrl;
+                document.getElementById('finalStep').style.display = 'block';
+            } else {
+                const errorData = await response.json();
+                statusDiv.className = 'status error';
+                statusDiv.innerText = `Error de Render API: ${JSON.stringify(errorData)}`;
+            }
+        } catch (error) {
+            statusDiv.className = 'status error';
+            statusDiv.innerText = `Error al conectar con Render API: ${error.message}. Nota: La API de Render puede requerir habilitar CORS o usar un proxy local.`;
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -3062,6 +3062,99 @@ app.get('/api/ventas/reportes/ventas-por-producto', async (req, res) => {
     }
 });
 
+// ============================================================================
+// 🔹 REPORTE: VENTAS POR CLIENTE
+// ============================================================================
+app.get('/api/ventas/reporte/ventas-por-cliente', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal, nombreCliente } = req.query;
+
+        // Build date filter
+        let dateFilter = {};
+        if (fechaInicial && fechaFinal) {
+            dateFilter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        } else if (fechaInicial) {
+            dateFilter.fechafactura = { $gte: fechaInicial };
+        } else if (fechaFinal) {
+            dateFilter.fechafactura = { $lte: fechaFinal };
+        }
+
+        // Build client name filter (only if provided and not blank)
+        let clientFilter = {};
+        if (nombreCliente && nombreCliente.trim() !== '') {
+            clientFilter.nombreclie = { $regex: nombreCliente.trim(), $options: 'i' };
+        }
+
+        // Combine filters - only include non-cancelled invoices
+        const query = {
+            ...dateFilter,
+            ...clientFilter,
+            estado: { $nin: ['E', 'Anulada', 'Rechazada'] }
+        };
+
+        const facturas = await FacturaHead.find(query);
+
+        // Group by client
+        const clientMap = {};
+        facturas.forEach(f => {
+            const key = f.codcliente || f.nombreclie || 'SIN CLIENTE';
+            if (!clientMap[key]) {
+                clientMap[key] = {
+                    codcliente: f.codcliente || '',
+                    nombreclie: f.nombreclie || 'SIN CLIENTE',
+                    ruccliente: f.ruccliente || '',
+                    digitoverificadoruc: f.digitoverificadoruc || '',
+                    totalFacturas: 0,
+                    totalVentas: 0,
+                    totalImpuesto: 0,
+                    totalDescuento: 0,
+                    ultimaFactura: '',
+                    ultimaFechaFactura: '',
+                    primeraFactura: '',
+                    primeraFechaFactura: '',
+                    tipocontribuyente: f.tipocontribuyente || '',
+                    tipoclientefe: f.tipoclientefe || '',
+                    clasecliente: f.clasecliente || ''
+                };
+            }
+            clientMap[key].totalFacturas += 1;
+            clientMap[key].totalVentas += (f.total || 0);
+            clientMap[key].totalImpuesto += (f.impuesto || 0);
+            clientMap[key].totalDescuento += (f.descuento || 0);
+
+            // Track latest and earliest invoice
+            if (!clientMap[key].ultimaFechaFactura || f.fechafactura > clientMap[key].ultimaFechaFactura) {
+                clientMap[key].ultimaFactura = f.nofactura || '';
+                clientMap[key].ultimaFechaFactura = f.fechafactura || '';
+            }
+            if (!clientMap[key].primeraFechaFactura || f.fechafactura < clientMap[key].primeraFechaFactura) {
+                clientMap[key].primeraFactura = f.nofactura || '';
+                clientMap[key].primeraFechaFactura = f.fechafactura || '';
+            }
+        });
+
+        // Convert to sorted array (by totalVentas descending)
+        const data = Object.values(clientMap).sort((a, b) => b.totalVentas - a.totalVentas);
+
+        // Calculate summary
+        const resumen = {
+            totalClientes: data.length,
+            totalFacturas: data.reduce((s, c) => s + c.totalFacturas, 0),
+            totalVentasGeneral: data.reduce((s, c) => s + c.totalVentas, 0),
+            totalImpuestoGeneral: data.reduce((s, c) => s + c.totalImpuesto, 0)
+        };
+
+        res.json({
+            success: true,
+            message: `${data.length} cliente(s) encontrado(s)`,
+            data: data,
+            resumen: resumen
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/reporte/ventas-por-cliente:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
 // ───────── CREAR CABECERA DE FACTURA ─────────
 
 // ───────── OBTENER FACTURA POR NÚMERO ─────────
