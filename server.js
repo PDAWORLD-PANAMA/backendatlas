@@ -2909,6 +2909,159 @@ app.get('/api/ventas/facturas/head', async (req, res) => {
     }
 });
 
+
+// ============================================================================
+// 🔹 REPORTE: VENTAS POR PRODUCTO + RENTABILIDAD
+// ============================================================================
+app.get('/api/ventas/reportes/ventas-por-producto', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+
+        if (!fechaInicial || !fechaFinal) {
+            return res.status(400).json({
+                success: false,
+                message: 'fechaInicial y fechaFinal son obligatorios',
+                data: []
+            });
+        }
+
+        const facturas = await FacturaHead.find(
+            {
+                fechafactura: {
+                    $gte: fechaInicial,
+                    $lte: fechaFinal
+                },
+                estado: {
+                    $nin: ['E', 'Anulada', 'Rechazada']
+                }
+            },
+            'nofactura'
+        );
+
+        const numerosFactura = facturas.map(f => f.nofactura).filter(Boolean);
+
+        if (!numerosFactura.length) {
+            return res.json({
+                success: true,
+                message: 'No hay ventas en el rango seleccionado',
+                data: []
+            });
+        }
+
+        const data = await FacturaDetalle.aggregate([
+            {
+                $match: {
+                    nofactura: { $in: numerosFactura }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        codproducto: { $ifNull: ['$codproducto', ''] },
+                        descripcion: { $ifNull: ['$descripcion', ''] }
+                    },
+                    cantidad: {
+                        $sum: { $ifNull: ['$cantidad', 0] }
+                    },
+                    precio: {
+                        $sum: {
+                            $multiply: [
+                                { $ifNull: ['$cantidad', 0] },
+                                { $ifNull: ['$precio', 0] }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'inventariosedes',
+                    localField: '_id.codproducto',
+                    foreignField: 'idinventario',
+                    as: 'inventario'
+                }
+            },
+            {
+                $unwind: {
+                    path: '$inventario',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+            {
+                $addFields: {
+                    costoUnitario: {
+                        $ifNull: ['$inventario.costo1', 0]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    costoTotal: {
+                        $multiply: ['$cantidad', '$costoUnitario']
+                    },
+                    utilidad: {
+                        $subtract: [
+                            '$precio',
+                            { $multiply: ['$cantidad', '$costoUnitario'] }
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    margen: {
+                        $cond: [
+                            { $gt: ['$precio', 0] },
+                            {
+                                $multiply: [
+                                    {
+                                        $divide: ['$utilidad', '$precio']
+                                    },
+                                    100
+                                ]
+                            },
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                $project: {
+                    _id: 0,
+                    codproducto: '$_id.codproducto',
+                    descripcion: '$_id.descripcion',
+                    cantidad: 1,
+                    precio: 1,
+                    costoUnitario: 1,
+                    costoTotal: 1,
+                    utilidad: 1,
+                    margen: 1
+                }
+            },
+            {
+                $sort: {
+                    precio: -1
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            message: `${data.length} producto(s) encontrado(s)`,
+            data: data
+        });
+
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/reportes/ventas-por-producto:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error del servidor',
+            error: error.message,
+            data: []
+        });
+    }
+});
+
 // ───────── CREAR CABECERA DE FACTURA ─────────
 
 // ───────── OBTENER FACTURA POR NÚMERO ─────────
