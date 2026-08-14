@@ -4433,7 +4433,6 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
 
         // 5. VALIDAR RESPUESTA SOAP
         if (codigoHandle === "200") {
-            // ÉXITO: Revertir inventario y actualizar estado
             // ÉXITO: Revertir inventario (SUMAR) y actualizar estado
             for (const det of detalles) {
                 if (det.codproducto) {
@@ -4456,10 +4455,32 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
                 data: facturaActualizada
             });
         } else {
-            // FALLO SOAP: No tocar inventario, devolver error
+            // 🔹 FIX: Extraer TODOS los detalles posibles del XML para que el teléfono muestre el mensaje completo
+            const faultString = extractTag(bodyXml, "faultstring");
+            const faultDetail = extractTag(bodyXml, "detail");
+            const exceptionMessage = extractTag(bodyXml, "ExceptionMessage");
+            
+            let fullDetails = msgHandle || "";
+            if (faultString) fullDetails += (fullDetails ? " | " : "") + faultString;
+            if (faultDetail) fullDetails += (fullDetails ? " | " : "") + faultDetail;
+            if (exceptionMessage) fullDetails += (fullDetails ? " | " : "") + exceptionMessage;
+            
+            // Si no se extrajo nada con los tags específicos, limpiamos el XML crudo para que no se pierda la info
+            if (!fullDetails) {
+                fullDetails = bodyXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            }
+
+            // Decodificar entidades XML básicas para que sea completamente legible en la UI
+            fullDetails = fullDetails
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&apos;/g, "'");
+
             return res.status(400).json({
                 success: false,
-                message: `Rechazada por TheFactory: ${msgHandle || 'Error desconocido'}`,
+                message: `Rechazada por TheFactory: ${fullDetails}`,
                 data: null
             });
         }
