@@ -4455,34 +4455,20 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
                 data: facturaActualizada
             });
         } else {
-            // 🔹 FIX: Extraer TODOS los detalles posibles del XML para que el teléfono muestre el mensaje completo
-            const faultString = extractTag(bodyXml, "faultstring");
-            const faultDetail = extractTag(bodyXml, "detail");
-            const exceptionMessage = extractTag(bodyXml, "ExceptionMessage");
-            
-            let fullDetails = msgHandle || "";
-            if (faultString) fullDetails += (fullDetails ? " | " : "") + faultString;
-            if (faultDetail) fullDetails += (fullDetails ? " | " : "") + faultDetail;
-            if (exceptionMessage) fullDetails += (fullDetails ? " | " : "") + exceptionMessage;
-            
-            // Si no se extrajo nada con los tags específicos, limpiamos el XML crudo para que no se pierda la info
-            if (!fullDetails) {
-                fullDetails = bodyXml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-            }
+             // ❌ FALLO SOAP: No tocar inventario, devolver error detallado
+         const finalMessage = fault 
+             ? `SOAP Fault: ${fault.message}` 
+             : (msgHandle || 'Error desconocido. Revisa la consola de Node.js para ver el XML crudo.');
+             
+         const finalCode = fault ? fault.code : (codigoHandle || 'SIN_CODIGO');
 
-            // Decodificar entidades XML básicas para que sea completamente legible en la UI
-            fullDetails = fullDetails
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .replace(/&amp;/g, '&')
-                .replace(/&quot;/g, '"')
-                .replace(/&apos;/g, "'");
-
-            return res.status(400).json({
-                success: false,
-                message: `Rechazada por TheFactory: ${fullDetails}`,
-                data: null
-            });
+         return res.status(400).json({
+             success: false,
+             // Now it will show: "Rechazada por TheFactory [400]: El periodo de anulación ha vencido"
+             message: `Rechazada por TheFactory [${finalCode}]: ${finalMessage}`,
+             data: null,
+             rawXml: bodyXml // Optional: Send raw XML to Android app for debugging if needed
+         });
         }
 
     } catch (error) {
@@ -4491,9 +4477,6 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
     }
 });
 
-// ============================================================================
-// 🔹 ENVIAR NOTA DE CRÉDITO A THEFACTORY CORP (SOAP)
-// ============================================================================
 // ============================================================================
 // 🔹 ENVIAR NOTA DE CRÉDITO A THEFACTORY CORP (SOAP)
 // 🔹 tipodocumento: "04" = Transacción, "06" = Monto
