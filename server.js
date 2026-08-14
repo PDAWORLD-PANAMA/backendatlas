@@ -3868,8 +3868,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         }
         
         const mensaje = !existingHead 
-        
-        const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
             : `✅ Factura ${nofacturaUpper} actualizada correctamente`;
         
