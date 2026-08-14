@@ -4388,17 +4388,17 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
         const htokenclave = (empresa.tokenclave || "").trim();
         const motivoAnulacion = (motivo || "Anulacion de factura").trim();
 
-        const xmlanular = `
+let xmlanular   = `
         <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.Model">
         <soapenv:Header/>
         <soapenv:Body>
            <tem:AnulacionDocumento>
-              <tem:tokenEmpresa>${htokenempresa}</tem:tokenEmpresa>
-              <tem:tokenPassword>${htokenclave}</tem:tokenPassword>
-              <tem:motivoAnulacion>${motivoAnulacion}</tem:motivoAnulacion>
+              <tem:tokenEmpresa>` + htokenempresa + `</tem:tokenEmpresa>
+              <tem:tokenPassword>` + htokenclave + `</tem:tokenPassword>
+              <tem:motivoAnulacion>` + motivoAnulacion + `</tem:motivoAnulacion>
               <tem:datosDocumento>
-                 <ser:codigoSucursalEmisor>${hcodigosucursal}</ser:codigoSucursalEmisor>
-                 <ser:numeroDocumentoFiscal>${nofacturaUpper}</ser:numeroDocumentoFiscal>
+                 <ser:codigoSucursalEmisor>` + hcodigosucursal + `</ser:codigoSucursalEmisor>
+                 <ser:numeroDocumentoFiscal>` +nofacturaUpper + `</ser:numeroDocumentoFiscal>
                  <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
                  <ser:tipoDocumento>01</ser:tipoDocumento>
                  <ser:tipoEmision>01</ser:tipoEmision>
@@ -4456,19 +4456,20 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
             });
         } else {
              // ❌ FALLO SOAP: No tocar inventario, devolver error detallado
-         const finalMessage = fault 
-             ? `SOAP Fault: ${fault.message}` 
-             : (msgHandle || 'Error desconocido. Revisa la consola de Node.js para ver el XML crudo.');
-             
-         const finalCode = fault ? fault.code : (codigoHandle || 'SIN_CODIGO');
+                     const faultCode = extractTag(bodyXml, "faultcode") || extractTag(bodyXml, "Code");
+             const faultString = extractTag(bodyXml, "faultstring") || extractTag(bodyXml, "Reason") || extractTag(bodyXml, "Text");
 
-         return res.status(400).json({
-             success: false,
-             // Now it will show: "Rechazada por TheFactory [400]: El periodo de anulación ha vencido"
-             message: `Rechazada por TheFactory [${finalCode}]: ${finalMessage}`,
-             data: null,
-             rawXml: bodyXml // Optional: Send raw XML to Android app for debugging if needed
-         });
+             const finalCode = codigoHandle || faultCode || 'SIN_CODIGO';
+             const finalMessage = msgHandle || faultString || 'Error desconocido. Revisa la consola de Node.js para ver el XML crudo.';
+
+             console.error(`🔴 ERROR SOAP TheFactory [${finalCode}]: ${finalMessage}`);
+
+             return res.status(400).json({
+                 success: false,
+                 message: `Rechazada por TheFactory [${finalCode}]: ${finalMessage}`,
+                 data: null,
+                 rawXml: bodyXml // Enviamos el XML crudo al frontend (Kotlin) para debug
+             });
         }
 
     } catch (error) {
