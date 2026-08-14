@@ -906,6 +906,44 @@ comentario:{ type : String }
 
 const NotaAplicaDebito = mongoose.model('Schemarectranaplidebito',Schematranaplidebito);
 
+var Schematrancxpagar = new mongoose.Schema({
+    notransaccion: { type : Number },
+    nodocumento: { type : String  },
+    nofactura: { type : String  },
+    fechafactura: { type : String },
+    fechatransaccion: { type : String },
+    fechaabono: { type : String },
+    fechavencimiento: { type : String  },
+    codproveedor: { type : String },
+    provnombre: { type : String  },
+    formapago: { type : String  },
+    saldoanterior: { type : Number },
+    montotran: { type : Number },
+    estadotrans: { type : String },
+    comentario:{ type : String  }
+});
+
+const TranCxPagar = mongoose.model('Schemarectrancxpagar',Schematrancxpagar);
+
+var Schematrancxcobrar = new mongoose.Schema({
+    notransaccion: { type : Number },
+    nofactura: { type : String },
+    fechafactura: {  type : String },
+    fechatransaccion: { type : String },
+    fechaabono: { type : String },
+    fechavencimiento: { type : String },
+    codcliente: { type : String },
+    codglobal: { type : String },
+    cliente: { type : String  },
+    formapago: { type : String },
+    saldoanterior: { type : Number },
+    montotran: { type : Number },
+    estadotrans: { type : String },
+    comentario:{ type : String }
+});
+
+const TranCxCobrar = mongoose.model('Schemarectrancxcobrar',Schematrancxcobrar);
+
 // ✅ Helper para calcular subtotal de línea
 // ============================================================================
 // 🔹 RUTAS: DASHBOARD (CON DATOS REALES DE CotizaHead Y FacturaHead)
@@ -2529,7 +2567,7 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Todos los detalles deben pertenecer a la misma cotización' });
     }
     var fechasistema = formatLocalYmd(new Date());
-    const headExists = await CotizaHead.findOne({ nocotiza, activo: true });
+    const headExists = await CotizaHead.findOne({ nocotiza, activo: "A" });
     if (!headExists) return res.status(404).json({ success: false, message: 'La cotización de cabecera no existe o está inactiva' });
     const detallesPreparados = detalles.map(detalle => {
       const bruto = (detalle.cantidad || 1) * (detalle.precio || 0);
@@ -2898,10 +2936,9 @@ app.post("/api/ventas/facturas/head", async (req, res) => {
 app.get('/api/ventas/facturas/head', async (req, res) => {
     try {
         const { nofactura, codcliente } = req.query;
-        let filters = { activo: { $ne: false } };
         if (nofactura?.trim()) filters.nofactura = { $regex: nofactura.trim(), $options: 'i' };
         if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
-        const facturas = await FacturaHead.find(filters).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
+        const facturas = await FacturaHead.find({}).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
         res.json({ success: true, message: `${facturas.length} factura(s) encontrada(s)`, data: facturas });
     } catch (error) {
         console.error('❌ Error GET /api/ventas/facturas/head:', error);
@@ -3155,6 +3192,335 @@ app.get('/api/ventas/reporte/ventas-por-cliente', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
     }
 });
+
+// ============================================================================
+// 🔹 RUTAS: CUENTAS POR COBRAR (CXC)
+// ============================================================================
+
+// 1) LISTAR FACTURAS A CRÉDITO (condiciones != '1') CON FILTROS
+app.get('/api/ventas/cxc/facturas', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal, nombreCliente } = req.query;
+
+        let filter = {
+            condiciones: { $ne: '1' },  // Solo facturas a crédito
+            estado: { $nin: ['E', 'Anulada'] }  // Excluir anuladas
+        };
+
+        if (fechaInicial && fechaFinal) {
+            filter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        } else if (fechaInicial) {
+            filter.fechafactura = { $gte: fechaInicial };
+        } else if (fechaFinal) {
+            filter.fechafactura = { $lte: fechaFinal };
+        }
+
+        if (nombreCliente && nombreCliente.trim() !== '') {
+            filter.nombreclie = { $regex: nombreCliente.trim(), $options: 'i' };
+        }
+
+        const facturas = await FacturaHead.find(filter).sort({ fechafactura: -1 });
+
+        res.json({
+            success: true,
+            message: `${facturas.length} factura(s) a crédito encontrada(s)`,
+            data: facturas
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/cxc/facturas:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// 2) CREAR ABONO (TRAN CXC COBRAR)
+app.post('/api/ventas/cxc/abono', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { nofactura, montotran, formapago, fechaabono, comentario } = req.body;
+
+        if (!nofactura) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'Número de factura es obligatorio' });
+        }
+
+        const factura = await FacturaHead.findOne({ nofactura: nofactura.trim() }).session(session);
+        if (!factura) {
+            await session.abortTransaction();
+            return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        }
+
+        // Calcular abonos previos para esta factura
+        const abonosPrevios = await TranCxCobrar.find({ nofactura: nofactura.trim() }).session(session);
+        const totalAbonado = abonosPrevios.reduce((sum, a) => sum + (a.montotran || 0), 0);
+        const saldoActual = (factura.total || 0) - totalAbonado;
+
+        const montoAbono = parseFloat(montotran) || 0;
+        if (montoAbono <= 0) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'El monto del abono debe ser mayor a 0' });
+        }
+
+        if (montoAbono > saldoActual) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: `El abono (${montoAbono.toFixed(2)}) excede el saldo pendiente (${saldoActual.toFixed(2)})`
+            });
+        }
+
+        // Generar número de transacción consecutivo
+        const lastTran = await TranCxCobrar.findOne().sort({ notransaccion: -1 }).session(session);
+        const notransaccion = (lastTran && lastTran.notransaccion ? lastTran.notransaccion : 0) + 1;
+        const fechasistema = formatLocalYmd(new Date());
+
+        const nuevoAbono = new TranCxCobrar({
+            notransaccion: notransaccion,
+            nofactura: factura.nofactura,
+            fechafactura: factura.fechafactura,
+            fechatransaccion: fechasistema,
+            fechaabono: fechaabono || fechasistema,
+            fechavencimiento: factura.fechavencimiento,
+            codcliente: factura.codcliente,
+            codglobal: factura.idglobalcorporp || '',
+            cliente: factura.nombreclie,
+            formapago: formapago || '02',
+            saldoanterior: saldoActual,
+            montotran: montoAbono,
+            estadotrans: 'A',
+            comentario: comentario || ''
+        });
+        await nuevoAbono.save({ session });
+
+        // Actualizar saldo de la factura
+        const nuevoSaldo = saldoActual - montoAbono;
+        await FacturaHead.findOneAndUpdate(
+            { nofactura: nofactura.trim() },
+            { $set: { saldo: nuevoSaldo, fechaActualizacion: new Date().toISOString() } },
+            { new: true, session }
+        );
+
+        await session.commitTransaction();
+        res.status(201).json({
+            success: true,
+            message: '✅ Abono registrado exitosamente',
+            data: nuevoAbono
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('❌ Error POST /api/ventas/cxc/abono:', error);
+        res.status(500).json({ success: false, message: 'Error al registrar abono', error: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+// 3) ESTADO DE CUENTA POR CLIENTE
+app.get('/api/ventas/cxc/estado/:codcliente', async (req, res) => {
+    try {
+        const { codcliente } = req.params;
+
+        // Facturas a crédito del cliente
+        const facturas = await FacturaHead.find({
+            codcliente: codcliente.trim(),
+            condiciones: { $ne: '1' },
+            estado: { $nin: ['E', 'Anulada'] }
+        }).sort({ fechafactura: 1 });
+
+        // Abonos del cliente
+        const abonos = await TranCxCobrar.find({
+            codcliente: codcliente.trim()
+        }).sort({ fechatransaccion: 1 });
+
+        const saldoTotal = facturas.reduce((sum, f) => sum + (f.saldo || f.total || 0), 0);
+        const totalAbonado = abonos.reduce((sum, a) => sum + (a.montotran || 0), 0);
+
+        res.json({
+            success: true,
+            message: 'Estado de cuenta obtenido',
+            data: {
+                codcliente: codcliente.trim(),
+                cliente: facturas.length > 0 ? facturas[0].nombreclie : '',
+                saldoTotal: saldoTotal,
+                totalAbonado: totalAbonado,
+                facturas: facturas,
+                abonos: abonos
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/cxc/estado:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// 4) RESÚMENES DE SALDOS POR CLIENTE
+app.get('/api/ventas/cxc/saldos', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal, nombreCliente } = req.query;
+
+        let filter = {
+            condiciones: { $ne: '1' },
+            estado: { $nin: ['E', 'Anulada'] }
+        };
+
+        if (fechaInicial && fechaFinal) {
+            filter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        }
+        if (nombreCliente && nombreCliente.trim() !== '') {
+            filter.nombreclie = { $regex: nombreCliente.trim(), $options: 'i' };
+        }
+
+        const facturas = await FacturaHead.find(filter);
+
+        // Agrupar por cliente
+        const clienteMap = {};
+        facturas.forEach(f => {
+            const key = f.codcliente;
+            if (!clienteMap[key]) {
+                clienteMap[key] = {
+                    codcliente: f.codcliente,
+                    cliente: f.nombreclie,
+                    totalFacturado: 0,
+                    totalAbonado: 0,
+                    saldoPendiente: 0,
+                    facturas: []
+                };
+            }
+            clienteMap[key].totalFacturado += (f.total || 0);
+            clienteMap[key].saldoPendiente += (f.saldo || 0);
+            clienteMap[key].facturas.push(f);
+        });
+
+        // Calcular abonos por cliente
+        for (const key in clienteMap) {
+            const abonos = await TranCxCobrar.find({ codcliente: key });
+            clienteMap[key].totalAbonado = abonos.reduce((sum, a) => sum + (a.montotran || 0), 0);
+            clienteMap[key].saldoPendiente = clienteMap[key].totalFacturado - clienteMap[key].totalAbonado;
+        }
+
+        const saldos = Object.values(clienteMap).sort((a, b) => b.saldoPendiente - a.saldoPendiente);
+
+        res.json({
+            success: true,
+            message: `${saldos.length} cliente(s) con saldo pendiente`,
+            data: saldos
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/cxc/saldos:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 CUENTAS POR COBRAR - AGING REPORT
+// ============================================================================
+app.get('/api/ventas/cxc/aging', async (req, res) => {
+    try {
+        // 1. GET ALL CREDIT INVOICES WITH OUTSTANDING BALANCE
+        const facturasCredito = await FacturaHead.find({
+            condiciones: { $ne: '1' },       // Only credit sales
+            estado: { $nin: ['E', 'Anulada'] }, // Exclude cancelled
+            saldo: { $gt: 0 }                // Only with outstanding balance
+        }).sort({ fechavencimiento: 1 });
+
+        // 2. CALCULATE TODAY (midnight)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 3. DEFINE AGING BUCKETS
+        const buckets = {
+            al_dia:    { rango: 'Al día (no vencido)', diasMin: -9999, diasMax: 0,   facturas: [], totalMonto: 0 },
+            d1_30:     { rango: '1 - 30 días',         diasMin: 1,     diasMax: 30,  facturas: [], totalMonto: 0 },
+            d31_60:    { rango: '31 - 60 días',        diasMin: 31,    diasMax: 60,  facturas: [], totalMonto: 0 },
+            d61_90:    { rango: '61 - 90 días',        diasMin: 61,    diasMax: 90,  facturas: [], totalMonto: 0 },
+            d91_mas:   { rango: 'Más de 90 días',      diasMin: 91,    diasMax: 99999, facturas: [], totalMonto: 0 }
+        };
+
+        // 4. CLASSIFY EACH INVOICE INTO A BUCKET
+        for (const factura of facturasCredito) {
+            // Parse due date (fechavencimiento)
+            let diasVencidos = 0;
+
+            if (factura.fechavencimiento) {
+                const parts = factura.fechavencimiento.split('-');
+                const vencDate = new Date(
+                    parseInt(parts[0]),
+                    parseInt(parts[1]) - 1,
+                    parseInt(parts[2])
+                );
+                vencDate.setHours(0, 0, 0, 0);
+
+                // Days past due: positive = overdue, negative = not yet due
+                diasVencidos = Math.floor((today - vencDate) / (1000 * 60 * 60 * 24));
+            }
+
+            // Build summary object for this invoice
+            const facturaResumen = {
+                nofactura: factura.nofactura,
+                nombreclie: factura.nombreclie,
+                codcliente: factura.codcliente,
+                fechafactura: factura.fechafactura,
+                fechavencimiento: factura.fechavencimiento,
+                total: factura.total || 0,
+                saldo: factura.saldo || 0,
+                diasVencidos: diasVencidos
+            };
+
+            // Assign to correct bucket
+            if (diasVencidos <= 0) {
+                buckets.al_dia.facturas.push(facturaResumen);
+                buckets.al_dia.totalMonto += facturaResumen.saldo;
+            } else if (diasVencidos <= 30) {
+                buckets.d1_30.facturas.push(facturaResumen);
+                buckets.d1_30.totalMonto += facturaResumen.saldo;
+            } else if (diasVencidos <= 60) {
+                buckets.d31_60.facturas.push(facturaResumen);
+                buckets.d31_60.totalMonto += facturaResumen.saldo;
+            } else if (diasVencidos <= 90) {
+                buckets.d61_90.facturas.push(facturaResumen);
+                buckets.d61_90.totalMonto += facturaResumen.saldo;
+            } else {
+                buckets.d91_mas.facturas.push(facturaResumen);
+                buckets.d91_mas.totalMonto += facturaResumen.saldo;
+            }
+        }
+
+        // 5. BUILD RESPONSE ARRAY
+        const bucketsArray = [
+            buckets.al_dia,
+            buckets.d1_30,
+            buckets.d31_60,
+            buckets.d61_90,
+            buckets.d91_mas
+        ].map(b => ({
+            rango: b.rango,
+            cantidadFacturas: b.facturas.length,
+            totalMonto: parseFloat(b.totalMonto.toFixed(2)),
+            facturas: b.facturas
+        }));
+
+        const totalFacturas = facturasCredito.length;
+        const totalMonto = bucketsArray.reduce((sum, b) => sum + b.totalMonto, 0);
+
+        res.json({
+            success: true,
+            message: `${totalFacturas} factura(s) a crédito con saldo pendiente`,
+            data: {
+                buckets: bucketsArray,
+                totalFacturas: totalFacturas,
+                totalMonto: parseFloat(totalMonto.toFixed(2))
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/cxc/aging:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error del servidor al generar Aging Report',
+            error: error.message
+        });
+    }
+});
 // ───────── CREAR CABECERA DE FACTURA ─────────
 
 // ───────── OBTENER FACTURA POR NÚMERO ─────────
@@ -3203,13 +3569,25 @@ console.log(`Initial Date: ${fechaini}`);
 console.log(`Today's Date: ${today.toISOString().split('T')[0]}`);
 console.log(`Difference: ${diffInDays} days`);
         
-if ( diffInDays <= 3 ) {
-
-        const updatedFacturaAnular = await FacturaHead.findByIdAndUpdate(
-            id,
-            { $set: { estado : "E" }},
-            { new: true, runValidators: true }
-        );
+if ( diffInDays <= 5 ) { 
+            const updatedFacturaAnular = await FacturaHead.findByIdAndUpdate(
+                 id,
+                 { $set: { estado : "E" }},
+                 { new: true, runValidators: true }
+             );
+             
+            // 🔹 REVERTIR INVENTARIO LOCALMENTE
+            if (updatedFacturaAnular) {
+                const detalles = await FacturaDetalle.find({ nofactura: updatedFacturaAnular.nofactura });
+                for (const det of detalles) {
+                    if (det.codproducto) {
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: det.codproducto },
+                            { $inc: { cantidispo: (det.cantidad || 0) } }
+                        );
+                    }
+                }
+            }
 
         if (!updatedFacturaAnular) {
             return res.status(404).json({
@@ -3464,10 +3842,32 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             }
         }
         
-        const headActualizada = await FacturaHead.findById(headFinal._id);
+               const headActualizada = await FacturaHead.findById(headFinal._id);
         const detallesFinales = await FacturaDetalle.find({ 
             nofactura: nofacturaUpper
         });
+        
+        // 🔹 DESCONTAR INVENTARIO (CANTIDAD DE DETALLES FINALES)
+        for (const det of detallesFinales) {
+            if (det.codproducto) {
+                const inventario = await Inventariosede.findOne({ idinventario: det.codproducto });
+                if (inventario) {
+                    const cantActual = Number(inventario.cantidispo || 0);
+                    const cantDet = Number(det.cantidad || 0);
+                    let nuevaCant = cantActual - cantDet;
+                    
+                    // Si el resultado es menor a cero, se actualiza a cero
+                    if (nuevaCant < 0) nuevaCant = 0; 
+                    
+                    await Inventariosede.findOneAndUpdate(
+                        { idinventario: det.codproducto },
+                        { $set: { cantidispo: nuevaCant } }
+                    );
+                }
+            }
+        }
+        
+        const mensaje = !existingHead 
         
         const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
@@ -3725,16 +4125,29 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
             message: 'Factura electrónica aceptada por TheFactory',
             data: facturaActualizada 
         });
-    } else {
-        // Si TheFactory la rechaza
-        await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
-        return res.status(400).json({
-            success: false,
-            message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
-            data: null
-        });
+    }    // Si TheFactory la rechaza
+       else {
+            // Si TheFactory la rechaza
+            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
+            
+            // 🔹 REVERTIR INVENTARIO (Al ser rechazada, no se debe descontar nada)
+            for (const det of detalles) {
+                if (det.codproducto) {
+                    await Inventariosede.findOneAndUpdate(
+                        { idinventario: det.codproducto },
+                        { $inc: { cantidispo: (det.cantidad || 0) } } // Sumamos lo que se había restado
+                    );
+                }
+            }
+            
+            return res.status(400).json({
+                success: false,
+                message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
+                data: null
+            });
+        }
     }
-} catch (error) {
+ catch (error) {
     console.error('❌ Error enviar-Thefactory:', error);
     return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
 }
@@ -3931,34 +4344,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
     }
 });
 
-// ───────── ACTUALIZAR FACTURA COMPLETA (UPSERT - Finalizar y Guardar) ─────────
-
-
-// ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
-app.post('/api/ventas/facturas/:nofactura/enviar-facttory', async (req, res) => {
-    try {
-        const { nofactura } = req.params;
-        const factura = await FacturaHead.findOne({ nofactura: nofactura.toUpperCase() });
-        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
-        
-        // TODO: Implementar llamada SOAP real a Facttory Corp Panamá
-        // Por ahora simulamos una respuesta exitosa
-        factura.facturaelectronica = `CAE-${Date.now()}`;
-        factura.estado = 'Aceptada';
-        await factura.save();
-        
-        res.json({ 
-            success: true, 
-            message: 'Factura enviada a Facttory Corp', 
-            data: factura,
-            cae: factura.facturaelectronica
-        });
-    } catch (error) {
-        console.error('❌ Error enviar-facttory:', error);
-        res.status(500).json({ success: false, message: 'Error al enviar a Facttory', error: error.message });
-    }
-});
-
 // ───────── ANULAR FACTURA ─────────
 // ============================================================================
 // 🔹 ANULAR FACTURA ELECTRÓNICA (SOAP TheFactory HKA + INVENTARIO)
@@ -4051,11 +4436,12 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
         // 5. VALIDAR RESPUESTA SOAP
         if (codigoHandle === "200") {
             // ÉXITO: Revertir inventario y actualizar estado
+            // ÉXITO: Revertir inventario (SUMAR) y actualizar estado
             for (const det of detalles) {
                 if (det.codproducto) {
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $inc: { cantidispo: -(det.cantidad || 0) } }
+                        { $inc: { cantidispo: (det.cantidad || 0) } } // 🔹 CAMBIO: Sumamos en lugar de restar
                     );
                 }
             }
@@ -4528,22 +4914,34 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
 
      // 8. VALIDAR, ACTUALIZAR BD Y RESPONDER
      if (resultadoSOAP.codigoHandle === "200") {
-         const ncActualizada = await NotaCreditoHead.findByIdAndUpdate(
-             nuevaNCHead._id,
-             {
-                 $set: {
-                     facturaelectronica: resultadoSOAP.cufeHandle,
-                     facturaqr: resultadoSOAP.qrHandle,
-                     fechaEmision: fechasistema,
-                     fechaSalida: fechasistema,
-                     fechadgiauto: resultadoSOAP.fecharecepHandle,
-                     autorizandgi: resultadoSOAP.protocoloHandle,
-                     estado: 'A',
-                     fechaActualizacion: new Date().toISOString()
-                 }
-             },
-             { new: true }
-         );
+                    const ncActualizada = await NotaCreditoHead.findByIdAndUpdate(
+                nuevaNCHead._id,
+                {
+                    $set: {
+                        facturaelectronica: resultadoSOAP.cufeHandle,
+                        facturaqr: resultadoSOAP.qrHandle,
+                        fechaEmision: fechasistema,
+                        fechaSalida: fechasistema,
+                        fechadgiauto: resultadoSOAP.fecharecepHandle,
+                        autorizandgi: resultadoSOAP.protocoloHandle,
+                        estado: 'A',
+                        fechaActualizacion: new Date().toISOString()
+                    }
+                },
+                { new: true }
+            );
+            
+            // 🔹 SUMAR INVENTARIO SI ES NOTA DE CRÉDITO POR UNIDADES (tipoNota === "1")
+            if (tipoNota === "1" && detalles && detalles.length > 0) {
+                for (const det of detalles) {
+                    if (det.codproducto) {
+                        await Inventariosede.findOneAndUpdate(
+                            { idinventario: det.codproducto },
+                            { $inc: { cantidispo: (det.cantidad || 0) } }
+                        );
+                    }
+                }
+            }
 
          // Agregar al historial de la factura original
          await FacturaHead.findByIdAndUpdate(factura._id, {
@@ -6138,7 +6536,116 @@ app.post('/api/ventas/notascredito/aplicar/:nocredito', async (req, res) => {
     }
 });
 
+// ============================================================================
+// 🔹 RUTAS: CUENTAS POR PAGAR (CXP)
+// ============================================================================
 
+// 1. Obtener facturas de compra con saldo pendiente
+app.get('/api/compras/cxp/facturas', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal, nombreProveedor } = req.query;
+        let filter = { saldo: { $gt: 0 }, estatuscompra: { $ne: 'E' } };
+        
+        if (fechaInicial && fechaFinal) {
+            filter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        }
+        if (nombreProveedor) {
+            filter.nombreproveedor = { $regex: nombreProveedor, $options: 'i' };
+        }
+        
+        const facturas = await ComprasHead.find(filter).sort({ fechafactura: -1 });
+        res.json({ success: true, message: `${facturas.length} facturas encontradas`, data: facturas });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 2. Registrar Abono a Proveedor
+app.post('/api/compras/cxp/abono', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { nodocumento, montotran, formapago, fechaabono, comentario } = req.body;
+        const factura = await ComprasHead.findOne({ nodocumento }).session(session);
+        
+        if (!factura) throw new Error('Documento de compra no encontrado');
+        if (montotran <= 0) throw new Error('El monto debe ser mayor a 0');
+        if (montotran > factura.saldo) throw new Error(`El monto excede el saldo pendiente (${factura.saldo})`);
+
+        const lastTran = await TranCxPagar.findOne().sort({ notransaccion: -1 }).session(session);
+        const notransaccion = (lastTran ? lastTran.notransaccion : 0) + 1;
+
+        const nuevoAbono = new TranCxPagar({
+            notransaccion,
+            nodocumento: factura.nodocumento,
+            nofactura: factura.nofactura,
+            fechafactura: factura.fechafactura,
+            fechatransaccion: new Date().toISOString(),
+            fechaabono,
+            fechavencimiento: factura.fechavencimiento,
+            codproveedor: factura.codproveedor,
+            provnombre: factura.nombreproveedor,
+            formapago,
+            saldoanterior: factura.saldo,
+            montotran,
+            estadotrans: 'A',
+            comentario
+        });
+        await nuevoAbono.save({ session });
+
+        // Descontar saldo a la factura de compra
+        await ComprasHead.findOneAndUpdate(
+            { nodocumento },
+            { $inc: { saldo: -montotran } },
+            { session }
+        );
+
+        await session.commitTransaction();
+        res.status(201).json({ success: true, message: 'Abono a proveedor registrado', data: nuevoAbono });
+    } catch (error) {
+        await session.abortTransaction();
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        session.endSession();
+    }
+});
+
+// 3. Obtener Saldos por Proveedor
+app.get('/api/compras/cxp/saldos', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal, nombreProveedor } = req.query;
+        let matchFilter = { saldo: { $gt: 0 }, estatuscompra: { $ne: 'E' } };
+        
+        if (fechaInicial && fechaFinal) matchFilter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        if (nombreProveedor) matchFilter.nombreproveedor = { $regex: nombreProveedor, $options: 'i' };
+
+        const saldos = await ComprasHead.aggregate([
+            { $match: matchFilter },
+            {
+                $group: {
+                    _id: "$codproveedor",
+                    provnombre: { $first: "$nombreproveedor" },
+                    totalFacturado: { $sum: "$total" },
+                    totalAbonado: { $sum: { $subtract: ["$total", "$saldo"] } },
+                    saldoPendiente: { $sum: "$saldo" }
+                }
+            },
+            { $sort: { provnombre: 1 } }
+        ]);
+        
+        const result = saldos.map(s => ({
+            codproveedor: s._id,
+            provnombre: s.provnombre,
+            totalFacturado: s.totalFacturado,
+            totalAbonado: s.totalAbonado,
+            saldoPendiente: s.saldoPendiente
+        }));
+
+        res.json({ success: true, data: result });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
