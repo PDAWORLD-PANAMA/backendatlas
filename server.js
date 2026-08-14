@@ -4393,12 +4393,12 @@ let xmlanular   = `
         <soapenv:Header/>
         <soapenv:Body>
            <tem:AnulacionDocumento>
-              <tem:tokenEmpresa>` + htokenempresa + `</tem:tokenEmpresa>
-              <tem:tokenPassword>` + htokenclave + `</tem:tokenPassword>
-              <tem:motivoAnulacion>` + motivoAnulacion + `</tem:motivoAnulacion>
+              <tem:tokenEmpresa>${htokenempresa}</tem:tokenEmpresa>
+              <tem:tokenPassword>${htokenclave}</tem:tokenPassword>
+              <tem:motivoAnulacion>Anulacion de Factura</tem:motivoAnulacion>
               <tem:datosDocumento>
-                 <ser:codigoSucursalEmisor>` + hcodigosucursal + `</ser:codigoSucursalEmisor>
-                 <ser:numeroDocumentoFiscal>` +nofacturaUpper + `</ser:numeroDocumentoFiscal>
+                 <ser:codigoSucursalEmisor>${hcodigosucursal}</ser:codigoSucursalEmisor>
+                 <ser:numeroDocumentoFiscal>${nofacturaUpper}</ser:numeroDocumentoFiscal>
                  <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
                  <ser:tipoDocumento>01</ser:tipoDocumento>
                  <ser:tipoEmision>01</ser:tipoEmision>
