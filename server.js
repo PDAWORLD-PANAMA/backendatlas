@@ -4690,7 +4690,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
      let ferazonsocialprt = factura.razonsocial || '';
      let fedireccionprt = factura.direccioncontribuyente || '';
      let feemailprt = factura.correocliefe || '';
-
+     let fefechaemision = factura.fechaemision;
      if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
 
      let fenundocfiscal = nocredito;
@@ -4745,7 +4745,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
 <ser:envioContenedor>1</ser:envioContenedor>
 <ser:procesoGeneracion>1</ser:procesoGeneracion>
 <ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
-<ser:informacionInteres>${escapeXml(motivo || 'Nota de Credito')}</ser:informacionInteres>
+<ser:informacionInteres>Nota de Credito</ser:informacionInteres>
 <ser:cufeReferenciado>${factura.facturaelectronica || ''}</ser:cufeReferenciado>
 <ser:cliente>
 <ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE>
@@ -4760,8 +4760,27 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
 <ser:corregimiento>${fecorregimiento}</ser:corregimiento>
 <ser:correoElectronico1>${feemailprt}</ser:correoElectronico1>
 <ser:pais>PA</ser:pais>
-</ser:cliente>
-</ser:datosTransaccion>`;
+</ser:cliente>`
+var fechaEmision = factura.fechaemision;
+if (fetipodocumento == "06"){
+xmlniv1 =  xmlniv1 + "\n" + `
+                   <ser:listaDocsFiscalReferenciados>
+                   <!--Zero or more repetitions:-->
+                   <ser:docFiscalReferenciado>
+                      <!--Optional:-->
+                      <ser:fechaEmisionDocFiscalReferenciado>${echaEmision}</ser:fechaEmisionDocFiscalReferenciado>
+                      <!--Optional:-->
+                      <ser:cufeFEReferenciada>${factura.facturaelectronica}</ser:cufeFEReferenciada>
+                      <!--Optional:-->
+                      <ser:nroFacturaPapel></ser:nroFacturaPapel>
+                      <!--Optional:-->
+                      <ser:nroFacturaImpFiscal></ser:nroFacturaImpFiscal>
+                   </ser:docFiscalReferenciado>
+                </ser:listaDocsFiscalReferenciados>`
+}
+xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
+
+
 
      let xmlistseg = "\n<ser:listaItems>\n";
      let xmlenviarlist = "";
@@ -4906,6 +4925,10 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
          return match ? match[1].trim() : "";
      };
 
+
+     const codigoHandle = extractTag(bodyXml, "codigo");
+     const msgHandle = extractTag(bodyXml, "mensaje");
+
      const resultadoSOAP = {
          cufeHandle: extractTag(bodyXml, "cufe"),
          qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
@@ -4960,11 +4983,21 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
          });
      } else {
          await NotaCreditoHead.findByIdAndUpdate(nuevaNCHead._id, { $set: { estado: 'Rechazada' } });
-         return res.status(400).json({
-             success: false,
-             message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
-             data: null
-         });
+        
+        
+        const faultString = extractTag(bodyXml, "faultstring") || extractTag(bodyXml, "Reason") || extractTag(bodyXml, "Text");
+
+             const finalCode = codigoHandle || faultCode || 'SIN_CODIGO';
+             const finalMessage = msgHandle || faultString || 'Error desconocido. Revisa la consola de Node.js para ver el XML crudo.';
+
+             console.error(`🔴 ERROR SOAP TheFactory [${finalCode}]: ${finalMessage}`);
+
+             return res.status(400).json({
+                 success: false,
+                 message: `Rechazada por TheFactory [${finalCode}]: ${finalMessage}`,
+                 data: null,
+                 rawXml: bodyXml // Enviamos el XML crudo al frontend (Kotlin) para debug
+             });
      }
 
 } catch (error) {
