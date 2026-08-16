@@ -2076,7 +2076,6 @@ app.get('/api/reportes/impuestos/mensual', async (req, res) => {
 });
 
 
-
 //================================================================//
 // ───────── VENDEDOR  ─────────
 app.get('/api/vendedor', async (req, res) => {
