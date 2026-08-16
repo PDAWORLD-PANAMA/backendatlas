@@ -1720,6 +1720,210 @@ app.post('/api/inventarios/bulk', async (req, res) => {
   }
 });
 
+// ============================================================================
+// 🔹 REPORTE: INVENTARIO Y RENTABILIDAD
+// ============================================================================
+app.get('/api/inventarios/reporte/inventario-rentabilidad', async (req, res) => {
+    try {
+        const { categoria, marca, nombreProducto } = req.query;
+
+        let filter = {};
+
+        if (categoria && categoria.trim() !== '') {
+            filter.categoria = { $regex: categoria.trim(), $options: 'i' };
+        }
+        if (marca && marca.trim() !== '') {
+            filter.marca = { $regex: marca.trim(), $options: 'i' };
+        }
+        if (nombreProducto && nombreProducto.trim() !== '') {
+            filter.inventarionombre = { $regex: nombreProducto.trim(), $options: 'i' };
+        }
+
+        const productos = await Inventariosede.find(filter).sort({ inventarionombre: 1 });
+
+        // Calculate profitability for each product
+        const data = productos.map(p => {
+            const cantidispo = p.cantidispo || 0;
+            const costo1 = p.costo1 || 0;
+            const precio1 = p.precio1 || 0;
+
+            const valorInventario = cantidispo * costo1;
+            const valorVentaPotencial = cantidispo * precio1;
+            const utilidadPotencial = valorVentaPotencial - valorInventario;
+            const margen = precio1 > 0 ? ((precio1 - costo1) / precio1) * 100 : 0;
+
+            return {
+                idinventario: p.idinventario || '',
+                inventarionombre: p.inventarionombre || '',
+                categoria: p.categoria || '',
+                subcategoria: p.subcategoria || '',
+                marca: p.marca || '',
+                modelo: p.modelo || '',
+                cantidispo: cantidispo,
+                existenciaMin: p.existenciaMin || 0,
+                costo1: costo1,
+                precio1: precio1,
+                valorInventario: parseFloat(valorInventario.toFixed(2)),
+                valorVentaPotencial: parseFloat(valorVentaPotencial.toFixed(2)),
+                utilidadPotencial: parseFloat(utilidadPotencial.toFixed(2)),
+                margen: parseFloat(margen.toFixed(2)),
+                bajoStock: cantidispo <= (p.existenciaMin || 0)
+            };
+        });
+
+        // Summary
+        const resumen = {
+            totalProductos: data.length,
+            totalValorInventario: parseFloat(data.reduce((s, p) => s + p.valorInventario, 0).toFixed(2)),
+            totalValorVenta: parseFloat(data.reduce((s, p) => s + p.valorVentaPotencial, 0).toFixed(2)),
+            totalUtilidadPotencial: parseFloat(data.reduce((s, p) => s + p.utilidadPotencial, 0).toFixed(2)),
+            margenPromedio: data.length > 0
+                ? parseFloat((data.reduce((s, p) => s + p.margen, 0) / data.length).toFixed(2))
+                : 0,
+            productosBajoStock: data.filter(p => p.bajoStock).length
+        };
+
+        res.json({
+            success: true,
+            message: `${data.length} producto(s) encontrado(s)`,
+            data: data,
+            resumen: resumen
+        });
+
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/reporte/inventario-rentabilidad:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// ============================================================================
+// 🔹 REPORTE: COMPARATIVO DE VENTAS MENSUALES
+// ============================================================================
+app.get('/api/ventas/reportes/comparativo-mensual', async (req, res) => {
+    try {
+        const { anio } = req.query;
+        const anioActual = anio || new Date().getFullYear().toString();
+
+        const mesesNombres = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        const meses = [];
+
+        for (let mes = 1; mes <= 12; mes++) {
+            const mesStr = String(mes).padStart(2, '0');
+            const prefijoMes = `${anioActual}-${mesStr}`;
+
+            const facturas = await FacturaHead.find({
+                fechafactura: { $regex: `^${prefijoMes}` },
+                estado: { $eq: 'A' }
+            });
+
+            const totalVentas = facturas.reduce((sum, f) => sum + (f.total || 0), 0);
+            const totalImpuesto = facturas.reduce((sum, f) => sum + (f.impuesto || 0), 0);
+            const totalFacturas = facturas.length;
+
+            meses.push({
+                mes: mes,
+                mesNombre: mesesNombres[mes - 1],
+                totalVentas: parseFloat(totalVentas.toFixed(2)),
+                totalImpuesto: parseFloat(totalImpuesto.toFixed(2)),
+                totalFacturas: totalFacturas
+            });
+        }
+
+        // Calcular comparativo mes vs mes anterior
+        for (let i = 1; i < meses.length; i++) {
+            const actual = meses[i].totalVentas;
+            const anterior = meses[i - 1].totalVentas;
+            const diferencia = actual - anterior;
+            const variacion = anterior > 0 ? ((diferencia / anterior) * 100) : 0;
+
+            meses[i].diferencia = parseFloat(diferencia.toFixed(2));
+            meses[i].variacion = parseFloat(variacion.toFixed(2));
+        }
+
+        // Primer mes no tiene anterior
+        meses[0].diferencia = 0;
+        meses[0].variacion = 0;
+
+        res.json({
+            success: true,
+            message: `${meses.length} meses procesados`,
+            data: meses,
+            anio: anioActual
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/reportes/comparativo-mensual:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+// ============================================================================
+// 🔹 REPORTE: ITBMS MENSUAL (IMPUESTOS)
+// ============================================================================
+app.get('/api/reportes/impuestos/mensual', async (req, res) => {
+    try {
+        const { anio } = req.query;
+        const year = anio || new Date().getFullYear().toString();
+
+        const mesesNombres = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        const resultado = [];
+
+        for (let mes = 1; mes <= 12; mes++) {
+            const mesStr = mes.toString().padStart(2, '0');
+            const mesInicio = `${year}-${mesStr}-01`;
+            const mesFin = `${year}-${mesStr}-31`;
+
+            // Acumular impuesto de FacturaHead (ventas)
+            const facturas = await FacturaHead.find({
+                fechafactura: { $gte: mesInicio, $lte: mesFin },
+                estado: { $nin: ['E', 'Anulada'] }
+            });
+            const impuestoVentas = facturas.reduce((sum, f) => sum + (f.impuesto || 0), 0);
+
+            // Acumular impuesto de ComprasHead (compras)
+            const compras = await ComprasHead.find({
+                fechafactura: { $gte: mesInicio, $lte: mesFin },
+                estatuscompra: { $ne: 'E' }
+            });
+            const impuestoCompras = compras.reduce((sum, c) => sum + (c.impuesto || 0), 0);
+
+            // Acumular impuesto de GastoTrans (gastos)
+            const gastos = await GastoTrans.find({
+                fechatran: { $gte: mesInicio, $lte: mesFin }
+            });
+            const impuestoGastos = gastos.reduce((sum, g) => sum + (g.impuesto || 0), 0);
+
+            // Impuesto a Pagar = (Compras + Gastos) - Ventas
+            const impuestoAPagar = (impuestoCompras + impuestoGastos) - impuestoVentas;
+
+            resultado.push({
+                mes: mes,
+                mesNombre: mesesNombres[mes - 1],
+                impuestoVentas: parseFloat(impuestoVentas.toFixed(2)),
+                impuestoCompras: parseFloat(impuestoCompras.toFixed(2)),
+                impuestoGastos: parseFloat(impuestoGastos.toFixed(2)),
+                impuestoAPagar: parseFloat(impuestoAPagar.toFixed(2))
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Reporte ITBMS mensual generado',
+            data: resultado
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/reportes/impuestos/mensual:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+
 
 //================================================================//
 // ───────── VENDEDOR  ─────────
@@ -3315,6 +3519,39 @@ app.post('/api/ventas/cxc/abono', async (req, res) => {
     }
 });
 
+// ============================================================================
+// 🔹 EXPORTAR FACTURAS POR RANGO DE FECHAS
+// ============================================================================
+app.get('/api/ventas/facturas/exportar', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+
+        let filter = {
+            estado: { $nin: ['E', 'Anulada'] }
+        };
+
+        if (fechaInicial && fechaFinal) {
+            filter.fechafactura = { $gte: fechaInicial, $lte: fechaFinal };
+        } else if (fechaInicial) {
+            filter.fechafactura = { $gte: fechaInicial };
+        } else if (fechaFinal) {
+            filter.fechafactura = { $lte: fechaFinal };
+        }
+
+        const facturas = await FacturaHead.find(filter)
+            .sort({ fechafactura: -1, nofactura: -1 });
+
+        res.json({
+            success: true,
+            message: `${facturas.length} factura(s) encontrada(s)`,
+            data: facturas
+        });
+    } catch (error) {
+        console.error('❌ Error GET /api/ventas/facturas/exportar:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
 // 3) ESTADO DE CUENTA POR CLIENTE
 app.get('/api/ventas/cxc/estado/:codcliente', async (req, res) => {
     try {
@@ -4715,7 +4952,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
          }
      }
 
-     let fesucursalemisor = empresa.codigosucemisor || "001";
+     let fesucursalemisor = empresa.codigosucemisor || "0000";
      let fetokenempresa = (empresa.tokenempresa || "").trim();
      let fetokenclave = (empresa.tokenclave || "").trim();
 
@@ -4735,8 +4972,8 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
 <ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
 <ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal>
 <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
-<ser:fechaEmision>${fechasistema}</ser:fechaEmision>
-<ser:fechaSalida>${fechasistema}</ser:fechaSalida>
+<ser:fechaEmision>${factura.fechaemision}</ser:fechaEmision>
+<ser:fechaSalida>${factura.fechasalida}</ser:fechaSalida>
 <ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion>
 <ser:tipoOperacion>1</ser:tipoOperacion>
 <ser:destinoOperacion>1</ser:destinoOperacion>
@@ -4746,7 +4983,6 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
 <ser:procesoGeneracion>1</ser:procesoGeneracion>
 <ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
 <ser:informacionInteres>Nota de Credito</ser:informacionInteres>
-<ser:cufeReferenciado>${factura.facturaelectronica || ''}</ser:cufeReferenciado>
 <ser:cliente>
 <ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE>
 <ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
@@ -4768,7 +5004,7 @@ xmlniv1 =  xmlniv1 + "\n" + `
                    <!--Zero or more repetitions:-->
                    <ser:docFiscalReferenciado>
                       <!--Optional:-->
-                      <ser:fechaEmisionDocFiscalReferenciado>${echaEmision}</ser:fechaEmisionDocFiscalReferenciado>
+                      <ser:fechaEmisionDocFiscalReferenciado>${fechaEmision}</ser:fechaEmisionDocFiscalReferenciado>
                       <!--Optional:-->
                       <ser:cufeFEReferenciada>${factura.facturaelectronica}</ser:cufeFEReferenciada>
                       <!--Optional:-->
@@ -4780,13 +5016,13 @@ xmlniv1 =  xmlniv1 + "\n" + `
 }
 xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
 
-
-
-     let xmlistseg = "\n<ser:listaItems>\n";
+     let xmlistseg = "\n" + `<ser:listaItems>` + "\n";
      let xmlenviarlist = "";
      let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
 
      // Determinar qué items enviar al SOAP
+    var wfechafabricafinalesp  =  new Date().toISOString().slice(0, 10);
+    var wfechaexpirafinalesp  =  new Date().toISOString().slice(0, 10);
      const itemsParaSoap = tipoNota === "2"
          ? [{
              codproducto: 'NC-MONTO',
@@ -4800,8 +5036,8 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
              unidad: 'UND',
              modelo: '',
              acabados: '',
-             fechafabricacion: fechasistema,
-             fechaexpiracion: fechasistema,
+             fechafabricacion: wfechafabricafinalesp,
+             fechaexpiracion: wfechaexpirafinalesp,
              codigobienes: '',
              tasaisc: 0,
              pormayor: 1,
@@ -4810,16 +5046,20 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
          : (detalles || []);
 
      for (let det of itemsParaSoap) {
-         let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : fechasistema;
-         let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : fechasistema;
+         let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : wfechafabricafinalesp;
+         let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : wfechaexpirafinalesp;
          let descpor = parseFloat(det.descuento || 0) / 100;
-         let wpreciowk = parseFloat(det.precio || 0);
-         let wcantidaditem = parseFloat(det.cantidad || 0);
-         let wimpuestoitem = parseFloat(det.impuesto1 || 0) / 100;
+         let wpreciowk = parseFloat(det.precio);
+         let wcantidaditem = parseFloat(det.cantidad);
+         let wimpuestoitem = parseFloat(det.impuesto1) / 100;
+         var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
+         var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
          let wtasaisc = parseFloat(det.tasaisc || 0);
+         var wtotalimptoapagar = parseFloat(det.impuesto).toFixed(2);
          let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
          let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
          let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+         var codtasaisc = det.codtasaisc;
 
          let wtasaitbms = "00";
          if (wcodimpuesto1 !== 0) wtasaitbms = "01";
@@ -4836,54 +5076,145 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
          wtotalprecioneto += wprecioitem;
 
          let wvalorimpuestoitem = 0;
-         if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
-         wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
-         if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
-         if (wtasaitbms === "01") wtotalitbms += parseFloat(wvalorimpuestoitem);
+var wvalorimpuestoitem =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem);
+var wvalorimpuestoitem2 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem2);
+var wvalorimpuestoitem3 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem3);
+var wvalorisc  = parseFloat(wprecioitem) * parseFloat(wtasaisc);
+var wtotlinitem  = 0;
+    if  (wtasaitbms == "01"){
+        wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem);
+        }
+        if  (wtasaitbms == "02" ){
+            wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem2);
+        }
+        if  (wtasaitbms == "03"){
+        ////////        wtotalisc = parseFloat(wtotalisc) + parseFloat(wvalorimpuestoitem3);
+        }
+        if  (wtasaitbms == "00"){
+            wtotalitbms = parseFloat(wtotalitbms) + 0;
+            }
+        // calcula del total de la linea
+        if  (wtasaitbms == "01" ){
+         wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
+         wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem);
+        }
+        if  (wtasaitbms == "02" ){
+            wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
+            wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem2);
+           }
+           if  (wtasaitbms == "03"){
+        //    wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
+        //    wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem3);
+           }
+           if  (wtasaitbms == "00" ){
+            wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
+           }
 
-         let wtotlinitem = wprecioitem;
-         if (wtasaitbms === "01") wtotlinitem += wvalorimpuestoitem;
+         let wpormayor = parseFloat(det.pormayor || 1);
+         if (det.detventa === "1") wpormayor = 1;
+ var  wcero = "0";
+ var  wparinter = Math.floor(wvalorimpuestoitem);
+ var  wintermedio = wparinter.toString();
+ var decimalStr = wvalorimpuestoitem.toString().split('.')[1];
+ var larente = wintermedio.length;
+ var winter2 = 9 - larente;
+ var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
+let wentrega = wpormayor * wcantidaditem;
+wtotaldefactura += wtotlinitem;
 
-         let wpormayor = parseFloat(det.pormayor || 0);
-         if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
-         let wentrega = wpormayor * wcantidaditem;
-         wtotaldefactura += wtotlinitem;
-
-         xmlenviarlist += `<ser:item>
-<ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
-<ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
-<ser:unidadMedida>${det.unidad || 'und'}</ser:unidadMedida>
+xmlenviarlist += `<ser:item>
+<ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
+<ser:codigo>${det.codproducto}</ser:codigo>
+<ser:unidadMedida>${det.unidad}</ser:unidadMedida>
 <ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
 <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
-<ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
-
-         if (fetipoclientefe === "03" && det.codigobienes) {
-             xmlenviarlist += `<ser:codigoCPBSAbrev>${det.codigobienes.substring(0, 2)}</ser:codigoCPBSAbrev>
-<ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS>
-<ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
-         }
-
-         xmlenviarlist += `<ser:infoItem>modelo : ${escapeXml(det.modelo || '')}   ${escapeXml(det.acabados || '')}</ser:infoItem>
+<ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>
 <ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario>
 <ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
 <ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem>
 <ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
-
-         let xmlenviartasa = "";
-         if (wtasaitbms === "01") {
-             let wintermedio = Math.floor(wvalorimpuestoitem).toString();
-             let decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
-             let winter2 = 9 - wintermedio.length;
-             xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS><ser:valorITBMS>${"0".repeat(Math.max(0, winter2)) + wintermedio + "." + decimalStr}</ser:valorITBMS>\n`;
-         } else {
-             xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS><ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+let xmlenviartasa = "";
+if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
+  xmlenviartasa =  `<ser:tasaITBMS>` + wtasaitbms + `</ser:tasaITBMS>`+ "\n" +
+           ` <ser:valorITBMS>` + parseFloat(wvalorimpuestoitem).toFixed(2)  + `</ser:valorITBMS>` + "\n"
          }
-         xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
-     }
+         if (wtasaitbms == "00" ){
+            xmlenviartasa =  `<ser:tasaITBMS>00</ser:tasaITBMS>`+ "\n" +
+                         ` <ser:valorITBMS>0.00</ser:valorITBMS>` + "\n"
+        }
+         if (codtasaisc == "01" || codtasaisc == "02" || codtasaisc == "03" || codtasaisc == "04" || codtasaisc == "05" || codtasaisc == "06" ){
+            xmlenviartasa =  `<ser:tasaITBMS>00</ser:tasaITBMS>`+ "\n" +
+                            ` <ser:valorITBMS>0.00</ser:valorITBMS>` + "\n" +
+                 `<ser:tasaISC>` + wtasaisc  + `</ser:tasaISC>`+ "\n" +
+                            ` <ser:valorISC>` + parseFloat(wvalorisc).toFixed(2)  + `</ser:valorISC>`+ "\n"
+           }
+  xmlenviarlist = xmlenviarlist + xmlenviartasa;
+  xmlenviarlist = xmlenviarlist + `</ser:item>` + "\n"
+        }  
+
+if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03"){
+  wtotalmontogravado = parseFloat(wtotalmontogravado) + parseFloat(wtotalitbms);
+   }
+if (codtasaisc == "01" || codtasaisc == "02" || codtasaisc == "03" || codtasaisc == "04" || codtasaisc == "05" || codtasaisc == "06" ){
+   wtotalmontogravado = parseFloat(wtotalmontogravado) + parseFloat(wtotalisc);
+   }
+
+    let  xmlfinitems =  `</ser:listaItems>`;
+//
+var fefechavenceplazo = "x";
+var fecuotadepagocre = 0;
+var s2x = 0;
+if (factura.condiciones != "1"){
+    if (factura.condiciones == "2"){
+        var myCurrentDate = new Date();
+        var myPastDate =  new Date(myCurrentDate);
+        var fechanumero = myPastDate.setDate(myPastDate.getDate() + 30);
+        var s2x = new Date(fechanumero).toLocaleDateString("en-US");
+         let todayvence = dayjs(s2x);
+        fefechavenceplazo = todayvence.format();
+        fecuotadepagocre = parseFloat(wtotaldefactura).toFixed(2);
+    }
+    if (factura.condiciones == "3"){
+        var myCurrentDate = new Date();
+        var myPastDate =  new Date(myCurrentDate);
+        var fechanumero = myPastDate.setDate(myPastDate.getDate() + 45);
+        var s2x = new Date(fechanumero).toLocaleDateString("en-US");
+        let todayvence = dayjs(s2x);
+        fefechavenceplazo = todayvence.format();
+        fecuotadepagocre = parseFloat(wtotaldefactura).toFixed(2);
+    }
+    if (factura.condiciones == "4"){
+        var myCurrentDate = new Date();
+        var myPastDate =  new Date(myCurrentDate);
+        var fechanumero = myPastDate.setDate(myPastDate.getDate() + 60);
+        var s2x = new Date(fechanumero).toLocaleDateString("en-US");
+        let todayvence = dayjs(s2x);
+        fefechavenceplazo = todayvence.format();
+        fecuotadepagocre = parseFloat(wtotaldefactura).toFixed(2);
+
+    }
+    if (factura.condiciones == "5"){
+        var myCurrentDate = new Date();
+        var myPastDate =  new Date(myCurrentDate);
+        var fechanumero = myPastDate.setDate(myPastDate.getDate() + 90);
+        var s2x = new Date(fechanumero).toLocaleDateString("en-US");
+        let todayvence = dayjs(s2x);
+        fefechavenceplazo = todayvence.format();
+        fecuotadepagocre = parseFloat(wtotaldefactura).toFixed(2);
+    }
+ }
+//
 
      let xmltotal = `<ser:totalesSubTotales>
-<ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
-<ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
+<ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>`+ "\n"
+
+ if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
+                    xmltotal = xmltotal +  `<ser:totalITBMS>` + parseFloat(wtotalitbms).toFixed(2) + `</ser:totalITBMS>`+ "\n"
+        }
+    if (codtasaisc == "01" || codtasaisc == "02" || codtasaisc == "03" || codtasaisc == "04" || codtasaisc == "05" || codtasaisc == "06" ){
+                    xmltotal = xmltotal +  `<ser:totalISC>` + parseFloat(wtotalisc).toFixed(2) + `</ser:totalISC>`+ "\n"
+        }
+  xmltotal = xmltotal +  `
 <ser:totalMontoGravado>${wtotalitbms.toFixed(2)}</ser:totalMontoGravado>
 <ser:totalFactura>${wtotaldefactura.toFixed(2)}</ser:totalFactura>
 <ser:totalValorRecibido>${wtotaldefactura.toFixed(2)}</ser:totalValorRecibido>
@@ -4893,16 +5224,37 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
 <ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${factura.formapago || '01'}</ser:formaPagoFact>
 <ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
 
-     let xmlineareten = "";
-     let montoreten = 0;
-     if (factura.retenedor && factura.retenedor !== "0") {
-         let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
-         montoreten = wtotalitbms * (tasareten / 100);
-         xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
-     }
+let  xmlplazo =`
+                   <ser:listaPagoPlazo>
+                                           <!-- Optional -->
+                                           <ser:pagoPlazo>
+                                               <ser:fechaVenceCuota>` + fefechavenceplazo + `</ser:fechaVenceCuota>
+                                               <ser:valorCuota>` + parseFloat(wtotaldefactura).toFixed(2) + `</ser:valorCuota>
+                                           </ser:pagoPlazo>
+                    </ser:listaPagoPlazo>`
 
-     let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
-     let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
+//     let xmlineareten = "";
+//     let montoreten = 0;
+//     if (factura.retenedor && factura.retenedor !== "0") {
+//         let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
+//         montoreten = wtotalitbms * (tasareten / 100);
+//         xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
+//     }
+
+//     let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
+let xmltotcierre = ` </ser:totalesSubTotales>
+             </tem:documento>
+          </tem:Enviar>
+       </soapenv:Body>
+       </soapenv:Envelope>
+       ` 
+      if (factura.condiciones == "1"){
+        var  xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems +  xmltotal + xmltotcierre;
+     }
+     if (factura.condiciones != "1"){
+         var  xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems +  xmltotal + xmlplazo + xmltotcierre;
+      }
+     
 
      // 7. EJECUTAR LLAMADA SOAP
      let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
