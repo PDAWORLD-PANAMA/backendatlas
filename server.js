@@ -1797,6 +1797,158 @@ app.get('/api/inventarios/reporte/inventario-rentabilidad', async (req, res) => 
 });
 
 // ============================================================================
+// 🔹 REPORTE: ROTACIÓN DE INVENTARIO
+// ============================================================================
+app.get('/api/inventarios/reporte/rotacion', async (req, res) => {
+    try {
+        const { fechaInicial, fechaFinal } = req.query;
+
+        if (!fechaInicial || !fechaFinal) {
+            return res.status(400).json({
+                success: false,
+                message: 'fechaInicial y fechaFinal son obligatorios',
+                data: []
+            });
+        }
+
+        // Calculate days in period
+        const start = new Date(fechaInicial);
+        const end = new Date(fechaFinal);
+        const diasPeriodo = Math.max(1, Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1);
+
+        // 1. Get all inventory items with cost and quantity
+        const inventario = await Inventariosede.find({});
+
+        // 2. Get all sales details in the period
+        const facturasEnPeriodo = await FacturaHead.find({
+            fechafactura: { $gte: fechaInicial, $lte: fechaFinal },
+            estado: { $in: ['A', 'Aceptada'] }
+        }, 'nofactura');
+
+        const numerosFactura = facturasEnPeriodo.map(f => f.nofactura).filter(Boolean);
+
+        let detallesVentas = [];
+        if (numerosFactura.length > 0) {
+            detallesVentas = await FacturaDetalle.find({
+                nofactura: { $in: numerosFactura }
+            });
+        }
+
+        // 3. Build product map from inventory
+        const productMap = {};
+        inventario.forEach(item => {
+            const key = item.idinventario || '';
+            if (key) {
+                productMap[key] = {
+                    codproducto: key,
+                    descripcion: item.inventarionombre || '',
+                    categoria: item.categoria || '',
+                    marca: item.marca || '',
+                    cantidispo: item.cantidispo || 0,
+                    costo1: item.costo1 || 0,
+                    // Ending inventory value
+                    valorInventarioFinal: (item.cantidispo || 0) * (item.costo1 || 0),
+                    // Quantity sold in period
+                    cantidadVendida: 0,
+                    // COGS for this product
+                    costoVentas: 0
+                };
+            }
+        });
+
+        // 4. Calculate COGS from sales
+        detallesVentas.forEach(det => {
+            const key = det.codproducto || '';
+            if (productMap[key]) {
+                const qty = det.cantidad || 0;
+                const cost = productMap[key].costo1;
+                productMap[key].cantidadVendida += qty;
+                productMap[key].costoVentas += qty * cost;
+            }
+        });
+
+        // 5. Calculate rotation per product
+        const productos = Object.values(productMap).map(p => {
+            // Beginning Inventory = Ending Inventory + COGS
+            const inventarioInicial = p.valorInventarioFinal + p.costoVentas;
+            const inventarioFinal = p.valorInventarioFinal;
+
+            // Average Inventory
+            const inventarioPromedio = (inventarioInicial + inventarioFinal) / 2;
+
+            // Rotation = COGS / Average Inventory
+            const rotacion = inventarioPromedio > 0 ? p.costoVentas / inventarioPromedio : 0;
+
+            // Days of rotation = (Average Inventory × Days) / COGS
+            const diasRotacion = p.costoVentas > 0
+                ? (inventarioPromedio * diasPeriodo) / p.costoVentas
+                : (inventarioPromedio > 0 ? diasPeriodo : 0);
+
+            return {
+                codproducto: p.codproducto,
+                descripcion: p.descripcion,
+                categoria: p.categoria,
+                marca: p.marca,
+                cantidadDisponible: p.cantidispo,
+                costoUnitario: p.costo1,
+                valorInventarioFinal: parseFloat(p.valorInventarioFinal.toFixed(2)),
+                inventarioInicial: parseFloat(inventarioInicial.toFixed(2)),
+                inventarioPromedio: parseFloat(inventarioPromedio.toFixed(2)),
+                cantidadVendida: p.cantidadVendida,
+                costoVentas: parseFloat(p.costoVentas.toFixed(2)),
+                rotacion: parseFloat(rotacion.toFixed(2)),
+                diasRotacion: parseFloat(diasRotacion.toFixed(1))
+            };
+        });
+
+        // Sort by rotation descending
+        productos.sort((a, b) => b.rotacion - a.rotacion);
+
+        // 6. Calculate global summary
+        const totalCostoVentas = productos.reduce((s, p) => s + p.costoVentas, 0);
+        const totalInventarioFinal = productos.reduce((s, p) => s + p.valorInventarioFinal, 0);
+        const totalInventarioInicial = productos.reduce((s, p) => s + p.inventarioInicial, 0);
+        const totalInventarioPromedio = (totalInventarioInicial + totalInventarioFinal) / 2;
+
+        const rotacionGlobal = totalInventarioPromedio > 0
+            ? totalCostoVentas / totalInventarioPromedio
+            : 0;
+
+        const diasRotacionGlobal = totalCostoVentas > 0
+            ? (totalInventarioPromedio * diasPeriodo) / totalCostoVentas
+            : (totalInventarioPromedio > 0 ? diasPeriodo : 0);
+
+        const resumen = {
+            diasPeriodo: diasPeriodo,
+            totalProductos: productos.length,
+            totalCostoVentas: parseFloat(totalCostoVentas.toFixed(2)),
+            totalInventarioFinal: parseFloat(totalInventarioFinal.toFixed(2)),
+            totalInventarioPromedio: parseFloat(totalInventarioPromedio.toFixed(2)),
+            rotacionGlobal: parseFloat(rotacionGlobal.toFixed(2)),
+            diasRotacionGlobal: parseFloat(diasRotacionGlobal.toFixed(1)),
+            productosConRotacionAlta: productos.filter(p => p.rotacion >= 4).length,
+            productosConRotacionBaja: productos.filter(p => p.rotacion < 1).length,
+            productosSinMovimiento: productos.filter(p => p.cantidadVendida === 0).length
+        };
+
+        res.json({
+            success: true,
+            message: `${productos.length} producto(s) analizado(s)`,
+            data: productos,
+            resumen: resumen
+        });
+
+    } catch (error) {
+        console.error('❌ Error GET /api/inventarios/reporte/rotacion:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error del servidor',
+            error: error.message,
+            data: []
+        });
+    }
+});
+// ============================================================================
 // 🔹 REPORTE: COMPARATIVO DE VENTAS MENSUALES
 // ============================================================================
 app.get('/api/ventas/reportes/comparativo-mensual', async (req, res) => {
@@ -5051,7 +5203,7 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
          let descpor = parseFloat(det.descuento || 0) / 100;
          let wpreciowk = parseFloat(det.precio);
          let wcantidaditem = parseFloat(det.cantidad);
-         let wimpuestoitem = parseFloat(det.impuesto1) / 100;
+         let wimpuestoitem = parseFloat(det.impuesto) / 100;
          var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
          var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
          let wtasaisc = parseFloat(det.tasaisc || 0);
@@ -5074,8 +5226,6 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
              wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
          }
          wtotalprecioneto += wprecioitem;
-
-         let wvalorimpuestoitem = 0;
 var wvalorimpuestoitem =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem);
 var wvalorimpuestoitem2 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem2);
 var wvalorimpuestoitem3 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem3);
