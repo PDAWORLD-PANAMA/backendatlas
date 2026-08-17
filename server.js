@@ -4126,6 +4126,15 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         let existingHead = await FacturaHead.findOne({ 
             nofactura: nofacturaUpper
         });
+
+
+         const cliente = await Cliente.findOne({ idcliente: head.codcliente.trim().toUpperCase()});
+         var ventasclientesacum = cliente.ventasclientesacum;
+         ventasclientesacum = parseFloat(ventasclientesacum) + parseFloat(ventascliente);
+         await Cliente.findOneAndUpdate(
+         { idcliente: head.codcliente},
+         { $set: { ventascliente: ventasclienteacum } }
+         );
         
         let headFinal;
         if (!existingHead) {
@@ -6456,8 +6465,6 @@ app.get('/api/compras/head', async (req, res) => {
     }
 });
 
-
-// POST: Crear compra completa (Head + Detalles)
 // POST: Crear compra completa (Head + Detalles + Inventario + CostoDifer)
 app.post('/api/compras/completa', async (req, res) => {
     const session = await mongoose.startSession();
@@ -6548,7 +6555,14 @@ app.post('/api/compras/completa', async (req, res) => {
                 }
             }
         }
-
+//%%%%%%%%%%%%%%%%%%%%%%%%%%  ACTUALIZAR LA COMPRAS CON EL PROVEEDOR %%%%%%%%%%%%%%%%%%%%%%%%//        
+const proveedor = await Proveedor.findOne({ idprov: head.codproveedor.trim().toUpperCase()});
+         var compraproveeacum = proveedor.compraprove;
+        compraproveeacum = parseFloat(compraproveeacum) + parseFloat(compraprove);
+         await Proveedor.findOneAndUpdate(
+         { idprov: head.codproveedor},
+         { $set: { compraprove: compraproveeacum } }
+         );
 //%%%%%%%%%%%%%%%%%%%%%%%%%%  CREAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
  if (Array.isArray(detalles) && detalles.length > 0) {
