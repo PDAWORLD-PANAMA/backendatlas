@@ -4254,57 +4254,33 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 }
             }
         }
-         try {
-            const newTotal = parseFloat(head.total || 0);
-            const newCodCliente = head.codcliente?.trim().toUpperCase() || '';
+       
+       if (headActualizada.codcliente){
 
-            if (!existingHead) {
-                // CASO 1: CREACIÓN DE NUEVA FACTURA (Sumar el total al cliente)
-                if (newCodCliente) {
-                    await Cliente.findOneAndUpdate(
-                        { idcliente: newCodCliente },
-                        { $inc: { ventascliente: newTotal } },
-                        { new: true }
-                    );
+         const resumenVentas = await FacturaHead.aggregate([
+                { 
+                    $match: { 
+                        codcliente: headActualizada.codcliente, 
+                        estatuscompra: { $ne: 'E' } // Excluir compras anuladas
+                    } 
+                },
+                { 
+                    $group: { 
+                        _id: null, 
+                        totalAcumulado: { $sum: "$total" } 
+                    } 
                 }
-            } else {
-                // CASO 2: ACTUALIZACIÓN DE FACTURA EXISTENTE (Calcular diferencia)
-                const oldTotal = parseFloat(existingHead.total || 0);
-                const oldCodCliente = existingHead.codcliente?.trim().toUpperCase() || '';
-                const diferencia = newTotal - oldTotal;
+            ]).session(session);
 
-                if (oldCodCliente === newCodCliente) {
-                    // Mismo cliente: solo sumar/restar la diferencia
-                    if (newCodCliente && diferencia !== 0) {
-                        await Cliente.findOneAndUpdate(
-                            { idcliente: newCodCliente },
-                            { $inc: { ventascliente: diferencia } },
-                            { new: true }
-                        );
-                    }
-                } else {
-                    // Cliente cambiado: restar el total al antiguo cliente y sumar al nuevo
-                    if (oldCodCliente) {
-                        await Cliente.findOneAndUpdate(
-                            { idcliente: oldCodCliente },
-                            { $inc: { ventascliente: -oldTotal } },
-                            { new: true }
-                        );
-                    }
-                    if (newCodCliente) {
-                        await Cliente.findOneAndUpdate(
-                            { idcliente: newCodCliente },
-                            { $inc: { ventascliente: newTotal } },
-                            { new: true }
-                        );
-                    }
-                }
-            }
-        } catch (errCliente) {
-            console.error('⚠️ Error actualizando acumulado de ventas del cliente:', errCliente.message);
-            // No detenemos el flujo de la factura si falla la actualización del cliente
+            const nuevoVentas = resumenVentas.length > 0 ? resumenVentas[0].totalAcumulado : 0;
+
+            // 2. Actualizar el campo compraprove en el documento del Proveedor
+            await Cliente.findOneAndUpdate(
+                { idcliente: headActualizada.codcliente },
+                { $set: { ventascliente: nuevoVentas } },
+                { session }
+            );
         }
-        
         
         const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
