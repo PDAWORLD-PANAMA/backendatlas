@@ -4130,7 +4130,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
 
          const cliente = await Cliente.findOne({ idcliente: head.codcliente.trim().toUpperCase()});
          var ventasclientesacum = cliente.ventasclientesacum;
-         ventasclientesacum = parseFloat(ventasclientesacum) + parseFloat(ventascliente);
+         ventasclientesacum = parseFloat(ventasclientesacum) + parseFloat(head.total);
          await Cliente.findOneAndUpdate(
          { idcliente: head.codcliente},
          { $set: { ventascliente: ventasclienteacum } }
@@ -6555,14 +6555,6 @@ app.post('/api/compras/completa', async (req, res) => {
                 }
             }
         }
-//%%%%%%%%%%%%%%%%%%%%%%%%%%  ACTUALIZAR LA COMPRAS CON EL PROVEEDOR %%%%%%%%%%%%%%%%%%%%%%%%//        
-const proveedor = await Proveedor.findOne({ idprov: head.codproveedor.trim().toUpperCase()});
-         var compraproveeacum = proveedor.compraprove;
-        compraproveeacum = parseFloat(compraproveeacum) + parseFloat(compraprove);
-         await Proveedor.findOneAndUpdate(
-         { idprov: head.codproveedor},
-         { $set: { compraprove: compraproveeacum } }
-         );
 //%%%%%%%%%%%%%%%%%%%%%%%%%%  CREAR ARCHIVO DE COSTO DIFERENTE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
  if (Array.isArray(detalles) && detalles.length > 0) {
@@ -6769,7 +6761,7 @@ app.get('/api/compras/detalle/nro/:nodocumento', async (req, res) => {
 });
 
 
-// PUT: Actualizar compra completa
+
 // PUT: Actualizar compra completa
 app.put('/api/compras/completa/:nodocumento', async (req, res) => {
     const session = await mongoose.startSession();
@@ -6889,6 +6881,15 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
         }
         //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
 
+        //%%%%%%%%%%%%%%%%%%%%%%%%%%  ACTUALIZAR LA COMPRAS CON EL PROVEEDOR %%%%%%%%%%%%%%%%%%%%%%%%//        
+const proveedor = await Proveedor.findOne({ idprov: head.codproveedor.trim().toUpperCase()});
+         var compraproveeacum = proveedor.compraprove;
+        compraproveeacum = parseFloat(compraproveeacum) + parseFloat(head.total);
+         await Proveedor.findOneAndUpdate(
+         { idprov: head.codproveedor},
+         { $set: { compraprove: compraproveeacum } }
+         );
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
         await session.commitTransaction();
         res.json({
             success: true,
