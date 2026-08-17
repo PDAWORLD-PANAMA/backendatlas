@@ -4205,7 +4205,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         detventa : detalle.detventa,
                         fechaActualizacion: fechasistema
                     }
-                };
+                })
             } else {
                 await FacturaDetalle.create({
                     nofactura: nofacturaUpper,
@@ -4231,8 +4231,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 });
             }
         }
-        
-               const headActualizada = await FacturaHead.findById(headFinal._id).session(session);
+      
+         const headActualizada = await FacturaHead.findById(headFinal._id).session(session);
         const detallesFinales = await FacturaDetalle.find({ 
             nofactura: nofacturaUpper
         });
