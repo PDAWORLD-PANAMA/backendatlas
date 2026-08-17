@@ -6921,6 +6921,35 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
                 }
             }
         }
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+// 🔹 ACTUALIZAR ACUMULADO DE COMPRAS DEL PROVEEDOR (compraprove)
+        if (headActualizada.codproveedor) {
+            // 1. Recalcular el total de todas las compras activas (no anuladas) de este proveedor
+            const resumenCompras = await ComprasHead.aggregate([
+                { 
+                    $match: { 
+                        codproveedor: headActualizada.codproveedor, 
+                        estatuscompra: { $ne: 'E' } // Excluir compras anuladas
+                    } 
+                },
+                { 
+                    $group: { 
+                        _id: null, 
+                        totalAcumulado: { $sum: "$total" } 
+                    } 
+                }
+            ]).session(session);
+
+            const nuevoCompraprove = resumenCompras.length > 0 ? resumenCompras[0].totalAcumulado : 0;
+
+            // 2. Actualizar el campo compraprove en el documento del Proveedor
+            await Proveedor.findOneAndUpdate(
+                { idprov: headActualizada.codproveedor },
+                { $set: { compraprove: nuevoCompraprove } },
+                { session }
+            );
+        }
+
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
         await session.commitTransaction();
         res.json({
