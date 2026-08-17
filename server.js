@@ -4115,7 +4115,6 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
 // ───────── ACTUALIZAR FACTURA COMPLETA (UPSERT - Finalizar y Guardar) ─────────
 app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
     
-    session.startTransaction();
     try {
         const { nofactura } = req.params;
         const { head, detalles } = req.body;
