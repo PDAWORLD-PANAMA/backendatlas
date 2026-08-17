@@ -4231,7 +4231,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             }
         }
       
-         const headActualizada = await FacturaHead.findById(headFinal._id).session(session);
+         const headActualizada = await FacturaHead.findById(headFinal._id);
         const detallesFinales = await FacturaDetalle.find({ 
             nofactura: nofacturaUpper
         });
