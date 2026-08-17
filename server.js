@@ -4260,32 +4260,10 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
  //              Acumula Ventas del cliente   
  //
  //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
-       if (headActualizada.codcliente){
-
-         const resumenVentas = await FacturaHead.aggregate([
-                { 
-                    $match: { 
-                        codcliente: headActualizada.codcliente, 
-                        estatuscompra: { $ne: 'E' } // Excluir compras anuladas
-                    } 
-                },
-                { 
-                    $group: { 
-                        _id: null, 
-                        totalAcumulado: { $sum: "$total" } 
-                    } 
-                }
-            ]).session(session);
-
-            const nuevoVentas = resumenVentas.length > 0 ? resumenVentas[0].totalAcumulado : 0;
-
-            // 2. Actualizar el campo compraprove en el documento del Proveedor
-            await Cliente.findOneAndUpdate(
-                { idcliente: headActualizada.codcliente },
-                { $set: { ventascliente: nuevoVentas } },
-                { session }
-            );
-        }
+  // 🔹 ACUMULAR TOTAL DE VENTAS AL CLIENTE
+const codclienteUpper = head.codcliente?.trim().toUpperCase();
+const totalFactura = head.total || 0;
+recalcularVentasCliente(codclienteUpper);
         
         const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
@@ -7254,6 +7232,25 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
 // ============================================================================
 // 🔹 HELPER: DESCONTAR FOLIO PAC (en cada envío exitoso a TheFactory código 200)
 // ============================================================================
+async function recalcularVentasCliente(codcliente) {
+    if (!codcliente) return;
+    
+    // Sum all 'total' from accepted invoices for this client
+    const result = await FacturaHead.aggregate([
+        { $match: { codcliente: codcliente.trim().toUpperCase(), estado: { $nin: ['E', 'Anulada', 'Rechazada'] } } },
+        { $group: { _id: null, totalVentas: { $sum: "$total" } } }
+    ]);
+
+    const nuevoTotal = result.length > 0 ? result[0].totalVentas : 0;
+
+    // Overwrite the field with the exact calculated sum
+    await Cliente.findOneAndUpdate(
+        { idcliente: codcliente.trim().toUpperCase() },
+        { $set: { ventascliente: nuevoTotal } }
+    );
+}
+
+
 async function descontarFolioPAC() {
     try {
         const empresa = await EmpresaConfig.findOne({});
