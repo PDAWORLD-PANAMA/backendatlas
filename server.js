@@ -4114,6 +4114,8 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
 
 // ───────── ACTUALIZAR FACTURA COMPLETA (UPSERT - Finalizar y Guardar) ─────────
 app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
         const { nofactura } = req.params;
         const { head, detalles } = req.body;
@@ -4125,7 +4127,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         
         let existingHead = await FacturaHead.findOne({ 
             nofactura: nofacturaUpper
-        });
+        }).session(session);
         
         let headFinal;
         if (!existingHead) {
@@ -4169,7 +4171,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             headFinal = await FacturaHead.findByIdAndUpdate(
                 existingHead._id,
                 { $set: updateData },
-                { new: true, runValidators: true }
+                { new: true, runValidators: true, session }
             );
         }
         
@@ -4177,7 +4179,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             const detalleExistente = await FacturaDetalle.findOne({ 
                 nofactura: nofacturaUpper, 
                 codproducto: detalle.codproducto?.trim().toUpperCase()
-            });
+            }).session(session);
             const subtotalCalculado = parseFloat(
                 ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
             );
@@ -4203,7 +4205,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         detventa : detalle.detventa,
                         fechaActualizacion: fechasistema
                     }
-                });
+                }.session(session));
             } else {
                 await FacturaDetalle.create({
                     nofactura: nofacturaUpper,
@@ -4226,19 +4228,19 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     tasaisc : detalle.tasaisc,
                     detventa : detalle.detventa,
                     fechaCreacion: fechasistema
-                });
+                }).session(session);
             }
         }
         
-               const headActualizada = await FacturaHead.findById(headFinal._id);
+               const headActualizada = await FacturaHead.findById(headFinal._id).session(session);
         const detallesFinales = await FacturaDetalle.find({ 
             nofactura: nofacturaUpper
-        });
+        }).session(session);
         
         // 🔹 DESCONTAR INVENTARIO (CANTIDAD DE DETALLES FINALES)
         for (const det of detallesFinales) {
             if (det.codproducto) {
-                const inventario = await Inventariosede.findOne({ idinventario: det.codproducto });
+                const inventario = await Inventariosede.findOne({ idinventario: det.codproducto }).session(session);
                 if (inventario) {
                     const cantActual = Number(inventario.cantidispo || 0);
                     const cantDet = Number(det.cantidad || 0);
@@ -4249,12 +4251,15 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $set: { cantidispo: nuevaCant } }
+                        { $set: { cantidispo: nuevaCant }.session(session) }
                     );
                 }
             }
         }
-       
+ //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+ //              Acumula Ventas del cliente   
+ //
+ //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
        if (headActualizada.codcliente){
 
          const resumenVentas = await FacturaHead.aggregate([
