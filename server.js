@@ -4126,15 +4126,6 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         let existingHead = await FacturaHead.findOne({ 
             nofactura: nofacturaUpper
         });
-
-
-         const cliente = await Cliente.findOne({ idcliente: head.codcliente.trim().toUpperCase()});
-         var ventasclientesacum = cliente.ventasclientesacum;
-         ventasclientesacum = parseFloat(ventasclientesacum) + parseFloat(head.total);
-         await Cliente.findOneAndUpdate(
-         { idcliente: head.codcliente},
-         { $set: { ventascliente: ventasclienteacum } }
-         );
         
         let headFinal;
         if (!existingHead) {
@@ -4263,6 +4254,57 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 }
             }
         }
+         try {
+            const newTotal = parseFloat(head.total || 0);
+            const newCodCliente = head.codcliente?.trim().toUpperCase() || '';
+
+            if (!existingHead) {
+                // CASO 1: CREACIÓN DE NUEVA FACTURA (Sumar el total al cliente)
+                if (newCodCliente) {
+                    await Cliente.findOneAndUpdate(
+                        { idcliente: newCodCliente },
+                        { $inc: { ventascliente: newTotal } },
+                        { new: true }
+                    );
+                }
+            } else {
+                // CASO 2: ACTUALIZACIÓN DE FACTURA EXISTENTE (Calcular diferencia)
+                const oldTotal = parseFloat(existingHead.total || 0);
+                const oldCodCliente = existingHead.codcliente?.trim().toUpperCase() || '';
+                const diferencia = newTotal - oldTotal;
+
+                if (oldCodCliente === newCodCliente) {
+                    // Mismo cliente: solo sumar/restar la diferencia
+                    if (newCodCliente && diferencia !== 0) {
+                        await Cliente.findOneAndUpdate(
+                            { idcliente: newCodCliente },
+                            { $inc: { ventascliente: diferencia } },
+                            { new: true }
+                        );
+                    }
+                } else {
+                    // Cliente cambiado: restar el total al antiguo cliente y sumar al nuevo
+                    if (oldCodCliente) {
+                        await Cliente.findOneAndUpdate(
+                            { idcliente: oldCodCliente },
+                            { $inc: { ventascliente: -oldTotal } },
+                            { new: true }
+                        );
+                    }
+                    if (newCodCliente) {
+                        await Cliente.findOneAndUpdate(
+                            { idcliente: newCodCliente },
+                            { $inc: { ventascliente: newTotal } },
+                            { new: true }
+                        );
+                    }
+                }
+            }
+        } catch (errCliente) {
+            console.error('⚠️ Error actualizando acumulado de ventas del cliente:', errCliente.message);
+            // No detenemos el flujo de la factura si falla la actualización del cliente
+        }
+        
         
         const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
@@ -6879,16 +6921,6 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
                 }
             }
         }
-        //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
-
-        //%%%%%%%%%%%%%%%%%%%%%%%%%%  ACTUALIZAR LA COMPRAS CON EL PROVEEDOR %%%%%%%%%%%%%%%%%%%%%%%%//        
-const proveedor = await Proveedor.findOne({ idprov: head.codproveedor.trim().toUpperCase()});
-         var compraproveeacum = proveedor.compraprove;
-        compraproveeacum = parseFloat(compraproveeacum) + parseFloat(head.total);
-         await Proveedor.findOneAndUpdate(
-         { idprov: head.codproveedor},
-         { $set: { compraprove: compraproveeacum } }
-         );
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
         await session.commitTransaction();
         res.json({
