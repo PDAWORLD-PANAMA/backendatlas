@@ -4204,7 +4204,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         detventa : detalle.detventa,
                         fechaActualizacion: fechasistema
                     }
-                })
+                }, { returnDocument: 'after' } )
             } else {
                 await FacturaDetalle.create({
                     nofactura: nofacturaUpper,
@@ -4250,7 +4250,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $set: { cantidispo: nuevaCant }}
+                        { $set: { cantidispo: nuevaCant }, { returnDocument: 'after' } }
                     );
                 }
             }
@@ -4533,7 +4533,9 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                 if (det.codproducto) {
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $inc: { cantidispo: (det.cantidad || 0) } } // Sumamos lo que se había restado
+                        { $inc: { cantidispo: (det.cantidad || 0) },
+                     { returnDocument: 'after' } 
+                    } // Sumamos lo que se había restado
                     );
                 }
             }
@@ -4838,7 +4840,9 @@ let xmlanular   = `
                 if (det.codproducto) {
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $inc: { cantidispo: (det.cantidad || 0) } } // 🔹 CAMBIO: Sumamos en lugar de restar
+                        { $inc: { cantidispo: (det.cantidad || 0) }
+                     },
+                      { returnDocument: 'after' }  // 🔹 CAMBIO: Sumamos en lugar de restar
                     );
                 }
             }
@@ -5476,8 +5480,8 @@ let xmltotcierre = ` </ser:totalesSubTotales>
                     if (det.codproducto) {
                         await Inventariosede.findOneAndUpdate(
                             { idinventario: det.codproducto },
-                            { $inc: { cantidispo: (det.cantidad || 0) } }
-                        );
+                            { $inc: { cantidispo: (det.cantidad || 0) } },
+                         { returnDocument: 'after' } );
                     }
                 }
             }
@@ -6044,7 +6048,8 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                     if (det.codproducto) {
                         await Inventariosede.findOneAndUpdate(
                             { idinventario: det.codproducto },
-                            { $inc: { cantidispo: Math.abs(det.cantidad || 0) } }
+                            { $inc: { cantidispo: Math.abs(det.cantidad || 0) } },
+                             { returnDocument: 'after' } 
                         );
                     }
                 }
@@ -6384,7 +6389,8 @@ app.post('/api/compras/gastos/trans', async (req, res) => {
         // ✅ Actualizar el acumulado del gasto maestro
         await GastoHead.findOneAndUpdate(
             { codigogasto: codigogasto.trim() },
-            { $inc: { acumgasto: parseFloat(monto) || 0 } }
+            { $inc: { acumgasto: parseFloat(monto) || 0 } },
+             { returnDocument: 'after' } 
         );
 
         res.status(201).json({ 
@@ -6599,8 +6605,9 @@ app.post('/api/compras/completa', async (req, res) => {
                                         nuevocosto: costoNuevo,
                                         fechatransaccion: fechasistema,
                                         horatransaccion: workhora
-                                    }
-                                }
+                                    },
+                                    
+                                }, { returnDocument: 'after' } 
                             );
                         }
                     }
