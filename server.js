@@ -4260,9 +4260,12 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
  //
  //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
   // 🔹 ACUMULAR TOTAL DE VENTAS AL CLIENTE
-const codclienteUpper = head.codcliente?.trim().toUpperCase();
-const totalFactura = head.total || 0;
-recalcularVentasCliente(codclienteUpper);
+ const codclienteUpper = headFinal.codcliente?.trim().toUpperCase();
+        
+        if (codclienteUpper) {
+            // ✅ Add await so errors are caught by the try/catch block
+            await recalcularVentasCliente(codclienteUpper);
+        }
         
         const mensaje = !existingHead 
             ? `✅ Factura ${nofacturaUpper} creada con ${detalles.length} producto(s)`
@@ -7231,22 +7234,46 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
 // ============================================================================
 // 🔹 HELPER: DESCONTAR FOLIO PAC (en cada envío exitoso a TheFactory código 200)
 // ============================================================================
+// ============================================================================
+// 🔹 HELPER: RECALCULAR VENTAS DEL CLIENTE
+// ============================================================================
 async function recalcularVentasCliente(codcliente) {
     if (!codcliente) return;
     
-    // Sum all 'total' from accepted invoices for this client
-    const result = await FacturaHead.aggregate([
-        { $match: { codcliente: codcliente.trim().toUpperCase(), estado: { $nin: ['E', 'Anulada', 'Rechazada'] } } },
-        { $group: { _id: null, totalVentas: { $sum: "$total" } } }
-    ]);
+    try {
+        console.log(`🔄 Recalculando ventas para cliente: ${codcliente}`);
+        
+        // Sum all 'total' from accepted invoices for this client
+        const result = await FacturaHead.aggregate([
+            { $match: { 
+                codcliente: codcliente, 
+                estado: { $nin: ['E', 'Anulada', 'Rechazada'] } 
+            }},
+            { $group: { 
+                _id: null, 
+                // ✅ Handle null/missing totals safely
+                totalVentas: { $sum: { $ifNull: ["$total", 0] } } 
+            }}
+        ]);
 
-    const nuevoTotal = result.length > 0 ? result[0].totalVentas : 0;
+        const nuevoTotal = result.length > 0 ? result[0].totalVentas : 0;
+        console.log(`💰 Nuevo total calculado para ${codcliente}: ${nuevoTotal}`);
 
-    // Overwrite the field with the exact calculated sum
-    await Cliente.findOneAndUpdate(
-        { idcliente: codcliente.trim().toUpperCase() },
-        { $set: { ventascliente: nuevoTotal } }
-    );
+        // Overwrite the field with the exact calculated sum
+        const clienteActualizado = await Cliente.findOneAndUpdate(
+            { idcliente: codcliente }, // Matches 'idcliente' in Cliente schema
+            { $set: { ventascliente: nuevoTotal } },
+            { new: true } // ✅ Returns the updated document
+        );
+
+        if (!clienteActualizado) {
+            console.warn(`⚠️ No se encontró el cliente con idcliente: ${codcliente} en la base de datos.`);
+        } else {
+            console.log(`✅ Ventas del cliente ${codcliente} actualizadas correctamente en DB.`);
+        }
+    } catch (error) {
+        console.error('❌ Error interno en recalcularVentasCliente:', error);
+    }
 }
 
 
