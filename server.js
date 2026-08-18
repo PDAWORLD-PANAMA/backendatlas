@@ -2758,7 +2758,7 @@ app.get("/api/ventas/cotizaciones/head", async (req, res) => {
 app.post('/api/ventas/cotizaciones/head', async (req, res) => {
   try {
     const { nocotiza, codcliente, fechacotiza } = req.body;
-    if (!nocotiza?.trim() || !codcliente?.trim() || !fechacotiza?.trim()) {
+    if (!nocotiza || !codcliente || !fechacotiza) {
       return res.status(400).json({ success: false, message: 'N° Cotización, Cliente y Fecha son obligatorios' });
     }
     var fechasistema = formatLocalYmd(new Date());
@@ -2766,12 +2766,12 @@ app.post('/api/ventas/cotizaciones/head', async (req, res) => {
     if (exists) return res.status(409).json({ success: false, message: 'Ya existe una cotización con este número' });
     const newHead = await CotizaHead.create({
       ...req.body,
-      nocotiza: nocotiza.trim().toUpperCase(),
-      codcliente: codcliente.trim().toUpperCase(),
+      nocotiza: nocotiza,
+      codcliente: codcliente,
       nombreclie: req.body.nombreclie?.trim().toUpperCase() || '',
-      ruccliente: req.body.ruccliente?.trim().toUpperCase() || '',
-      codvendedor: req.body.codvendedor?.trim().toUpperCase() || '',
-      tipocontribuyente: req.body.tipocontribuyente?.trim().toUpperCase() || '',
+      ruccliente: req.body.ruccliente,
+      codvendedor: req.body.codvendedor,
+      tipocontribuyente: req.body.tipocontribuyente,
       activo : "A",
       fechaCreacion:fechasistema,
       fechaActualizacion: fechasistema,
@@ -2819,10 +2819,10 @@ app.put('/api/ventas/cotizaciones/head/:id', async (req, res) => {
     const updateData = { ...req.body };
     var fechasistema = formatLocalYmd(new Date());
     delete updateData.nocotiza; delete updateData._id; delete updateData.createdAt; delete updateData.fechaCreacion;
-    if (updateData.codcliente) updateData.codcliente = updateData.codcliente.toUpperCase();
+    if (updateData.codcliente) updateData.codcliente = updateData.codcliente;
     if (updateData.nombreclie) updateData.nombreclie = updateData.nombreclie.toUpperCase();
-    if (updateData.ruccliente) updateData.ruccliente = updateData.ruccliente.toUpperCase();
-    if (updateData.codvendedor) updateData.codvendedor = updateData.codvendedor.toUpperCase();
+    if (updateData.ruccliente) updateData.ruccliente = updateData.ruccliente;
+    if (updateData.codvendedor) updateData.codvendedor = updateData.codvendedor;
     updateData.fechaActualizacion = fechasistema;
     const updated = await CotizaHead.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
@@ -3019,11 +3019,11 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
     var fechasistema = formatLocalYmd(new Date());
     const nuevaHead = await CotizaHead.create({
       ...head,
-      nocotiza: head.nocotiza.trim().toUpperCase(),
-      codcliente: head.codcliente?.trim().toUpperCase(),
+      nocotiza: head.nocotiza,
+      codcliente: head.codcliente,
       nombreclie: head.nombreclie?.trim().toUpperCase(),
-      ruccliente: head.ruccliente?.trim().toUpperCase(),
-      codvendedor: head.codvendedor?.trim().toUpperCase(),
+      ruccliente: head.ruccliente,
+      codvendedor: head.codvendedor,
       detallecoti: detallecotiJson,
       activo: "A",
       fechaCreacion: fechasistema,
@@ -3092,11 +3092,11 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
       headFinal = await CotizaHead.create({
         ...head,
         nocotiza: nocotizaUpper,
-        codcliente: head.codcliente?.trim().toUpperCase() || '',
-        nombreclie: head.nombreclie?.trim().toUpperCase() || '',
-        ruccliente: head.ruccliente?.trim().toUpperCase() || '',
-        codvendedor: head.codvendedor?.trim().toUpperCase() || '',
-        tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+        codcliente: head.codcliente,
+        nombreclie: head.nombreclie?.trim().toUpperCase(),
+        ruccliente: head.ruccliente,
+        codvendedor: head.codvendedor,
+        tipocontribuyente: head.tipocontribuyente,
         detallecoti: detallecotiJson,
         activo: "A",
         fechaCreacion: fechasistema,
@@ -3291,8 +3291,8 @@ app.post("/api/ventas/facturas/head", async (req, res) => {
 app.get('/api/ventas/facturas/head', async (req, res) => {
     try {
         const { nofactura, codcliente } = req.query;
-        if (nofactura?.trim()) filters.nofactura = { $regex: nofactura.trim(), $options: 'i' };
-        if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
+        if (nofactura) filters.nofactura = nofactura;
+        if (codcliente) filters.codcliente = codcliente;
         const facturas = await FacturaHead.find({}).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
         res.json({ success: true, message: `${facturas.length} factura(s) encontrada(s)`, data: facturas });
     } catch (error) {
@@ -3492,10 +3492,10 @@ app.get('/api/ventas/reporte/ventas-por-cliente', async (req, res) => {
             const key = f.codcliente || f.nombreclie || 'SIN CLIENTE';
             if (!clientMap[key]) {
                 clientMap[key] = {
-                    codcliente: f.codcliente || '',
+                    codcliente: f.codcliente ,
                     nombreclie: f.nombreclie || 'SIN CLIENTE',
-                    ruccliente: f.ruccliente || '',
-                    digitoverificadoruc: f.digitoverificadoruc || '',
+                    ruccliente: f.ruccliente ,
+                    digitoverificadoruc: f.digitoverificadoruc,
                     totalFacturas: 0,
                     totalVentas: 0,
                     totalImpuesto: 0,
@@ -3504,9 +3504,9 @@ app.get('/api/ventas/reporte/ventas-por-cliente', async (req, res) => {
                     ultimaFechaFactura: '',
                     primeraFactura: '',
                     primeraFechaFactura: '',
-                    tipocontribuyente: f.tipocontribuyente || '',
-                    tipoclientefe: f.tipoclientefe || '',
-                    clasecliente: f.clasecliente || ''
+                    tipocontribuyente: f.tipocontribuyente ,
+                    tipoclientefe: f.tipoclientefe,
+                    clasecliente: f.clasecliente
                 };
             }
             clientMap[key].totalFacturas += 1;
@@ -3516,12 +3516,12 @@ app.get('/api/ventas/reporte/ventas-por-cliente', async (req, res) => {
 
             // Track latest and earliest invoice
             if (!clientMap[key].ultimaFechaFactura || f.fechafactura > clientMap[key].ultimaFechaFactura) {
-                clientMap[key].ultimaFactura = f.nofactura || '';
-                clientMap[key].ultimaFechaFactura = f.fechafactura || '';
+                clientMap[key].ultimaFactura = f.nofactura;
+                clientMap[key].ultimaFechaFactura = f.fechafactura;
             }
             if (!clientMap[key].primeraFechaFactura || f.fechafactura < clientMap[key].primeraFechaFactura) {
-                clientMap[key].primeraFactura = f.nofactura || '';
-                clientMap[key].primeraFechaFactura = f.fechafactura || '';
+                clientMap[key].primeraFactura = f.nofactura;
+                clientMap[key].primeraFechaFactura = f.fechafactura;
             }
         });
 
@@ -3599,18 +3599,18 @@ app.post('/api/ventas/cxc/abono', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Número de factura es obligatorio' });
         }
 
-        const factura = await FacturaHead.findOne({ nofactura: nofactura.trim() }).session(session);
+        const factura = await FacturaHead.findOne({ nofactura: nofactura }).session(session);
         if (!factura) {
             await session.abortTransaction();
             return res.status(404).json({ success: false, message: 'Factura no encontrada' });
         }
 
         // Calcular abonos previos para esta factura
-        const abonosPrevios = await TranCxCobrar.find({ nofactura: nofactura.trim() }).session(session);
-        const totalAbonado = abonosPrevios.reduce((sum, a) => sum + (a.montotran || 0), 0);
-        const saldoActual = (factura.total || 0) - totalAbonado;
+        const abonosPrevios = await TranCxCobrar.find({ nofactura: nofactura }).session(session);
+        const totalAbonado = abonosPrevios.reduce((sum, a) => sum + (a.montotran), 0);
+        const saldoActual = (factura.total) - totalAbonado;
 
-        const montoAbono = parseFloat(montotran) || 0;
+        const montoAbono = parseFloat(montotran);
         if (montoAbono <= 0) {
             await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'El monto del abono debe ser mayor a 0' });
@@ -3637,7 +3637,7 @@ app.post('/api/ventas/cxc/abono', async (req, res) => {
             fechaabono: fechaabono || fechasistema,
             fechavencimiento: factura.fechavencimiento,
             codcliente: factura.codcliente,
-            codglobal: factura.idglobalcorporp || '',
+            codglobal: factura.idglobalcorporp,
             cliente: factura.nombreclie,
             formapago: formapago || '02',
             saldoanterior: saldoActual,
@@ -3710,14 +3710,14 @@ app.get('/api/ventas/cxc/estado/:codcliente', async (req, res) => {
 
         // Facturas a crédito del cliente
         const facturas = await FacturaHead.find({
-            codcliente: codcliente.trim(),
+            codcliente: codcliente,
             condiciones: { $ne: '1' },
             estado: { $nin: ['E', 'Anulada'] }
         }).sort({ fechafactura: 1 });
 
         // Abonos del cliente
         const abonos = await TranCxCobrar.find({
-            codcliente: codcliente.trim()
+            codcliente: codcliente
         }).sort({ fechatransaccion: 1 });
 
         const saldoTotal = facturas.reduce((sum, f) => sum + (f.saldo || f.total || 0), 0);
@@ -3727,7 +3727,7 @@ app.get('/api/ventas/cxc/estado/:codcliente', async (req, res) => {
             success: true,
             message: 'Estado de cuenta obtenido',
             data: {
-                codcliente: codcliente.trim(),
+                codcliente: codcliente,
                 cliente: facturas.length > 0 ? facturas[0].nombreclie : '',
                 saldoTotal: saldoTotal,
                 totalAbonado: totalAbonado,
@@ -4033,7 +4033,7 @@ app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
 app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
-        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase()}).sort({ codproducto: 1 });
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura}).sort({ codproducto: 1 });
         res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
     } catch (error) {
         console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
@@ -4048,7 +4048,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
             return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
         }
-        const exists = await FacturaHead.findOne({ nofactura: head.nofactura?.trim().toUpperCase() });
+        const exists = await FacturaHead.findOne({ nofactura: head.nofactura });
         if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
         
         const detallefacturaJson = JSON.stringify(detalles.map(d => ({
@@ -4063,12 +4063,12 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         var fechasistema = formatLocalYmd(new Date());
         const nuevaHead = await FacturaHead.create({
             ...head,
-            nofactura: head.nofactura.trim().toUpperCase(),
-            codcliente: head.codcliente?.trim().toUpperCase() || '',
-            nombreclie: head.nombreclie?.trim().toUpperCase() || '',
-            ruccliente: head.ruccliente?.trim().toUpperCase() || '',
-            codvendedor: head.codvendedor?.trim().toUpperCase() || '',
-            tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+            nofactura: head.nofactura,
+            codcliente: head.codcliente,
+            nombreclie: head.nombreclie,
+            ruccliente: head.ruccliente,
+            codvendedor: head.codvendedor,
+            tipocontribuyente: head.tipocontribuyente,
             detallefactura: detallefacturaJson,
             estado: 'A',
             fechaCreacion: fechasistema,
@@ -4079,18 +4079,18 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         const detallesPreparados = detalles.map(detalle => ({
             ...detalle,
             nofactura: nuevaHead.nofactura,
-            codproducto: detalle.codproducto?.trim().toUpperCase(),
-            descripcion: detalle.descripcion?.trim().toUpperCase(),
+            codproducto: detalle.codproducto,
+            descripcion: detalle.descripcion,
              impuesto: detalle.impuesto || 0,
                         impuesto1: detalle.impuesto1 || 0,
                         impuesto2: detalle.impuesto2 || 0,
                         impuesto3: detalle.impuesto3 || 0,
                         pormayor: detalle.pormayor || 0,
                         unidad: detalle.unidad || 'UND',
-                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        modelo : detalle.modelo,
                         fechafabricacion : detalle.fechafabricacion,
                         fechaexpiracion : detalle.fechaexpiracion,
-                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
+                        codigobienes : detalle.codigobienes,
             cantidad: Math.max(1, detalle.cantidad || 1),
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
@@ -4121,7 +4121,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
             return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
         }
-        const nofacturaUpper = nofactura.trim().toUpperCase();
+        const nofacturaUpper = nofactura;
         var fechasistema = formatLocalYmd(new Date());
         
         let existingHead = await FacturaHead.findOne({ 
@@ -4141,11 +4141,11 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             headFinal = await FacturaHead.create({
                 ...head,
                 nofactura: nofacturaUpper,
-                codcliente: head.codcliente?.trim().toUpperCase() || '',
-                nombreclie: head.nombreclie?.trim().toUpperCase() || '',
-                ruccliente: head.ruccliente?.trim().toUpperCase() || '',
-                codvendedor: head.codvendedor?.trim().toUpperCase() || '',
-                tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+                codcliente: head.codcliente,
+                nombreclie: head.nombreclie,
+                ruccliente: head.ruccliente,
+                codvendedor: head.codvendedor,
+                tipocontribuyente: head.tipocontribuyente,
                 detallefactura: detallefacturaJson,
                 estado: 'A',
                 fechaCreacion: fechasistema,
@@ -4170,14 +4170,14 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             headFinal = await FacturaHead.findByIdAndUpdate(
                 existingHead._id,
                 { $set: updateData },
-                { new: true, runValidators: true }
+                { returnDocument: 'after', runValidators: true } 
             );
         }
         
         for (const detalle of detalles) {
             const detalleExistente = await FacturaDetalle.findOne({ 
                 nofactura: nofacturaUpper, 
-                codproducto: detalle.codproducto?.trim().toUpperCase()
+                codproducto: detalle.codproducto
             });
             const subtotalCalculado = parseFloat(
                 ((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)
@@ -4193,12 +4193,12 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         impuesto2: detalle.impuesto2 || 0,
                         impuesto3: detalle.impuesto3 || 0,
                         pormayor: detalle.pormayor || 0,
-                        descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
+                        descripcion: detalle.descripcion,
                         unidad: detalle.unidad || 'UND',
-                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        modelo : detalle.modelo,
                         fechafabricacion : detalle.fechafabricacion,
                         fechaexpiracion : detalle.fechaexpiracion,
-                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
+                        codigobienes : detalle.codigobienes,
                         subtotal: subtotalCalculado,
                         tasaisc : detalle.tasaisc,
                         detventa : detalle.detventa,
@@ -4208,8 +4208,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
             } else {
                 await FacturaDetalle.create({
                     nofactura: nofacturaUpper,
-                    codproducto: detalle.codproducto?.trim().toUpperCase(),
-                    descripcion: detalle.descripcion?.trim().toUpperCase(),
+                    codproducto: detalle.codproducto,
+                    descripcion: detalle.descripcion,
                     cantidad: Math.max(1, detalle.cantidad || 1),
                     precio: Math.max(0, detalle.precio || 0),
                     descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
@@ -4219,10 +4219,10 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                         impuesto3: detalle.impuesto3 || 0,
                         pormayor: detalle.pormayor || 0,
                          unidad: detalle.unidad || 'UNIDAD',
-                        modelo : detalle.modelo?.trim().toUpperCase(),
+                        modelo : detalle.modelo,
                         fechafabricacion : detalle.fechafabricacion,
                         fechaexpiracion : detalle.fechaexpiracion,
-                        codigobienes : detalle.codigobienes?.trim().toUpperCase(),
+                        codigobienes : detalle.codigobienes,
                     subtotal: subtotalCalculado,
                     tasaisc : detalle.tasaisc,
                     detventa : detalle.detventa,
@@ -4260,7 +4260,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
  //
  //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
   // 🔹 ACUMULAR TOTAL DE VENTAS AL CLIENTE
- const codclienteUpper = headFinal.codcliente?.trim().toUpperCase();
+ const codclienteUpper = headFinal.codcliente;
         
         if (codclienteUpper) {
             // ✅ Add await so errors are caught by the try/catch block
@@ -4612,9 +4612,9 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
 app.get('/api/ventas/facturas/head', async (req, res) => {
     try {
         const { nofactura, codcliente } = req.query;
-        let filters = { activo: { $ne: false } };
-        if (nofactura?.trim()) filters.nofactura = { $regex: nofactura.trim(), $options: 'i' };
-        if (codcliente?.trim()) filters.codcliente = codcliente.trim().toUpperCase();
+        let filters = { estado: { $ne: " " } };
+        if (nofactura) filters.nofactura = { $regex: nofactura, $options: 'i' };
+        if (codcliente) filters.codcliente = codcliente;
         const facturas = await FacturaHead.find(filters).sort({ fechafactura: -1, nofactura: -1 }).limit(100);
         res.json({ success: true, message: `${facturas.length} factura(s) encontrada(s)`, data: facturas });
     } catch (error) {
@@ -4631,7 +4631,7 @@ app.get('/api/ventas/facturas/head/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const head = await FacturaHead.findOne({
-            nofactura: nofactura.toUpperCase()
+            nofactura: nofactura
         });
         if (!head) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
         res.json({ success: true, message: 'Factura obtenida', data: head });
@@ -4673,7 +4673,7 @@ app.delete('/api/ventas/facturas/head/:id', async (req, res) => {
 app.get('/api/ventas/facturas/detalle/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
-        const detalles = await FacturaDetalle.find({ nofactura: nofactura.toUpperCase()}).sort({ codproducto: 1 });
+        const detalles = await FacturaDetalle.find({ nofactura: nofactura}).sort({ codproducto: 1 });
         res.json({ success: true, message: `${detalles.length} detalle(s) encontrado(s)`, data: detalles });
     } catch (error) {
         console.error('❌ Error GET /api/ventas/facturas/detalle/nro/:nofactura:', error);
@@ -4688,7 +4688,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         if (!head || !detalles || !Array.isArray(detalles) || detalles.length === 0) {
             return res.status(400).json({ success: false, message: 'Cabecera y al menos un detalle son obligatorios' });
         }
-        const exists = await FacturaHead.findOne({ nofactura: head.nofactura?.trim().toUpperCase() });
+        const exists = await FacturaHead.findOne({ nofactura: head.nofactura });
         if (exists) return res.status(409).json({ success: false, message: 'Ya existe una factura con este número' });
         
         const detallefacturaJson = JSON.stringify(detalles.map(d => ({
@@ -4703,12 +4703,12 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         var fechasistema = formatLocalYmd(new Date());
         const nuevaHead = await FacturaHead.create({
             ...head,
-            nofactura: head.nofactura.trim().toUpperCase(),
-            codcliente: head.codcliente?.trim().toUpperCase() || '',
-            nombreclie: head.nombreclie?.trim().toUpperCase() || '',
-            ruccliente: head.ruccliente?.trim().toUpperCase() || '',
-            codvendedor: head.codvendedor?.trim().toUpperCase() || '',
-            tipocontribuyente: head.tipocontribuyente?.trim().toUpperCase() || '',
+            nofactura: head.nofactura,
+            codcliente: head.codcliente,
+            nombreclie: head.nombreclie,
+            ruccliente: head.ruccliente,
+            codvendedor: head.codvendedor,
+            tipocontribuyente: head.tipocontribuyente,
             detallefactura: detallefacturaJson,
             estado: 'A',
             fechaCreacion: fechasistema,
@@ -4719,8 +4719,8 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
         const detallesPreparados = detalles.map(detalle => ({
             ...detalle,
             nofactura: nuevaHead.nofactura,
-            codproducto: detalle.codproducto?.trim().toUpperCase(),
-            descripcion: detalle.descripcion?.trim().toUpperCase(),
+            codproducto: detalle.codproducto,
+            descripcion: detalle.descripcion,
             cantidad: Math.max(1, detalle.cantidad || 1),
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
@@ -4750,7 +4750,7 @@ app.post('/api/ventas/facturas/anular/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
         const { motivo } = req.body;
-        const nofacturaUpper = nofactura.toUpperCase();
+        const nofacturaUpper = nofactura;
 
         // 1. OBTENER FACTURA
         const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
@@ -5025,9 +5025,9 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
              fechacredito: fechasistema,
              codcliente: factura.codcliente,
              codvendedor: factura.codvendedor,
-             codproducto: d.codproducto?.trim().toUpperCase() || '',
+             codproducto: d.codproducto,
              cantidad: parseFloat(d.cantidad) || 0,
-             descripcion: d.descripcion?.trim().toUpperCase() || '',
+             descripcion: d.descripcion,
              descuento: parseFloat(d.descuento) || 0,
              impuesto: parseFloat(d.impuesto) || 0,
              impuesto2: parseFloat(d.impuesto2) || 0,
@@ -5086,10 +5086,10 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
      let fetipoclientefe = factura.tipoclientefe || '01';
      let fetipocontribuyente = factura.tipocontribuyente || '1';
      let ferucprt = factura.ruccliente || '';
-     let fedigiverificaprt = factura.digitoverificadoruc || '';
+     let fedigiverificaprt = factura.digitoverificadoruc || '00';
      let ferazonsocialprt = factura.razonsocial || '';
-     let fedireccionprt = factura.direccioncontribuyente || '';
-     let feemailprt = factura.correocliefe || '';
+     let fedireccionprt = factura.direccioncontribuyente || 'PANAMA';
+     let feemailprt = factura.correocliefe;
      let fefechaemision = factura.fechaemision;
      if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
 
@@ -5605,7 +5605,7 @@ app.get('/api/ventas/notascredito/detalle/nro/:nofactura', async (req, res) => {
 app.get('/api/ventas/notasdebito/detalle/nro/:nofactura', async (req, res) => {
     try {
         const { nofactura } = req.params;
-        const nofacturaUpper = nofactura.toUpperCase();
+        const nofacturaUpper = nofactura;
 
         const debitNotes = await NotaDebitoHead.find({ nofactura: nofacturaUpper, estado: { $ne: 'E' } });
         const nodebitos = debitNotes.map(nd => nd.nodebito);
@@ -5632,7 +5632,7 @@ app.post('/api/ventas/notasdebito/enviar-Thefactory/:nofactura', async (req, res
     try {
         const { nofactura } = req.params;
         const { tipoNota, motivo, detalles, montoTotal } = req.body;
-        const nofacturaUpper = nofactura.toUpperCase();
+        const nofacturaUpper = nofactura;
 
        // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
 const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
@@ -5688,7 +5688,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
             nodebito: nodebito,
             nofactura: nofacturaUpper,
             nodocumento: nodebito,
-            codigosucemisor: factura.codigosucemisor || empresa.codigosucemisor || "001",
+            codigosucemisor: factura.codigosucemisor || empresa.codigosucemisor || "0000",
             facturaelectronica: '',
             fechafactura: factura.fechafactura,
             fechadebito: fechasistema,
@@ -5751,9 +5751,9 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                 fechafactura: factura.fechafactura,
                 codcliente: factura.codcliente,
                 codvendedor: factura.codvendedor,
-                codproducto: d.codproducto?.trim().toUpperCase() || '',
+                codproducto: d.codproducto,
                 cantidad: parseFloat(d.cantidad) || 0,
-                descripcion: d.descripcion?.trim().toUpperCase() || '',
+                descripcion: d.descripcion,
                 precio: parseFloat(d.precio) || 0,
                 ancho: parseFloat(d.ancho) || 0,
                 alto: parseFloat(d.alto) || 0,
@@ -5791,10 +5791,10 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
         let fetipoclientefe = factura.tipoclientefe || '01';
         let fetipocontribuyente = factura.tipocontribuyente || '1';
         let ferucprt = factura.ruccliente || '';
-        let fedigiverificaprt = factura.digitoverificadoruc || '';
+        let fedigiverificaprt = factura.digitoverificadoruc || '00';
         let ferazonsocialprt = factura.razonsocial || '';
-        let fedireccionprt = factura.direccioncontribuyente || '';
-        let feemailprt = factura.correocliefe || '';
+        let fedireccionprt = factura.direccioncontribuyente || 'PANAMA';
+        let feemailprt = factura.correocliefe;
 
         if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
 
@@ -5820,7 +5820,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
             }
         }
 
-        let fesucursalemisor = empresa.codigosucemisor || "001";
+        let fesucursalemisor = empresa.codigosucemisor || "0000";
         let fetokenempresa = (empresa.tokenempresa || "").trim();
         let fetokenclave = (empresa.tokenclave || "").trim();
 
@@ -6511,10 +6511,10 @@ app.post('/api/compras/completa', async (req, res) => {
             fechadocumento: fechasistema,
             fechafactura: head.fechafactura,
             fechavencimiento: head.fechavencimiento,
-            codproveedor: head.codproveedor?.trim().toUpperCase() || '',
+            codproveedor: head.codproveedor,
             nombreproveedor: head.nombreproveedor?.trim().toUpperCase() || '',
-            rucproveedor: head.rucproveedor?.trim().toUpperCase() || '',
-            tipocompra: head.tipocompra?.trim().toUpperCase() || '',
+            rucproveedor: head.rucproveedor,
+            tipocompra: head.tipocompra,
             transaccion: head.transaccion?.trim().toUpperCase() || '',
             detallecompra: detallecompraJson,
             estatuscompra: 'A',
@@ -6615,9 +6615,9 @@ app.post('/api/compras/completa', async (req, res) => {
             nofactura: head.nofactura,
             fechadocumento: fechasistema,
             codproveedor: head.codproveedor,
-            codproducto: detalle.codproducto?.trim().toUpperCase(),
-            descripcion: detalle.descripcion?.trim().toUpperCase(),
-            detalle: detalle.detalle?.trim().toUpperCase(),
+            codproducto: detalle.codproducto,
+            descripcion: detalle.descripcion,
+            detalle: detalle.detalle,
             cantidad: Math.max(1, detalle.cantidad || 1),
             costo: Math.max(0, detalle.costo || 0),
             tarifa: Math.max(0, detalle.tarifa || 0),
@@ -7225,25 +7225,20 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
 
 //%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // ============================================================================
-// 🔹 HELPERS INTERNOS
-// ============================================================================
-// ============================================================================
-// 🔹 HELPERS INTERNOS (CORREGIDOS Y SEGUROS)
-// Reemplaza TODAS las funciones anteriores de Grabaelcufe, fdescuentapac y facumulavendedor
-// ============================================================================
-// ============================================================================
-// 🔹 HELPER: DESCONTAR FOLIO PAC (en cada envío exitoso a TheFactory código 200)
-// ============================================================================
-// ============================================================================
-// 🔹 HELPER: RECALCULAR VENTAS DEL CLIENTE
+// 🔹 RECALCULAR VENTAS CLIENTE (OPTIMIZADO Y SEGURO)
 // ============================================================================
 async function recalcularVentasCliente(codcliente) {
     if (!codcliente) return;
     
+    // ✅ 1. Trim the code to avoid space issues (e.g. "CLI12345 " vs "CLI12345")
+    const cleanCod = codcliente;
+    if (!cleanCod) return;
+
     try {
         console.log(`🔄 Recalculando ventas para cliente: ${codcliente}`);
         
-        // Sum all 'total' from accepted invoices for this client
+        // ✅ 2. Sum all 'total' from accepted invoices using case-insensitive regex
+        // This ensures it catches old invoices even if they were saved as uppercase previously
         const result = await FacturaHead.aggregate([
             { $match: { 
                 codcliente: codcliente, 
@@ -7251,7 +7246,6 @@ async function recalcularVentasCliente(codcliente) {
             }},
             { $group: { 
                 _id: null, 
-                // ✅ Handle null/missing totals safely
                 totalVentas: { $sum: { $ifNull: ["$total", 0] } } 
             }}
         ]);
@@ -7259,11 +7253,11 @@ async function recalcularVentasCliente(codcliente) {
         const nuevoTotal = result.length > 0 ? result[0].totalVentas : 0;
         console.log(`💰 Nuevo total calculado para ${codcliente}: ${nuevoTotal}`);
 
-        // Overwrite the field with the exact calculated sum
+        // ✅ 3. Find and update the client using case-insensitive regex
         const clienteActualizado = await Cliente.findOneAndUpdate(
-            { idcliente: codcliente }, // Matches 'idcliente' in Cliente schema
+            { idcliente: codcliente }, 
             { $set: { ventascliente: nuevoTotal } },
-            { new: true } // ✅ Returns the updated document
+            { returnDocument: 'after', runValidators: true } // ✅ Fixes the Mongoose deprecation warning
         );
 
         if (!clienteActualizado) {
