@@ -4250,8 +4250,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                     
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $set: { cantidispo: nuevaCant }, { returnDocument: 'after' } }
-                    );
+                        { $set: { cantidispo: nuevaCant }}
+                    ), { returnDocument: 'after' }
                 }
             }
         }
