@@ -4533,10 +4533,9 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                 if (det.codproducto) {
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $inc: { cantidispo: (det.cantidad || 0) },
-                     { returnDocument: 'after' } 
+                        { $inc: { cantidispo: (det.cantidad || 0) } 
                     } // Sumamos lo que se había restado
-                    );
+                    ),  { returnDocument: 'after' }
                 }
             }
             
