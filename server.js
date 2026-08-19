@@ -105,7 +105,7 @@ const Schemadelinventariosede = new mongoose.Schema({
   impuesto2: { type: Number },
   impuesto3: { type: Number },
   codtasaisc: { type: String },
-  tasaisc: { type: Number },
+  tasaisc: { type: String },
   pormayor : { type : Number },
   comisionvendedor: { type: Number },
   tipoproducto: { type: String },
@@ -319,13 +319,13 @@ const Schemadetacotiza = new mongoose.Schema({
     fechaexpiracion: { type : String},
     codigobienes: { type : String},
     codigoabrev: { type : String},
-    codigogtin: { type : Number},
-    codigogtininven: { type : Number},
-    cantigtin: { type : Number},
-    tasaitbmscod: { type : Number},
-    valorisc: { type : Number },
-    tasaoti: { type : Number},
-    valortasaotro: { type : Number},
+    codigogtin: { type : String},
+    codigogtininven: { type : String},
+    cantigtin: { type : String},
+    tasaitbmscod: { type : String},
+    valorisc: { type : String },
+    tasaoti: { type : String},
+    valortasaotro: { type : String},
     hora: { type :String},
   precio: { type: Number },
   descuento: { type: Number },
@@ -334,11 +334,11 @@ const Schemadetacotiza = new mongoose.Schema({
   impuesto2: { type : Number},
   impuesto3: { type : Number},
    codtasaisc: { type :String},
-    tasaisc: { type : Number},
+    tasaisc: { type : String},
   ancho: { type: Number },
   alto: { type: Number },
   numerolote: { type :String},
-    cantiprodlote: { type : Number},
+    cantiprodlote: { type : String},
   unidad: { type: String },
   mercancia: { type: String },
   acabados: { type: String },
@@ -517,7 +517,7 @@ const facturadetalleSchema = new mongoose.Schema({
     ancho: { type : Number},
     alto: { type : Number},
     numerolote: { type :String},
-    cantiprodlote: { type : Number},
+    cantiprodlote: { type : String},
     unidad: { type :String},
     mercancia: { type : String},
     modelo: { type : String},
@@ -525,13 +525,13 @@ const facturadetalleSchema = new mongoose.Schema({
     fechaexpiracion: { type : String},
     codigobienes: { type : String},
     codigoabrev: { type : String},
-    codigogtin: { type : Number},
-    codigogtininven: { type : Number},
-    cantigtin: { type : Number},
-    tasaitbmscod: { type : Number},
-    valorisc: { type : Number },
-    tasaoti: { type : Number},
-    valortasaotro: { type : Number},
+    codigogtin: { type : String},
+    codigogtininven: { type : String},
+    cantigtin: { type : String},
+    tasaitbmscod: { type : String},
+    valorisc: { type : String },
+    tasaoti: { type : String},
+    valortasaotro: { type : STring},
     hora: { type :String},
     acabados: {  type : String},
     pormayor: { type : Number},
@@ -2908,11 +2908,6 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 
         const nocotizaUpper = nocotiza;
 
-        const parseNum = (val, defaultVal = 0) => {
-            const parsed = parseFloat(val);
-            return isNaN(parsed) ? defaultVal : parsed;
-        };
-
         const fechasistema = typeof formatLocalYmd === 'function' 
             ? formatLocalYmd(new Date()) 
             : new Date().toISOString().slice(0, 10);
@@ -2971,14 +2966,10 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
         const facturaDetalles = cotizaDetalles.map(detalle => {
             const itemInv = inventarioMap.get(String(detalle.codproducto)) || {};
 
-            const cantidad = Math.max(1, parseNum(detalle.cantidad, 1));
-            const precio = Math.max(0, parseNum(detalle.precio, 0));
-            const descuento = Math.min(100, Math.max(0, parseNum(detalle.descuento, 0)));
-            const subtotalCalculado = parseNum(
-                detalle.subtotal, 
-                parseFloat((cantidad * precio * (1 - descuento / 100)).toFixed(2))
-            );
-
+            const cantidad = Math.max(1, parseInt(detalle.cantidad, 1));
+            const precio = Math.max(0, parseFloat(detalle.precio, 0));
+            const descuento = Math.min(100, Math.max(0, parseFloat(detalle.descuento, 0)));
+    });
             return {
                 nofactura: nofactura,
                 fechafactura: fechasistema,
@@ -2989,16 +2980,16 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 descripcion: detalle.descripcion || itemInv.inventarioNombre || '',
                 precio: precio,
                 descuento: descuento,
-                impuesto: parseNum(detalle.impuesto),
-                impuesto1: parseNum(itemInv.impuesto1, 0),
-                impuesto2: parseNum(itemInv.impuesto2, 0),
-                impuesto3: parseNum(itemInv.impuesto3, 0),
+                impuesto: parseFloat(detalle.impuesto),
+                impuesto1: parseFloat(itemInv.impuesto1, 0),
+                impuesto2: parseFloat(itemInv.impuesto2, 0),
+                impuesto3: parseFloa(itemInv.impuesto3, 0),
                 codtasaisc: itemInv.codtasaisc,
-                tasaisc: parseNum(itemInv.tasaIsc),
-                ancho: parseNum(detalle.ancho, 0),
-                alto: parseNum(detalle.alto, 0),
+                tasaisc: itemInv.tasaisc,
+                ancho: 0,
+                alto: 0,
                 numerolote: '',
-                cantiprodlote: 0,
+                cantiprodlote: '0',
                 unidad: detalle.unidad || itemInv.unidad || 'UNIDAD',
                 mercancia: detalle.mercancia || '1',
                 modelo: detalle.modelo || itemInv.modelo || '',
@@ -3007,24 +2998,15 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 codigobienes: detalle.codigobienes || '0000',
                 
                 // Campos provenientes de Inventario con fallback por defecto (0 o "")
-                codigoabrev: detalle.codigoabrev || '',
-                codigogtin: parseNum(itemInv.codigogtin, 0),
-                codigogtininven: parseNum(detalle.codigogtininven, 0),
-                cantigtin: parseNum(detalle.cantigtin, 0),
-                tasaitbmscod: parseNum(detalle.tasaitbmscod, 0),
-                valorisc: parseNum(detalle.valorisc, 0),
+                codigoabrev:'',
+                valorisc: detalle.valorisc,
                 tasaoti: 0,
-                valortasaotro: parseNum(detalle.valortasaotro, 0),
-                
                 hora: new Date().toLocaleTimeString(),
                 acabados: detalle.acabados || '',
                 pormayor: parseNum(detalle.pormayor || itemInv.pormayor, 0),
                 detventa: '1',
-                especificaciones: itemInv.especificaciones || '',
-                subtotal: subtotalCalculado,
-                fechaCreacion: fechasistema
+                especificaciones: itemInv.especificaciones || ''
             };
-        });
 
         // 7. ENCABEZADO DE FACTURA
         const nuevaFacturaData = {
@@ -3090,16 +3072,16 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             condiciones: cotiza.condiciones || '1',
             consignacion: 'N',
             formapago: cotiza.formapago || '02',
-            descuento: parseNum(cotiza.descuentoglob, 0),
-            subtotal1: parseNum(cotiza.subtotal1, 0),
+            descuento: parseFloat(cotiza.descuentoglob, 0),
+            subtotal1: parseFloat(cotiza.subtotal1, 0),
             cotiitbms: cotiza.cotiitbms || '',
-            impuesto: parseNum(cotiza.impuesto, 0),
+            impuesto: parseFloat(cotiza.impuesto, 0),
             impuesto1: 0,
             impuesto2: 0,
             impuesto3: 0,
-            subtotal2: parseNum(cotiza.subtotal2, 0),
-            total: parseNum(cotiza.total, 0),
-            saldo: parseNum(cotiza.total, 0),
+            subtotal2: parseFloat(cotiza.subtotal2, 0),
+            total: parseFloat(cotiza.total, 0),
+            saldo: parseFloat(cotiza.total, 0),
             entregado: 0,
             cambio: 0,
             coticonvertido: 'S',
