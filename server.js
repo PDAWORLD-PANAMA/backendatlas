@@ -3237,15 +3237,31 @@ app.post('/api/ventas/cotizaciones/detalle', async (req, res) => {
       const subtotal = bruto - (bruto * ((detalle.descuento || 0) / 100));
       return {
         ...detalle,
-        nocotiza: detalle.nocotiza?.trim().toUpperCase(),
-        codproducto: detalle.codproducto?.trim().toUpperCase(),
+        nocotiza: detalle.nocotiza,
+        codproducto: detalle.codproducto,
         descripcion: detalle.descripcion?.trim().toUpperCase(),
         cantidad: Math.max(1, detalle.cantidad || 1),
         precio: Math.max(0, detalle.precio || 0),
         descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
         unidad : detalle.unidad?.trim().toUpperCase(),
-        subtotal: parseFloat(subtotal.toFixed(2)),
-        fechaCreacion: fechasistema
+        impuesto: detalle.impuesto || 0,
+        impuesto1: detalle.impuesto1 || 0,
+        impuesto2: detalle.impuesto2 || 0,
+        impuesto3: detalle.impuesto3 || 0,
+        pormayor: detalle.pormayor || 0,
+        modelo : detalle.modelo,
+        fechafabricacion : detalle.fechafabricacion,
+        fechaexpiracion : detalle.fechaexpiracion,
+        codigobienes : detalle.codigobienes,
+        tasaisc : detalle.tasaisc,
+        detventa : detalle.detventa,
+        ancho: 0,
+        alto: 0,
+        numerolote: " ",
+        cantiprodlote: 0,
+        mercancia: "1",
+        acabados:detalle.acabados?.trim().toUpperCase(),
+        pormayor: 0
       };
     });
     const creados = await CotizaDetalle.insertMany(detallesPreparados);
@@ -3348,7 +3364,26 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       unidad: detalle.unidad?.trim().toUpperCase(),
       descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
       subtotal: parseFloat(((detalle.cantidad || 1) * (detalle.precio || 0) * (1 - (detalle.descuento || 0) / 100)).toFixed(2)),
-      fechaCreacion: fechasistema
+       unidad : detalle.unidad?.trim().toUpperCase(),
+        impuesto: detalle.impuesto || 0,
+        impuesto1: detalle.impuesto1 || 0,
+        impuesto2: detalle.impuesto2 || 0,
+        impuesto3: detalle.impuesto3 || 0,
+        pormayor: detalle.pormayor || 0,
+        modelo : detalle.modelo,
+        fechafabricacion : detalle.fechafabricacion,
+        fechaexpiracion : detalle.fechaexpiracion,
+        codigobienes : detalle.codigobienes,
+        tasaisc : detalle.tasaisc,
+        detventa : detalle.detventa,
+        ancho: 0,
+        alto: 0,
+        numerolote: " ",
+        cantiprodlote: 0,
+        mercancia: "1",
+        acabados:detalle.acabados?.trim().toUpperCase(),
+        pormayor: 0
+      
     }));
     await CotizaDetalle.insertMany(detallesPreparados);
     await actualizarTotalesCabecera(nuevaHead.nocotiza);
@@ -3458,8 +3493,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
             precio: Math.max(0, detalle.precio || 0),
             descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
             subtotal: subtotalCalculado,
-            descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion,
-            fechaActualizacion: fechasistema
+            descripcion: detalle.descripcion?.trim().toUpperCase() || detalleExistente.descripcion
           }
         });
       } else {
@@ -3472,8 +3506,26 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
           precio: Math.max(0, detalle.precio || 0),
           unidad: detalle.unidad?.trim().toUpperCase(),
           descuento: Math.min(100, Math.max(0, detalle.descuento || 0)),
-          subtotal: subtotalCalculado,
-          fechaCreacion: fechasistema
+           unidad : detalle.unidad?.trim().toUpperCase(),
+        impuesto: detalle.impuesto || 0,
+        impuesto1: detalle.impuesto1 || 0,
+        impuesto2: detalle.impuesto2 || 0,
+        impuesto3: detalle.impuesto3 || 0,
+        pormayor: detalle.pormayor || 0,
+        modelo : detalle.modelo,
+        fechafabricacion : detalle.fechafabricacion,
+        fechaexpiracion : detalle.fechaexpiracion,
+        codigobienes : detalle.codigobienes,
+        tasaisc : detalle.tasaisc,
+        detventa : detalle.detventa,
+        ancho: 0,
+        alto: 0,
+        numerolote: " ",
+        cantiprodlote: 0,
+        mercancia: "1",
+        acabados:detalle.acabados?.trim().toUpperCase(),
+        pormayor: 0
+          
         });
       }
     }
