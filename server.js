@@ -2881,46 +2881,57 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
     session.startTransaction();
     try {
         const { nocotiza } = req.params;
-        const nocotizaUpper = nocotiza.trim().toUpperCase();
-        var fechasistema = formatLocalYmd(new Date());
+        if (!nocotiza) {
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: 'El número de cotización es requerido' });
+        }
+
+        const nocotizaUpper = nocotiza;
+
+        // Obtención de fecha segura
+        const fechasistema = typeof formatLocalYmd === 'function' 
+            ? formatLocalYmd(new Date()) 
+            : new Date().toISOString().slice(0, 10);
+
         const today = new Date().toISOString().slice(0, 10);
 
-        // 1. OBTENER COTIZACIÓN
+        // 1. OBTENER COTIZACIÓN BASE (CotizaHead)
         const cotiza = await CotizaHead.findOne({ nocotiza: nocotizaUpper }).session(session);
         if (!cotiza) {
             await session.abortTransaction();
             return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
         }
 
-        // Búsqueda de cliente flexible (por idcliente o codcliente)
-        const clientebusca = cotiza.codcliente;
-        const cliente = await Cliente.findOne({ 
-            $or: [{ idcliente: clientebusca }, { codcliente: clientebusca }] 
-        }).session(session);
-
-        // 2. VALIDAR QUE NO ESTÉ YA CONVERTIDA
+        // 2. VALIDAR QUE NO HAYA SIDO CONVERTIDA PREVIAMENTE
         if (cotiza.coticonvertido === 'S') {
             await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'Esta cotización ya fue convertida a factura' });
         }
 
-        // 3. GENERAR NÚMERO DE FACTURA
-        const empresa = await EmpresaConfig.findOne({});
+        // Búsqueda de cliente opcional para datos FE
+        const clientebusca = cotiza.codcliente || '';
+        const cliente = await Cliente.findOne({ 
+            $or: [{ idcliente: clientebusca }, { codcliente: clientebusca }] 
+        }).session(session);
+
+        // 3. GENERAR NÚMERO DE FACTURA CORRELATIVO
+        const empresa = await EmpresaConfig.findOne({}).session(session);
         if (!empresa) {
             await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
         }
-        const countFactura = parseInt(empresa.countfactura || '0') + 1;
+
+        const countFactura = parseInt(empresa.countfactura || '0', 10) + 1;
         const nofactura = String(countFactura).padStart(8, '0');
 
-        // 4. OBTENER DETALLES DE LA COTIZACIÓN
+        // 4. OBTENER DETALLES DE LA COTIZACIÓN (CotizaDetalle)
         const cotizaDetalles = await CotizaDetalle.find({ nocotiza: nocotizaUpper }).session(session);
         if (!cotizaDetalles || cotizaDetalles.length === 0) {
             await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'La cotización no tiene detalles' });
         }
 
-        // 5. OBTENER INFO DE INVENTARIO PARA CADA DETALLE
+        // 5. MAPEADO Y CONSTRUCCIÓN DE DETALLES DE FACTURA
         const facturaDetalles = [];
         for (const det of cotizaDetalles) {
             const inventario = await Inventariosede.findOne({ idinventario: det.codproducto }).session(session);
@@ -2935,18 +2946,18 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 codcliente: cotiza.codcliente || '',
                 codvendedor: cotiza.codvendedor || '',
                 codproducto: det.codproducto || '',
-                cantidad: det.cantidad || 1,
+                cantidad: Number(det.cantidad || 1),
                 descripcion: det.descripcion || '',
-                precio: det.precio || 0,
-                descuento: det.descuento || 0,
-                impuesto: inventario ? (inventario.impuesto1 || 0) : 0,
-                impuesto1: inventario ? (inventario.impuesto1 || 0) : 0,
-                impuesto2: inventario ? (inventario.impuesto2 || 0) : 0,
-                impuesto3: inventario ? (inventario.impuesto3 || 0) : 0,
+                precio: Number(det.precio || 0),
+                descuento: Number(det.descuento || 0),
+                impuesto: Number(inventario ? (inventario.impuesto1 || 0) : 0),
+                impuesto1: Number(inventario ? (inventario.impuesto1 || 0) : 0),
+                impuesto2: Number(inventario ? (inventario.impuesto2 || 0) : 0),
+                impuesto3: Number(inventario ? (inventario.impuesto3 || 0) : 0),
                 codtasaisc: inventario ? (inventario.codTasaIsc || '') : '',
-                tasaisc: inventario ? (inventario.tasaIsc || 0) : 0,
-                ancho: det.ancho || 0,
-                alto: det.alto || 0,
+                tasaisc: Number(inventario ? (inventario.tasaIsc || 0) : 0),
+                ancho: Number(det.ancho || 0),
+                alto: Number(det.alto || 0),
                 numerolote: '',
                 cantiprodlote: 0,
                 unidad: det.unidad || (inventario ? inventario.unidad : 'UND'),
@@ -2956,24 +2967,24 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 fechaexpiracion: inventario ? (inventario.fechaExpiracion || '') : '',
                 codigobienes: det.codigobienes || '',
                 codigoabrev: det.codigoabrev || '',
-                codigogtin: inventario ? (inventario.codigogtin || 0) : 0,
-                codigogtininven: inventario ? (inventario.codigogtininven || 0) : 0,
-                cantigtin: inventario ? (inventario.cantigtin || 0) : 0,
-                tasaitbmscod: inventario ? (inventario.tasaitbmscod || 0) : 0,
-                valorisc: inventario ? (inventario.valorisc || 0) : 0,
+                codigogtin: Number(inventario ? (inventario.codigogtin || 0) : 0),
+                codigogtininven: Number(inventario ? (inventario.codigogtininven || 0) : 0),
+                cantigtin: Number(inventario ? (inventario.cantigtin || 0) : 0),
+                tasaitbmscod: Number(inventario ? (inventario.tasaitbmscod || 0) : 0),
+                valorisc: Number(inventario ? (inventario.valorisc || 0) : 0),
                 tasaoti: 0,
                 valortasaotro: 0,
                 hora: new Date().toLocaleTimeString(),
                 acabados: det.acabados || '',
-                pormayor: inventario ? (inventario.cantiPorMayor || 0) : 0,
+                pormayor: Number(inventario ? (inventario.cantiPorMayor || 0) : 0),
                 detventa: '1',
                 especificaciones: inventario ? (inventario.especificaciones || '') : '',
                 subtotal: subtotalCalculado
             });
         }
 
-        // 6. CREAR FACTURA HEAD CON coticonvertido = "S"
-        await FacturaHead.create([{
+        // 6. CREACIÓN DESDE CERO DEL NUEVO ENCABEZADO DE FACTURA (FacturaHead)
+        const nuevaFactura = {
             nofactura: nofactura,
             facturaelectronica: '',
             facturaqr: '',
@@ -2986,12 +2997,12 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             fechaSalida: today,
             duraciondias: 0,
             retenedor: cotiza.retenedor || '0',
-            montoretencion: cotiza.montoretenido || 0,
-            codcliente: cotiza.codcliente,
+            montoretencion: Number(cotiza.montoretenido || 0),
+            codcliente: cotiza.codcliente || '',
             idglobalcorporp: '0000',
             globalnombre: '',
             tipoclientefe: cotiza.tipoclientefe || '01',
-            correocliefe: cliente ? cliente.emailcliente : '',
+            correocliefe: cliente ? (cliente.emailcliente || '') : '',
             naturalezaoperacion: '01',
             tipooperacion: '1',
             destinooperacion: '1',
@@ -3000,7 +3011,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             enviocontenedor: '1',
             procesogeneracion: '1',
             ruccliente: cliente ? (cliente.ruccliente || '') : (cotiza.ruccliente || ''),
-            digitoverificadoruc: cliente ? cliente.digitoverificador : '',
+            digitoverificadoruc: cliente ? (cliente.digitoverificador || '') : '',
             codigosucemisor: empresa.codigosucemisor || '0000',
             tiposucursal: '1',
             tipoemision: '01',
@@ -3032,20 +3043,20 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             nrofacturapapel: '',
             nofacturaimpfiscal: '',
             tipocontribuyente: cotiza.tipocontribuyente || '1',
-            codvendedor: cliente ? cliente.vendedorcliente : cotiza.codvendedor,
+            codvendedor: cliente ? (cliente.vendedorcliente || cotiza.codvendedor || '') : (cotiza.codvendedor || ''),
             condiciones: cotiza.condiciones || '1',
             consignacion: 'N',
             formapago: cotiza.formapago || '02',
-            descuento: cotiza.descuentoglob || 0,
-            subtotal1: cotiza.subtotal1 || 0,
+            descuento: Number(cotiza.descuentoglob || 0),
+            subtotal1: Number(cotiza.subtotal1 || 0),
             cotiitbms: cotiza.cotiitbms || '',
-            impuesto: cotiza.impuesto || 0,
+            impuesto: Number(cotiza.impuesto || 0),
             impuesto1: 0,
             impuesto2: 0,
             impuesto3: 0,
-            subtotal2: cotiza.subtotal2 || 0,
-            total: cotiza.total || 0,
-            saldo: cotiza.total || 0,
+            subtotal2: Number(cotiza.subtotal2 || 0),
+            total: Number(cotiza.total || 0),
+            saldo: Number(cotiza.total || 0),
             entregado: 0,
             cambio: 0,
             coticonvertido: 'S',  
@@ -3083,12 +3094,15 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema
-        }], { session });
+        };
 
-        // 7. CREAR FACTURA DETALLES
+        // Guardar la nueva factura en base de datos
+        await FacturaHead.create([nuevaFactura], { session });
+
+        // 7. INSERTAR DETALLES DE LA FACTURA
         await FacturaDetalle.insertMany(facturaDetalles, { session });
 
-        // 8. ACTUALIZAR COTIZACIÓN
+        // 8. ACTUALIZAR ESTADO DE LA COTIZACIÓN ORIGINAL
         const cotizaActualizada = await CotizaHead.findOneAndUpdate(
             { nocotiza: nocotizaUpper },
             {
@@ -3106,7 +3120,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             throw new Error("No se pudo recuperar la cotización actualizada tras la conversión");
         }
 
-        // 9. ACTUALIZAR CONTADOR DE FACTURAS
+        // 9. INCREMENTAR CORRELATIVO EN CONFIGURACIÓN
         await EmpresaConfig.findByIdAndUpdate(
             empresa._id,
             { $set: { countfactura: String(countFactura) } },
@@ -3115,9 +3129,8 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 
         await session.commitTransaction();
 
-        console.log(`✅ ÉXITO: Cotización ${nocotizaUpper} convertida a Factura ${nofactura}`);
+        console.log(`✅ ÉXITO: Factura ${nofactura} creada desde Cotización ${nocotizaUpper}`);
 
-        // Mantiene exactitud con FacturaInfo(nofactura, fechaFactura, total, cliente)
         return res.status(201).json({
             success: true,
             message: `Cotización ${nocotizaUpper} convertida a Factura ${nofactura}`,
@@ -3132,11 +3145,11 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 
     } catch (error) {
         await session.abortTransaction();
-        console.error('❌ ERROR CRÍTICO EN CONVERTIR:', error.message);
+        console.error('❌ ERROR CRÍTICO AL CREAR FACTURA DESDE COTIZACIÓN:', error);
         return res.status(500).json({
             success: false,
             message: 'Error al convertir cotización a factura',
-            error: error.message
+            error: error.message || String(error)
         });
     } finally {
         session.endSession();
