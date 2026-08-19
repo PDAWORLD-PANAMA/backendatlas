@@ -2896,6 +2896,9 @@ app.put('/api/ventas/cotizaciones/editar/:id', async (req, res) => {
 // ============================================================================
 // 🔹 CONVERTIR COTIZACIÓN A FACTURA
 // ============================================================================
+// ============================================================================
+// 🔹 CONVERTIR COTIZACIÓN A FACTURA
+// ============================================================================
 app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -2966,26 +2969,26 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
         const facturaDetalles = cotizaDetalles.map(detalle => {
             const itemInv = inventarioMap.get(String(detalle.codproducto)) || {};
 
-            const cantidad = Math.max(1, parseInt(detalle.cantidad, 1));
-            const precio = Math.max(0, parseFloat(detalle.precio, 0));
-            const descuento = Math.min(100, Math.max(0, parseFloat(detalle.descuento, 0)));
-    });
+            const cantidad = Math.max(1, parseFloat(detalle.cantidad) || 1);
+            const precio = Math.max(0, parseFloat(detalle.precio) || 0);
+            const descuento = Math.min(100, Math.max(0, parseFloat(detalle.descuento) || 0));
+
             return {
                 nofactura: nofactura,
                 fechafactura: fechasistema,
-                codcliente: cotiza.codcliente,
-                codvendedor: cotiza.codvendedor,
-                codproducto: detalle.codproducto,
+                codcliente: cotiza.codcliente || '',
+                codvendedor: cotiza.codvendedor || '',
+                codproducto: detalle.codproducto || '',
                 cantidad: cantidad,
                 descripcion: detalle.descripcion || itemInv.inventarioNombre || '',
                 precio: precio,
                 descuento: descuento,
-                impuesto: parseFloat(detalle.impuesto),
-                impuesto1: parseFloat(itemInv.impuesto1, 0),
-                impuesto2: parseFloat(itemInv.impuesto2, 0),
-                impuesto3: parseFloa(itemInv.impuesto3, 0),
-                codtasaisc: itemInv.codtasaisc,
-                tasaisc: itemInv.tasaisc,
+                impuesto: parseFloat(detalle.impuesto) || 0,
+                impuesto1: parseFloat(itemInv.impuesto1) || 0,
+                impuesto2: parseFloat(itemInv.impuesto2) || 0,
+                impuesto3: parseFloat(itemInv.impuesto3) || 0,
+                codtasaisc: itemInv.codtasaisc || '',
+                tasaisc: itemInv.tasaisc || '',
                 ancho: 0,
                 alto: 0,
                 numerolote: '',
@@ -2998,15 +3001,17 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 codigobienes: detalle.codigobienes || '0000',
                 
                 // Campos provenientes de Inventario con fallback por defecto (0 o "")
-                codigoabrev:'',
-                valorisc: detalle.valorisc,
-                tasaoti: 0,
+                codigoabrev: '',
+                valorisc: String(detalle.valorisc || ''),
+                tasaoti: '0',
                 hora: new Date().toLocaleTimeString(),
                 acabados: detalle.acabados || '',
-                pormayor: parseNum(detalle.pormayor || itemInv.pormayor, 0),
+                pormayor: parseInt(detalle.pormayor || itemInv.pormayor, 10) || 0,
                 detventa: '1',
-                especificaciones: itemInv.especificaciones || ''
+                especificaciones: itemInv.especificaciones || '',
+                subtotal: (cantidad * precio) * (1 - (descuento / 100))
             };
+        });
 
         // 7. ENCABEZADO DE FACTURA
         const nuevaFacturaData = {
@@ -3043,7 +3048,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             tipodocumento: cotiza.tipodocumento || '01',
             puntodefacturacion: '001',
             tipoventa: '1',
-            razonsocial: cliente.clientenombre || cotiza.nombreclie || 'Consumidor Final',
+            razonsocial: (cliente ? cliente.clientenombre : null) || cotiza.nombreclie || 'Consumidor Final',
             direccioncontribuyente: 'PANAMA',
             provincia: 'PANAMA',
             distrito: 'PANAMA',
@@ -3072,16 +3077,16 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             condiciones: cotiza.condiciones || '1',
             consignacion: 'N',
             formapago: cotiza.formapago || '02',
-            descuento: parseFloat(cotiza.descuentoglob, 0),
-            subtotal1: parseFloat(cotiza.subtotal1, 0),
+            descuento: parseFloat(cotiza.descuentoglob) || 0,
+            subtotal1: parseFloat(cotiza.subtotal1) || 0,
             cotiitbms: cotiza.cotiitbms || '',
-            impuesto: parseFloat(cotiza.impuesto, 0),
+            impuesto: parseFloat(cotiza.impuesto) || 0,
             impuesto1: 0,
             impuesto2: 0,
             impuesto3: 0,
-            subtotal2: parseFloat(cotiza.subtotal2, 0),
-            total: parseFloat(cotiza.total, 0),
-            saldo: parseFloat(cotiza.total, 0),
+            subtotal2: parseFloat(cotiza.subtotal2) || 0,
+            total: parseFloat(cotiza.total) || 0,
+            saldo: parseFloat(cotiza.total) || 0,
             entregado: 0,
             cambio: 0,
             coticonvertido: 'S',
