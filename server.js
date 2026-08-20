@@ -2972,7 +2972,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
         // 5. BÚSQUEDA DE PRODUCTOS EN INVENTARIO
         const codigosProductos = cotizaDetalles.map(d => d.codproducto).filter(Boolean);
         console.log(`🔍 [Paso 5] Consultando inventario para ${codigosProductos.length} código(s)...`);
-        const inventarios = await Inventario.find({ 
+        const inventarios = await Inventariosede.find({ 
             $or: [{ idinventario: { $in: codigosProductos } }, { codproducto: { $in: codigosProductos } }] 
         }).session(session);
 
