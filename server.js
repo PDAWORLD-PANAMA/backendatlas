@@ -5630,10 +5630,10 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
              detventa: '1'
          }]
          : (detalles || []);
-const wkimptocontrol = factura.impuesto || 0;
      for (let det of itemsParaSoap) {
          let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : wfechafabricafinalesp;
          let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : wfechaexpirafinalesp;
+         var  wkimptocontrol = det.impuesto1 || 0;
          let descpor = parseFloat(det.descuento || 0) / 100;
          let wpreciowk = parseFloat(det.precio);
          let wcantidaditem = parseFloat(det.cantidad);
@@ -5667,6 +5667,12 @@ const wkimptocontrol = factura.impuesto || 0;
             wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
 
             if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
+            if (wtasaitbms === "00") {  
+                wtotalitbms += parseFloat(wvalorimpuestoitem);
+                let wtotlinitem = wprecioitem;
+                wtotlinitem += wvalorimpuestoitem;
+            }
+            
             if (wtasaitbms === "01") {  
                 wtotalitbms += parseFloat(wvalorimpuestoitem);
                 let wtotlinitem = wprecioitem;
@@ -5687,6 +5693,7 @@ const wkimptocontrol = factura.impuesto || 0;
             if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
             let wentrega = wpormayor * wcantidaditem;
             wtotaldefactura += wtotlinitem;
+ console.log(`🔍 [Paso 8-3-14] Total de Factura Nota Credito  : "${wtotaldefactura}"...`);           
  var  wcero = "0";
  var  wparinter = Math.floor(wvalorimpuestoitem);
  var  wintermedio = wparinter.toString();
@@ -5695,7 +5702,7 @@ const wkimptocontrol = factura.impuesto || 0;
  var winter2 = 9 - larente;
  var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
 
-console.log(`🔍 [Paso 8-4] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
+console.log(`🔍 [Paso 8-4] Total ITBMS Nota Credito : "${wtotalitbms}"...`);
 xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${det.codproducto}</ser:codigo>
@@ -5728,7 +5735,7 @@ if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
 
 console.log(`🔍 [Paso 9] Salir de la cracion de detalle de la nota de credito a enviar a TH FACTORY ...`);
 
-
+console.log(`🔍 [Paso 8-4] Total de factura nota credito  : "${wtotaldefactura}"...`);
 if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03"){
   wtotalmontogravado = parseFloat(wtotalmontogravado) + parseFloat(wtotalitbms);
    }
