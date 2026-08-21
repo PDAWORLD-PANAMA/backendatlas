@@ -797,7 +797,10 @@ codigosucemisor: { type : String },
     fechautilizado :{  type :String   },
     facturautilizado :{  type :String  },
     estado:{ type : String  },
-    detallecredito: { type : String }
+    detallecredito: { type : String },
+    fechadgiauto: { type : String},
+    autorizandgi: { type : String},
+    fechaActualizacion: { type : String}
 });
 
 const NotaCreditoHead = mongoose.model('Schemareccreditohead',Schemaheadcredito);
@@ -859,7 +862,10 @@ var Schemaheaddebito = new mongoose.Schema({
     nombreclie: {  type : String  },
     ruccliente: { type : String   },
     digitoverificadoruc: {type : String  },
-    detalledebito: { type : String }
+    detalledebito: { type : String },
+     fechadgiauto: { type : String},
+    autorizandgi: { type : String},
+    fechaActualizacion: { type : String}
 });
 
 const NotaDebitoHead = mongoose.model('Schemarecdebitohead',Schemaheaddebito);
@@ -4942,6 +4948,7 @@ app.post('/api/ventas/notascredito/completa', async (req, res) => {
         const facturaOriginal = await FacturaHead.findOne({ nofactura: nofacturaUpper });
         if (!facturaOriginal) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
         if (facturaOriginal.estado === 'E') return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
+        if (facturaOriginal.estado === 'Rechazada') return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura Rechazada ' });
         // ✅ GENERAR NÚMERO SECUENCIAL DE 10 DÍGITOS DESDE EmpresaConfig
 const empresa = await EmpresaConfig.findOne({});
 if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
@@ -5270,26 +5277,27 @@ app.post('/api/ventas/notascredito/enviar-Thefactory/:nofactura', async (req, re
 try {
 const { nofactura } = req.params;
 const { tipoNota, motivo, detalles, montoTotal } = req.body;
-const nofacturaUpper = nofactura.toUpperCase();
+const nofacturaUpper = nofactura;
     // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
+    console.log(`🔍 [Paso 1] Buscando Factura Original Nota credito: "${nofactura}"...`);
 const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
 if (!factura) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
-if (factura.estado === 'E' || factura.estado === 'Anulada') {
+if (factura.estado === 'E' || factura.estado === 'Rechazada') {
     return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
 }
-
+ console.log(`🔍 [Paso 1] Factura Original Encontrado: "${nofactura}"...`);
 const detallesFactura = await FacturaDetalle.find({ nofactura: nofacturaUpper });
 if (!detallesFactura || detallesFactura.length === 0) {
     return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
 }
-
+ console.log(`🔍 [Paso 2] Factura Detalle encontrado: "${nofactura}"...`);
 // ✅ OBTENER EMPRESA Y GENERAR NÚMERO SECUENCIAL
 const empresa = await EmpresaConfig.findOne({});
 if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 
 const countNC = parseInt(empresa.countnotacredito) || 0;
 const nocredito = String(countNC).padStart(10, '0');  // ✅ 10 dígitos
-
+ console.log(`🔍 [Paso 3] Buscando Empresa Original contador Nota Credito : "${nocredito }"...`);
 // ✅ INCREMENTAR CONTADOR INMEDIATAMENTE
 await EmpresaConfig.findByIdAndUpdate(empresa._id, {
     $set: { countnotacredito: String(countNC + 1) }
@@ -5309,11 +5317,10 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
              cantidad: d.cantidad,
              precio: d.precio,
              descuento: d.descuento,
-             subtotal: (d.cantidad || 1) * (d.precio || 0) * (1 - (d.descuento || 0) / 100),
              unidad: d.unidad
          }))
      );
-
+console.log(`🔍 [Paso 4] Creando DetallecreditoJson : ...`);
      const totalNC = tipoNota === "2"
          ? (montoTotal || 0)
          : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0) * (1 - (d.descuento || 0) / 100)), 0);
@@ -5321,7 +5328,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
      const impuestoNC = tipoNota === "2"
          ? ((montoTotal || 0) - ((montoTotal || 0) / 1.07))
          : (detalles || []).reduce((sum, d) => sum + ((d.cantidad || 0) * (d.precio || 0) * (1 - (d.descuento || 0) / 100) * 0.07), 0);
-
+var resultado = totalNC - impuestoNC
      const nuevaNCHead = await NotaCreditoHead.create({
          nocredito: nocredito,
          nofactura: nofacturaUpper,
@@ -5384,24 +5391,22 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
          subtotal1: totalNC,
          cotiitbms: factura.cotiitbms,
          impuesto: impuestoNC,
-         subtotal2: totalNC - impuestoNC,
+         subtotal2: resultado,
          total: totalNC,
          saldo: 0,
          nombreclie: factura.nombreclie,
-         asignadoa: factura.asignadoa,
-         cedulasignadoa: factura.cedulasignadoa,
-         realizado: factura.realizado,
-         utilizado: factura.utilizado,
-         cedulautilizado: factura.cedulautilizado,
-         fechautilizado: factura.fechautilizado,
-         facturautilizado: factura.facturautilizado,
+         asignadoa: "",
+         cedulasignadoa:  " ",
+         realizado: "  ",
+         utilizado: "  ",
+         cedulautilizado: "   ",
+         fechautilizado: fechasistema,
+         facturautilizado: "   ",
          estado: 'A',
          detallecredito: detallecreditoJson,
-         tipoNota: tipoNota,
-         fechaCreacion: fechasistema,
-         fechaActualizacion: fechasistema
+         tipoNota: tipoNota
      });
-
+console.log(`🔍 [Paso 5] Creando Head de NotaCredito  : ...`);
      // 4. CREAR REGISTROS EN BD - NOTA CREDITO DETALLE
      if (tipoNota === "1" && detalles && detalles.length > 0) {
          const detallesPreparados = detalles.map(d => ({
@@ -5463,7 +5468,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
          if (!unsafe) return '';
          return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
      };
-
+console.log(`🔍 [Paso 6] Creando xml para enviar a the factory `);
      const wkimptocontrol = impuestoNC || 0;
      let fenaturalezaop = factura.naturalezaoperacion || '01';
      let fetipoventa = factura.tipoventa || '1';
@@ -5502,7 +5507,7 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
      let fesucursalemisor = empresa.codigosucemisor || "0000";
      let fetokenempresa = (empresa.tokenempresa || "").trim();
      let fetokenclave = (empresa.tokenclave || "").trim();
-
+console.log(`🔍 [Paso 7] Asignando la variable xmlnivel 1 de NotaCredito  : ...`);
      // 6. CONSTRUIR XML SOAP
      let xmlniv1 = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
@@ -5561,6 +5566,8 @@ xmlniv1 =  xmlniv1 + "\n" + `
                    </ser:docFiscalReferenciado>
                 </ser:listaDocsFiscalReferenciados>`
 }
+
+console.log(`🔍 [Paso 8] Iniciando la parte de listaItems o sea los detalles  : ...`);
 xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
 
      let xmlistseg = "\n" + `<ser:listaItems>` + "\n";
@@ -5697,6 +5704,9 @@ if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
   xmlenviarlist = xmlenviarlist + `</ser:item>` + "\n"
         }  
 
+console.log(`🔍 [Paso 9] Salir de la cracion de detalle de la nota de credito a enviar a TH FACTORY ...`);
+
+
 if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03"){
   wtotalmontogravado = parseFloat(wtotalmontogravado) + parseFloat(wtotalitbms);
    }
@@ -5706,6 +5716,7 @@ if (codtasaisc == "01" || codtasaisc == "02" || codtasaisc == "03" || codtasaisc
 
     let  xmlfinitems =  `</ser:listaItems>`;
 //
+console.log(`🔍 [Paso 10] Finalizar el comando de definicion de /serListaItems ...`);
 var fefechavenceplazo = "x";
 var fecuotadepagocre = 0;
 var s2x = 0;
@@ -5793,6 +5804,7 @@ let xmltotcierre = ` </ser:totalesSubTotales>
        </soapenv:Body>
        </soapenv:Envelope>
        ` 
+console.log(`🔍 [Paso 11] Cierre de los comandos del Soap de enviar la nota de credito a the factory ...`);       
       if (factura.condiciones == "1"){
         var  xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems +  xmltotal + xmltotcierre;
      }
