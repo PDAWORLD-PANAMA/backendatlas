@@ -5626,7 +5626,7 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
              detventa: '1'
          }]
          : (detalles || []);
-
+const wkimptocontrol = factura.impuesto || 0;
      for (let det of itemsParaSoap) {
          let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : wfechafabricafinalesp;
          let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : wfechaexpirafinalesp;
@@ -5634,15 +5634,15 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
          let wpreciowk = parseFloat(det.precio);
          let wcantidaditem = parseFloat(det.cantidad);
          let wimpuestoitem = parseFloat(det.impuesto1) / 100;
-         var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
-         var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
+         let wimpuestoitem2 = parseFloat(det.impuesto2) / 100;
+         let wimpuestoitem3 = parseFloat(det.impuesto3) / 100;
          let wtasaisc = parseFloat(det.tasaisc || 0);
-         var wtotalimptoapagar = parseFloat(det.impuesto).toFixed(2);
          let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
          let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
          let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
          codtasaisc = det.codtasaisc;
-
+//****  var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
+//***** var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
          wtasaitbms = "00";
          if (wcodimpuesto1 !== 0) wtasaitbms = "01";
          if (wcodimpuesto2 !== 0) wtasaitbms = "02";
@@ -5656,43 +5656,33 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
              wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
          }
          wtotalprecioneto += wprecioitem;
-var wvalorimpuestoitem =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem);
-var wvalorimpuestoitem2 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem2);
-var wvalorimpuestoitem3 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem3);
-var wvalorisc  = parseFloat(wprecioitem) * parseFloat(wtasaisc);
-var wtotlinitem  = 0;
+        let wvalorimpuestoitem = 0;
+        var wtotlinitem  = 0;
 
-        if  (wtasaitbms == "01"){
-        wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem);
-        }
-        if  (wtasaitbms == "02" ){
-            wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem2);
-        }
-        if  (wtasaitbms == "03"){
-        ////////        wtotalisc = parseFloat(wtotalisc) + parseFloat(wvalorimpuestoitem3);
-        }
-        if  (wtasaitbms == "00"){
-            wtotalitbms = parseFloat(wtotalitbms) + 0;
+           if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+            wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+
+            if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
+            if (wtasaitbms === "01") {  
+                wtotalitbms += parseFloat(wvalorimpuestoitem);
+                let wtotlinitem = wprecioitem;
+                wtotlinitem += wvalorimpuestoitem;
             }
-        // calcula del total de la linea
-        if  (wtasaitbms == "01" ){
-         wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
-         wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem);
-        }
-        if  (wtasaitbms == "02" ){
-            wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
-            wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem2);
-           }
-           if  (wtasaitbms == "03"){
-        //    wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
-        //    wtotlinitem  =  parseFloat(wtotlinitem) + parseFloat(wvalorimpuestoitem3);
-           }
-           if  (wtasaitbms == "00" ){
-            wtotlinitem  =   parseFloat(wtotlinitem) +  parseFloat(wprecioitem);
-           }
+            if (wtasaitbms === "02") {  
+                wtotalitbms += parseFloat(wvalorimpuestoitem2);
+                let wtotlinitem = wprecioitem;
+                wtotlinitem += wvalorimpuestoitem2;
+            }
+            if (wtasaitbms === "03") {  
+                wtotalitbms += parseFloat(wvalorimpuestoitem3);
+                let wtotlinitem = wprecioitem;
+                wtotlinitem += wvalorimpuestoitem3;
+            }
 
-         let wpormayor = parseFloat(det.pormayor || 1);
-         if (det.detventa === "1") wpormayor = 1;
+            let wpormayor = parseFloat(det.pormayor || 0);
+            if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
+            let wentrega = wpormayor * wcantidaditem;
+            wtotaldefactura += wtotlinitem;
  var  wcero = "0";
  var  wparinter = Math.floor(wvalorimpuestoitem);
  var  wintermedio = wparinter.toString();
