@@ -5304,9 +5304,26 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
 });
 
 const tablaUbicacion = await Ubicacion.find({});
-var fechaTmp = java.time.OffsetDateTime.now()
-                        .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
-                        .toString()
+const now = new Date();
+now.setMilliseconds(0); // Truncate milliseconds
+
+// Helper to format timezone offset correctly (e.g., -05:00)
+const offsetMinutes = now.getTimezoneOffset();
+const sign = offsetMinutes > 0 ? '-' : '+';
+const absMinutes = Math.abs(offsetMinutes);
+const hours = String(Math.floor(absMinutes / 60)).padStart(2, '0');
+const minutes = String(absMinutes % 60).padStart(2, '0');
+const offset = `${sign}${hours}:${minutes}`;
+
+// Format local ISO string without milliseconds
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, '0');
+const day = String(now.getDate()).padStart(2, '0');
+const hoursStr = String(now.getHours()).padStart(2, '0');
+const minStr = String(now.getMinutes()).padStart(2, '0');
+const secStr = String(now.getSeconds()).padStart(2, '0');
+
+var fechaTmp = `${year}-${month}-${day}T${hoursStr}:${minStr}:${secStr}${offset}`;
 
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
