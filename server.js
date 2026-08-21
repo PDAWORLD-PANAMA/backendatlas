@@ -5567,14 +5567,13 @@ console.log(`🔍 [Paso 7] Asignando la variable xmlnivel 1 de NotaCredito  : ..
 <ser:correoElectronico1>${feemailprt}</ser:correoElectronico1>
 <ser:pais>PA</ser:pais>
 </ser:cliente>`
-var fechaEmision = factura.fechaemision;
-if (fetipodocumento == "06"){
+ console.log(`🔍 [Paso 8-1] Iniciando la parte de listaItems o sea los detalles  : ...`);
 xmlniv1 =  xmlniv1 + "\n" + `
                    <ser:listaDocsFiscalReferenciados>
                    <!--Zero or more repetitions:-->
                    <ser:docFiscalReferenciado>
                       <!--Optional:-->
-                      <ser:fechaEmisionDocFiscalReferenciado>${fechaEmision}</ser:fechaEmisionDocFiscalReferenciado>
+                      <ser:fechaEmisionDocFiscalReferenciado>${fechaEmisiontmp}</ser:fechaEmisionDocFiscalReferenciado>
                       <!--Optional:-->
                       <ser:cufeFEReferenciada>${factura.facturaelectronica}</ser:cufeFEReferenciada>
                       <!--Optional:-->
@@ -5582,19 +5581,15 @@ xmlniv1 =  xmlniv1 + "\n" + `
                       <!--Optional:-->
                       <ser:nroFacturaImpFiscal></ser:nroFacturaImpFiscal>
                    </ser:docFiscalReferenciado>
-                </ser:listaDocsFiscalReferenciados>`
-}
-
-console.log(`🔍 [Paso 8] Iniciando la parte de listaItems o sea los detalles  : ...`);
-xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
-
+                </ser:listaDocsFiscalReferenciados>
+            </ser:datosTransaccion>`   
      let xmlistseg = "\n" + `<ser:listaItems>` + "\n";
      let xmlenviarlist = "";
      let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
      let wtotalmontogravado = 0; // ✅ DEFINIDA AQUÍ
      let wtasaitbms = "00";      // ✅ DECLARADA EN SCOPE SUPERIOR
      let codtasaisc = "";         // ✅ DECLARADA EN SCOPE SUPERIOR
-
+console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ...`);
      // Determinar qué items enviar al SOAP
     var wfechafabricafinalesp  =  new Date().toISOString().slice(0, 10);
     var wfechaexpirafinalesp  =  new Date().toISOString().slice(0, 10);
