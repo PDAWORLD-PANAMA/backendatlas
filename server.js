@@ -5702,7 +5702,7 @@ var wtotlinitem  = 0;
  var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
 let wentrega = wpormayor * wcantidaditem;
 wtotaldefactura += wtotlinitem;
-console.log(`🔍 [Paso 8-3] Buscando Empresa Original contador Nota Credito : "${wtotalitbms}"...`);
+console.log(`🔍 [Paso 8-4] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
 xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${det.codproducto}</ser:codigo>
@@ -5789,7 +5789,8 @@ if (factura.condiciones != "1"){
     }
  }
 //
-
+onsole.log(`🔍 [Paso 11-1 ] Tasa ITBMS Nota Credito : "${wtasaitbms}"...`);
+console.log(`🔍 [Paso 11-2 ] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
      let xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>`+ "\n"
 
