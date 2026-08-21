@@ -5468,7 +5468,7 @@ console.log(`🔍 [Paso 5] Creando Head de NotaCredito  : ...`);
              alto: parseFloat(d.alto) || 0,
              numerolote: d.numerolote || '',
              cantiprodlote: parseFloat(d.cantiprodlote) || 0,
-             unidad: d.unidad || 'UND',
+             unidad: d.unidad || 'um',
              mercancia: d.mercancia || '',
              hora: new Date().toLocaleTimeString(),
              acabados: d.acabados || '',
@@ -5488,7 +5488,7 @@ console.log(`🔍 [Paso 5] Creando Head de NotaCredito  : ...`);
              descuento: 0,
              impuesto: impuestoNC,
              precio: montoTotal || 0,
-             unidad: 'UND',
+             unidad: 'um',
              subtotal: montoTotal || 0
          });
      }
@@ -5633,7 +5633,7 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
          let descpor = parseFloat(det.descuento || 0) / 100;
          let wpreciowk = parseFloat(det.precio);
          let wcantidaditem = parseFloat(det.cantidad);
-         let wimpuestoitem = parseFloat(det.impuesto) / 100;
+         let wimpuestoitem = parseFloat(det.impuesto1) / 100;
          var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
          var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
          let wtasaisc = parseFloat(det.tasaisc || 0);
@@ -5702,7 +5702,7 @@ var wtotlinitem  = 0;
  var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
 let wentrega = wpormayor * wcantidaditem;
 wtotaldefactura += wtotlinitem;
-
+console.log(`🔍 [Paso 8-3] Buscando Empresa Original contador Nota Credito : "${wtotalitbms}"...`);
 xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${det.codproducto}</ser:codigo>
