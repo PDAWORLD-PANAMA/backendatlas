@@ -5349,7 +5349,8 @@ const fetipodocumento = tipoNota === "1" ? "04" : "06";
              cantidad: d.cantidad,
              precio: d.precio,
              descuento: d.descuento,
-             unidad: d.unidad
+             unidad: d.unidad,
+             impuesto : d.impuesto
          }))
      );
 console.log(`🔍 [Paso 4] Creando DetallecreditoJson : ...`);
@@ -5693,7 +5694,7 @@ const wkimptocontrol = factura.impuesto || 0;
  var larente = wintermedio.length;
  var winter2 = 9 - larente;
  var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
-wtotaldefactura += wtotlinitem;
+
 console.log(`🔍 [Paso 8-4] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
 xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
