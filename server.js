@@ -5789,6 +5789,10 @@ if (factura.condiciones != "1"){
    let xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>`+ "\n"
 
+if (wtasaitbms == "00" ){
+ xmltotal = xmltotal +  `<ser:totalITBMS>` + parseFloat(wtotalitbms).toFixed(2) + `</ser:totalITBMS>`+ "\n"
+}
+
  if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
                     xmltotal = xmltotal +  `<ser:totalITBMS>` + parseFloat(wtotalitbms).toFixed(2) + `</ser:totalITBMS>`+ "\n"
         }
