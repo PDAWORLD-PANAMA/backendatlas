@@ -5633,7 +5633,8 @@ var wvalorimpuestoitem2 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem2);
 var wvalorimpuestoitem3 =  parseFloat(wprecioitem) * parseFloat(wimpuestoitem3);
 var wvalorisc  = parseFloat(wprecioitem) * parseFloat(wtasaisc);
 var wtotlinitem  = 0;
-    if  (wtasaitbms == "01"){
+
+        if  (wtasaitbms == "01"){
         wtotalitbms = parseFloat(wtotalitbms) + parseFloat(wvalorimpuestoitem);
         }
         if  (wtasaitbms == "02" ){
