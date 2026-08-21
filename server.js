@@ -5320,7 +5320,7 @@ console.log("🔍 DEBUG FECHA SALIDA:", fechaSalidatmp);
 
 // Validación de seguridad: si por alguna razón el formato no es el esperado, lo detectamos aquí
 const regexPanamaDate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-05:00$/;
-if (!regexPanamaDate.test(fechaEmision)) {
+if (!regexPanamaDate.test(fechaEmisiontmp)) {
     console.error("❌ EL FORMATO DE FECHA ES INCORRECTO:", fechaEmisiontmp);
 }
 
