@@ -5285,6 +5285,12 @@ if (!factura) return res.status(404).json({ success: false, message: 'Factura or
 if (factura.estado === 'E' || factura.estado === 'Rechazada') {
     return res.status(400).json({ success: false, message: 'No se puede aplicar NC a una factura anulada' });
 }
+if (!factura.facturaelectronica) {
+    return res.status(400).json({ 
+        success: false, 
+        message: "La factura original no tiene CUFE (no fue autorizada). No se puede referenciar." 
+    });
+}
  console.log(`🔍 [Paso 1] Factura Original Encontrado: "${nofactura}"...`);
 const detallesFactura = await FacturaDetalle.find({ nofactura: nofacturaUpper });
 if (!detallesFactura || detallesFactura.length === 0) {
@@ -5306,14 +5312,20 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
 const tablaUbicacion = await Ubicacion.find({});
 //
 //
-
-
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
 // ✅ 1. GENERAR FECHA EN FORMATO PANAMÁ ESTRICTO
 const fechaEmisiontmp = getPanamaISODate(factura.fechaEmision || new Date());
 const fechaSalidatmp = getPanamaISODate(factura.fechaSalida || new Date());
 
+// 1. OBTENER LA FACTURA ORIGINAL REFERENCIADA
+
+// ✅ 2. FORMATEAR ESTRICTAMENTE LA FECHA DE AUTORIZACIÓN DGI
+// Al pasar facturaOriginal.fechadgiauto a tu función, garantiza un string limpio YYYY-MM-DDTHH:mm:ss-05:00
+const fechaEmisionFacturaRef = getPanamaISODate(factura.fechadgiauto);
+
+console.log("🔍 FECHA EMISIÓN REFERENCIADA (Limpia):", fechaEmisionFacturaRef);
+console.log("🔍 TIPO DE DATO:", typeof fechaEmisionFacturaRef); // Debe decir "string"
 // ✅ AGREGA ESTE LOG PARA VERIFICAR EL FORMATO EXACTO ANTES DEL SOAP
 console.log("🔍 DEBUG FECHA EMISION:", fechaEmisiontmp);
 console.log("🔍 DEBUG FECHA SALIDA:", fechaSalidatmp);
@@ -5573,7 +5585,7 @@ xmlniv1 =  xmlniv1 + "\n" + `
                    <!--Zero or more repetitions:-->
                    <ser:docFiscalReferenciado>
                       <!--Optional:-->
-                      <ser:fechaEmisionDocFiscalReferenciado>${fechaEmisiontmp}</ser:fechaEmisionDocFiscalReferenciado>
+                      <ser:fechaEmisionDocFiscalReferenciado>${fechaEmisionFacturaRef}</ser:fechaEmisionDocFiscalReferenciado>
                       <!--Optional:-->
                       <ser:cufeFEReferenciada>${factura.facturaelectronica}</ser:cufeFEReferenciada>
                       <!--Optional:-->
