@@ -5693,7 +5693,6 @@ const wkimptocontrol = factura.impuesto || 0;
  var larente = wintermedio.length;
  var winter2 = 9 - larente;
  var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
-let wentrega = wpormayor * wcantidaditem;
 wtotaldefactura += wtotlinitem;
 console.log(`🔍 [Paso 8-4] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
 xmlenviarlist += `<ser:item>
