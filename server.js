@@ -5311,7 +5311,19 @@ const tablaUbicacion = await Ubicacion.find({});
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
 // ✅ 1. GENERAR FECHA EN FORMATO PANAMÁ ESTRICTO
-        const fechaPanama = getPanamaISODate(new Date()); 
+const fechaEmisiontmp = getPanamaISODate(factura.fechaEmision || new Date());
+const fechaSalidatmp = getPanamaISODate(factura.fechaSalida || new Date());
+
+// ✅ AGREGA ESTE LOG PARA VERIFICAR EL FORMATO EXACTO ANTES DEL SOAP
+console.log("🔍 DEBUG FECHA EMISION:", fechaEmisiontmp);
+console.log("🔍 DEBUG FECHA SALIDA:", fechaSalidatmp);
+
+// Validación de seguridad: si por alguna razón el formato no es el esperado, lo detectamos aquí
+const regexPanamaDate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-05:00$/;
+if (!regexPanamaDate.test(fechaEmision)) {
+    console.error("❌ EL FORMATO DE FECHA ES INCORRECTO:", fechaEmisiontmp);
+}
+
 
 const fetipodocumento = tipoNota === "1" ? "04" : "06";
 
@@ -5345,8 +5357,8 @@ var resultado = totalNC - impuestoNC
          fechafactura: factura.fechafactura,
          fechacredito: fechasistema,
          fechavencimiento: factura.fechavencimiento,
-         fechaEmision: fechaPanama,
-         fechaSalida: fechaPanama,
+         fechaEmision: fechaEmisiontmp,
+         fechaSalida: fechaSalidatmp,
          tipoclientefe: factura.tipoclientefe,
          codcliente: factura.codcliente,
          idglobalcorpo: factura.idglobalcorporp,
@@ -7620,34 +7632,27 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
-
-//%%%%%%%%%%%%%% FUNCION DE ELIMINACION LOGICA DEL REGISTRO NO FISICA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 // ============================================================================
-// 🔹 RECALCULAR VENTAS CLIENTE (OPTIMIZADO Y SEGURO)
-// ============================================================================
-// ============================================================================
-// 🔹 HELPER: FORMATO DE FECHA ESTRICTO PARA PANAMÁ (DGI / THEFACTORY)
+// 🔹 HELPER: FORMATO DE FECHA ESTRICTO PARA PANAMÁ (UTC-5) - VERSIÓN INFALIBLE
 // ============================================================================
 async function getPanamaISODate(dateInput = new Date()) {
     const d = new Date(dateInput);
-    // en-CA garantiza el formato "YYYY-MM-DD, HH:mm:ss" en 24 horas
-    const panamaStr = d.toLocaleString("en-CA", { 
-        timeZone: "America/Panama",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    }); 
     
-    // panamaStr será algo como: "2020-12-29, 08:28:28"
-    const [datePart, timePart] = panamaStr.split(', ');
-    return `${datePart}T${timePart}-05:00`; // Resultado: "2020-12-29T08:28:28-05:00"
+    // Restamos exactamente 5 horas (5 * 60 min * 60 seg * 1000 ms) al tiempo UTC
+    const panamaTime = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+    
+    // Extraemos los componentes usando métodos UTC (que ahora reflejan la hora de Panamá)
+    const year = String(panamaTime.getUTCFullYear());
+    const month = String(panamaTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(panamaTime.getUTCDate()).padStart(2, '0');
+    const hours = String(panamaTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(panamaTime.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(panamaTime.getUTCSeconds()).padStart(2, '0');
+    
+    // Construimos el string exacto que exige TheFactory
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-05:00`;
 }
+
 async function recalcularVentasCliente(codcliente) {
     if (!codcliente) return;
     
