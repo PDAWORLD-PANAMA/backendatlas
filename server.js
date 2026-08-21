@@ -7635,7 +7635,7 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
 // ============================================================================
 // 🔹 HELPER: FORMATO DE FECHA ESTRICTO PARA PANAMÁ (UTC-5) - VERSIÓN INFALIBLE
 // ============================================================================
-async function getPanamaISODate(dateInput = new Date()) {
+function getPanamaISODate(dateInput = new Date()) {
     const d = new Date(dateInput);
     
     // Restamos exactamente 5 horas (5 * 60 min * 60 seg * 1000 ms) al tiempo UTC
