@@ -683,6 +683,7 @@ var Schemadetcredito = new mongoose.Schema({
     descripcion: {  type : String  },
     descuento: { type : Number  },
     impuesto: { type : Number   },
+    impuesto1: { type : Number   },
     impuesto2: { type : Number  },
     impuesto3: { type : Number  },
     codtasaisc: { type : String },
@@ -879,6 +880,7 @@ var Schemadetanotadebito = new mongoose.Schema({
     codproducto: { type : String  },
     cantidad: { type : Number  },
     descripcion: { type : String  },
+    impuesto: { type : Number   },   
     precio: { type : Number },
     ancho: {  type : Number },
     alto: {  type : Number  },
@@ -5449,6 +5451,7 @@ console.log(`🔍 [Paso 5] Creando Head de NotaCredito  : ...`);
              descripcion: d.descripcion,
              descuento: parseFloat(d.descuento) || 0,
              impuesto: parseFloat(d.impuesto) || 0,
+             impuesto1: parseFloat(d.impuesto1) || 0,
              impuesto2: parseFloat(d.impuesto2) || 0,
              impuesto3: parseFloat(d.impuesto3) || 0,
              codtasaisc: d.codtasaisc || '',
@@ -5499,7 +5502,7 @@ console.log(`🔍 [Paso 5] Creando Head de NotaCredito  : ...`);
          return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
      };
 console.log(`🔍 [Paso 6] Creando xml para enviar a the factory `);
-     const wkimptocontrol = impuestoNC || 0;
+    
      let fenaturalezaop = factura.naturalezaoperacion || '01';
      let fetipoventa = factura.tipoventa || '1';
      let fetipoclientefe = factura.tipoclientefe || '01';
