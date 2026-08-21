@@ -5554,8 +5554,8 @@ console.log(`🔍 [Paso 7] Asignando la variable xmlnivel 1 de NotaCredito  : ..
 <ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
 <ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal>
 <ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
-<ser:fechaEmision>${fechaEmisiontmp}</ser:fechaEmision>
-<ser:fechaSalida>${fechaEmisiontmp}</ser:fechaSalida>
+<ser:fechaEmision>${fechaEmisionFacturaRef}</ser:fechaEmision>
+<ser:fechaSalida>${fechaEmisionFacturaRef}</ser:fechaSalida>
 <ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion>
 <ser:tipoOperacion>1</ser:tipoOperacion>
 <ser:destinoOperacion>1</ser:destinoOperacion>
