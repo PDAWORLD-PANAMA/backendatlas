@@ -5573,6 +5573,9 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
      let xmlistseg = "\n" + `<ser:listaItems>` + "\n";
      let xmlenviarlist = "";
      let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
+     let wtotalmontogravado = 0; // ✅ DEFINIDA AQUÍ
+     let wtasaitbms = "00";      // ✅ DECLARADA EN SCOPE SUPERIOR
+     let codtasaisc = "";         // ✅ DECLARADA EN SCOPE SUPERIOR
 
      // Determinar qué items enviar al SOAP
     var wfechafabricafinalesp  =  new Date().toISOString().slice(0, 10);
@@ -5613,9 +5616,9 @@ xmlniv1 =  xmlniv1 + "\n" + `</ser:datosTransaccion>`
          let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
          let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
          let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
-         var codtasaisc = det.codtasaisc;
+         codtasaisc = det.codtasaisc;
 
-         let wtasaitbms = "00";
+         wtasaitbms = "00";
          if (wcodimpuesto1 !== 0) wtasaitbms = "01";
          if (wcodimpuesto2 !== 0) wtasaitbms = "02";
          if (wcodimpuesto3 !== 0) wtasaitbms = "03";
@@ -5782,29 +5785,20 @@ if (factura.condiciones != "1"){
 <ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
 
 let  xmlplazo =`
-                   <ser:listaPagoPlazo>
-                                           <!-- Optional -->
-                                           <ser:pagoPlazo>
+                    <ser:listaPagoPlazo>
+                                            <!-- Optional -->
+                                            <ser:pagoPlazo>
                                                <ser:fechaVenceCuota>` + fefechavenceplazo + `</ser:fechaVenceCuota>
                                                <ser:valorCuota>` + parseFloat(wtotaldefactura).toFixed(2) + `</ser:valorCuota>
-                                           </ser:pagoPlazo>
+                                            </ser:pagoPlazo>
                     </ser:listaPagoPlazo>`
 
-//     let xmlineareten = "";
-//     let montoreten = 0;
-//     if (factura.retenedor && factura.retenedor !== "0") {
-//         let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
-//         montoreten = wtotalitbms * (tasareten / 100);
-//         xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
-//     }
-
-//     let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
 let xmltotcierre = ` </ser:totalesSubTotales>
-             </tem:documento>
-          </tem:Enviar>
-       </soapenv:Body>
-       </soapenv:Envelope>
-       ` 
+              </tem:documento>
+           </tem:Enviar>
+        </soapenv:Body>
+        </soapenv:Envelope>
+        ` 
 console.log(`🔍 [Paso 11] Cierre de los comandos del Soap de enviar la nota de credito a the factory ...`);       
       if (factura.condiciones == "1"){
         var  xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + xmlfinitems +  xmltotal + xmltotcierre;
