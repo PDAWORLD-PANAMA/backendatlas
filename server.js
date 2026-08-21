@@ -5619,7 +5619,7 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
              impuesto1: factura.impuesto1 || 7,
              impuesto2: factura.impuesto2 || 0,
              impuesto3: factura.impuesto3 || 0,
-             unidad: 'UND',
+             unidad: 'um',
              modelo: '',
              acabados: '',
              fechafabricacion: wfechafabricafinalesp,
@@ -5630,80 +5630,79 @@ console.log(`🔍 [Paso 8-2] Iniciando la parte de listaItems o  por monto  : ..
              detventa: '1'
          }]
          : (detalles || []);
-     for (let det of itemsParaSoap) {
-         let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : wfechafabricafinalesp;
-         let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : wfechaexpirafinalesp;
-         var  wkimptocontrol = det.impuesto1 || 0;
-         let descpor = parseFloat(det.descuento || 0) / 100;
-         let wpreciowk = parseFloat(det.precio);
-         let wcantidaditem = parseFloat(det.cantidad);
-         let wimpuestoitem = parseFloat(det.impuesto1) / 100;
-         let wimpuestoitem2 = parseFloat(det.impuesto2) / 100;
-         let wimpuestoitem3 = parseFloat(det.impuesto3) / 100;
-         let wtasaisc = parseFloat(det.tasaisc || 0);
-         let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
-         let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
-         let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
-         codtasaisc = det.codtasaisc;
-//****  var wimpuestoitem2  =  parseFloat(det.impuesto2) / 100;
-//***** var wimpuestoitem3  =  parseFloat(det.impuesto3) / 100;
-         wtasaitbms = "00";
-         if (wcodimpuesto1 !== 0) wtasaitbms = "01";
-         if (wcodimpuesto2 !== 0) wtasaitbms = "02";
-         if (wcodimpuesto3 !== 0) wtasaitbms = "03";
+    
 
-         let wvalordesc = 0;
-         let wprecioitem = wpreciowk * wcantidaditem;
-         if (descpor > 0) {
-             wvalordesc = wpreciowk * descpor;
-             wtotaldescuento += wvalordesc;
-             wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
-         }
-         wtotalprecioneto += wprecioitem;
-        let wvalorimpuestoitem = 0;
-        var wtotlinitem  = 0;
+for (let det of itemsParaSoap) {
+    let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : wfechafabricafinalesp;
+    let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : wfechaexpirafinalesp;
+    
+    let wkimptocontrol = det.impuesto1 || 0;
+    let descpor = parseFloat(det.descuento || 0) / 100;
+    let wpreciowk = parseFloat(det.precio);
+    let wcantidaditem = parseFloat(det.cantidad);
+    
+    let wimpuestoitem = parseFloat(det.impuesto1 || 0) / 100;
+    let wimpuestoitem2 = parseFloat(det.impuesto2 || 0) / 100;
+    let wimpuestoitem3 = parseFloat(det.impuesto3 || 0) / 100;
+    
+    let wtasaisc = parseFloat(det.tasaisc || 0);
+    let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
+    let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
+    let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+    let codtasaisc = det.codtasaisc;
 
-           if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
-            wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+    let wtasaitbms = "00";
+    if (wcodimpuesto1 !== 0) wtasaitbms = "01";
+    if (wcodimpuesto2 !== 0) wtasaitbms = "02";
+    if (wcodimpuesto3 !== 0) wtasaitbms = "03";
 
-            if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
-            if (wtasaitbms === "00") {  
-                wtotalitbms += parseFloat(wvalorimpuestoitem);
-                let wtotlinitem = wprecioitem;
-                wtotlinitem += wvalorimpuestoitem;
-            }
-            
-            if (wtasaitbms === "01") {  
-                wtotalitbms += parseFloat(wvalorimpuestoitem);
-                let wtotlinitem = wprecioitem;
-                wtotlinitem += wvalorimpuestoitem;
-            }
-            if (wtasaitbms === "02") {  
-                wtotalitbms += parseFloat(wvalorimpuestoitem2);
-                let wtotlinitem = wprecioitem;
-                wtotlinitem += wvalorimpuestoitem2;
-            }
-            if (wtasaitbms === "03") {  
-                wtotalitbms += parseFloat(wvalorimpuestoitem3);
-                let wtotlinitem = wprecioitem;
-                wtotlinitem += wvalorimpuestoitem3;
-            }
+    let wvalordesc = 0;
+    let wprecioitem = wpreciowk * wcantidaditem;
+    
+    if (descpor > 0) {
+        wvalordesc = wpreciowk * descpor;
+        wtotaldescuento += wvalordesc;
+        wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
+    }
+    wtotalprecioneto += wprecioitem;
 
-            let wpormayor = parseFloat(det.pormayor || 0);
-            if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
-            let wentrega = wpormayor * wcantidaditem;
-            wtotaldefactura += wtotlinitem;
- console.log(`🔍 [Paso 8-3-14] Total de Factura Nota Credito  : "${wtotaldefactura}"...`);           
- var  wcero = "0";
- var  wparinter = Math.floor(wvalorimpuestoitem);
- var  wintermedio = wparinter.toString();
- var decimalStr = wvalorimpuestoitem.toString().split('.')[1];
- var larente = wintermedio.length;
- var winter2 = 9 - larente;
- var wValornvatasa = wcero.repeat(winter2) + wintermedio + "." + decimalStr;
+    // ✅ CORRECCIÓN CRÍTICA: Declarar wtolinitem UNA SOLA VEZ aquí, fuera de los ifs
+    let wvalorimpuestoitem = 0;
+    let wtolinitem = 0; 
 
-console.log(`🔍 [Paso 8-4] Total ITBMS Nota Credito : "${wtotalitbms}"...`);
-xmlenviarlist += `<ser:item>
+    // Calcular el impuesto según el tipo
+    if (wtasaitbms === "00" || wtasaitbms === "01") {
+        wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+    } else if (wtasaitbms === "02") {
+        wvalorimpuestoitem = wprecioitem * wimpuestoitem2;
+    } else if (wtasaitbms === "03") {
+        wvalorimpuestoitem = wprecioitem * wimpuestoitem3;
+    }
+
+    wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+
+    if (parseFloat(wkimptocontrol) === 0) { 
+        wtasaitbms = "00"; 
+        wvalorimpuestoitem = 0; 
+    }
+
+    // Acumular el ITBMS total correctamente
+    if (wtasaitbms !== "00") {
+        wtotalitbms += wvalorimpuestoitem;
+    }
+
+    // ✅ Calcular el total de la línea y acumularlo al total de la factura
+    wtolinitem = wprecioitem + wvalorimpuestoitem;
+    wtotaldefactura += wtolinitem;
+
+    console.log(`🔍 [Paso 8-3-14] Total acumulado de Factura Nota Credito: "${wtotaldefactura.toFixed(2)}"...`);           
+
+    let wpormayor = parseFloat(det.pormayor || 0);
+    if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
+    let wentrega = wpormayor * wcantidaditem;
+
+    // Construcción del XML del item
+    xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${det.codproducto}</ser:codigo>
 <ser:unidadMedida>${det.unidad}</ser:unidadMedida>
@@ -5713,29 +5712,28 @@ xmlenviarlist += `<ser:item>
 <ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario>
 <ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
 <ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem>
-<ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
-let xmlenviartasa = "";
-if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
-  xmlenviartasa =  `<ser:tasaITBMS>` + wtasaitbms + `</ser:tasaITBMS>`+ "\n" +
-           ` <ser:valorITBMS>` + parseFloat(wvalorimpuestoitem).toFixed(2)  + `</ser:valorITBMS>` + "\n"
-         }
-         if (wtasaitbms == "00" ){
-            xmlenviartasa =  `<ser:tasaITBMS>00</ser:tasaITBMS>`+ "\n" +
-                         ` <ser:valorITBMS>0.00</ser:valorITBMS>` + "\n"
-        }
-         if (codtasaisc == "01" || codtasaisc == "02" || codtasaisc == "03" || codtasaisc == "04" || codtasaisc == "05" || codtasaisc == "06" ){
-            xmlenviartasa =  `<ser:tasaITBMS>00</ser:tasaITBMS>`+ "\n" +
-                            ` <ser:valorITBMS>0.00</ser:valorITBMS>` + "\n" +
-                 `<ser:tasaISC>` + wtasaisc  + `</ser:tasaISC>`+ "\n" +
-                            ` <ser:valorISC>` + parseFloat(wvalorisc).toFixed(2)  + `</ser:valorISC>`+ "\n"
-           }
-  xmlenviarlist = xmlenviarlist + xmlenviartasa;
-  xmlenviarlist = xmlenviarlist + `</ser:item>` + "\n"
-        }  
+<ser:valorTotal>${wtolinitem.toFixed(2)}</ser:valorTotal>\n`;
+
+    let xmlenviartasa = "";
+    if (wtasaitbms === "01" || wtasaitbms === "02" || wtasaitbms === "03") {
+        xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n<ser:valorITBMS>${wvalorimpuestoitem.toFixed(2)}</ser:valorITBMS>\n`;
+    } else {
+        xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+    }
+
+    if (codtasaisc === "01" || codtasaisc === "02" || codtasaisc === "03" || codtasaisc === "04" || codtasaisc === "05" || codtasaisc === "06") {
+        let wvalorisc = parseFloat(det.valorisc || 0);
+        xmlenviartasa += `<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n<ser:valorISC>${wvalorisc.toFixed(2)}</ser:valorISC>\n`;
+        // Asegúrate de acumular el ISC total si lo usas más abajo en el XML
+        if (typeof wtotalisc !== 'undefined') wtotalisc += wvalorisc;
+    }
+
+    xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
+}
 
 console.log(`🔍 [Paso 9] Salir de la cracion de detalle de la nota de credito a enviar a TH FACTORY ...`);
 
-console.log(`🔍 [Paso 8-4] Total de factura nota credito  : "${wtotaldefactura}"...`);
+console.log(`🔍 [Paso 9-4] Total de factura nota credito  : "${wtotaldefactura}"...`);
 if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03"){
   wtotalmontogravado = parseFloat(wtotalmontogravado) + parseFloat(wtotalitbms);
    }
@@ -5791,7 +5789,7 @@ if (factura.condiciones != "1"){
 //
    console.log(`🔍 [Paso 11-1 ] Tasa ITBMS Nota Credito : "${wtasaitbms}"...`);
    console.log(`🔍 [Paso 11-2 ] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
-    
+    console.log(`🔍 [Paso 11-3] Total de factura del cliclo : "${wtotaldefactura}"...`);
    
    
    let xmltotal = `<ser:totalesSubTotales>
