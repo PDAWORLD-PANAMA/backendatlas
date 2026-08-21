@@ -5789,9 +5789,12 @@ if (factura.condiciones != "1"){
     }
  }
 //
-onsole.log(`🔍 [Paso 11-1 ] Tasa ITBMS Nota Credito : "${wtasaitbms}"...`);
-console.log(`🔍 [Paso 11-2 ] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
-     let xmltotal = `<ser:totalesSubTotales>
+   console.log(`🔍 [Paso 11-1 ] Tasa ITBMS Nota Credito : "${wtasaitbms}"...`);
+   console.log(`🔍 [Paso 11-2 ] TOtal ITBMS Nota Credito : "${wtotalitbms}"...`);
+    
+   
+   
+   let xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>`+ "\n"
 
  if (wtasaitbms == "01" || wtasaitbms == "02" || wtasaitbms == "03" ){
