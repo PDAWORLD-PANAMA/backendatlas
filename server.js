@@ -5307,6 +5307,7 @@ const tablaUbicacion = await Ubicacion.find({});
 
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
+const fechaSistemaStr = getLocalISODate(new Date()); // Ej: "2023-10-27T1
 const fetipodocumento = tipoNota === "1" ? "04" : "06";
 
      // 3. CREAR REGISTROS EN BD - NOTA CREDITO HEAD
@@ -5339,8 +5340,8 @@ var resultado = totalNC - impuestoNC
          fechafactura: factura.fechafactura,
          fechacredito: fechasistema,
          fechavencimiento: factura.fechavencimiento,
-         fechaEmision: fechasistema,
-         fechaSalida: fechasistema,
+         fechaEmision: fechaSistemaStr,
+         fechaSalida: fechaSistemaStr,
          tipoclientefe: factura.tipoclientefe,
          codcliente: factura.codcliente,
          idglobalcorpo: factura.idglobalcorporp,
@@ -7664,6 +7665,26 @@ async function recalcularVentasCliente(codcliente) {
     }
 }
 
+async function getLocalISODate(date = new Date()) {
+    const pad = (num) => String(num).padStart(2, '0');
+    
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+    
+    // getTimezoneOffset() devuelve la diferencia en minutos. 
+    // Para UTC-5, devuelve 300 (positivo).
+    const offsetMinutes = date.getTimezoneOffset();
+    const offsetSign = offsetMinutes > 0 ? '-' : '+';
+    const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
+    const offsetMins = pad(Math.abs(offsetMinutes) % 60);
+    const offsetString = `${offsetSign}${offsetHours}:${offsetMins}`;
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetString}`;
+}
 
 async function descontarFolioPAC() {
     try {
