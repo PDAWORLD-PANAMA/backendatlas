@@ -236,6 +236,8 @@ const SchemadelCliente = new mongoose.Schema({
   clasecliente: { type: String },
   createdAt: { type: String },
   ciudadcliente: { type: String },
+  distrito: { type: String },
+  corregimiento: { type: String },
   vendedorcliente: { type: String },
   codigopreciocliente: { type: String },
   fechaultventa: { type: String },
@@ -385,6 +387,18 @@ const modeloSchema = new mongoose.Schema({
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
 const Modelo = mongoose.model('Modelo', modeloSchema);
+
+// ============================================================================
+// 🔹 MODELO: FORMA DE PAGO
+// ============================================================================
+const formaPagoSchema = new mongoose.Schema({
+    codigo: { type: String, required: true, unique: true, trim: true, uppercase: true },
+    descripcion: { type: String, required: true, trim: true, uppercase: true },
+    fechaCreacion: { type: String, default: () => new Date().toISOString() },
+    fechaActualizacion: { type: String, default: () => new Date().toISOString() }
+}, { timestamps: true });
+
+const FormaPago = mongoose.model('FormaPago', formaPagoSchema);
 
 // ============================================================================
 // 🔹 MODELO: PROVEEDORES (Agregar junto a los otros modelos)
@@ -7643,6 +7657,82 @@ app.get('/api/compras/cxp/saldos', async (req, res) => {
         res.json({ success: true, data: result });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
+    }
+});
+// ============================================================================
+// 🔹 RUTAS: FORMA DE PAGO
+// ============================================================================
+
+
+// GET: Listar todas las formas de pago
+app.get('/api/config/formapago', async (req, res) => {
+    try {
+        const formasPago = await FormaPago.find({}).sort({ codigo: 1 });
+        res.json({ success: true, message: 'Formas de pago obtenidas', data: formasPago });
+    } catch (error) {
+        console.error('❌ Error GET /api/config/formapago:', error);
+        res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+    }
+});
+
+// POST: Crear nueva forma de pago
+app.post('/api/config/formapago', async (req, res) => {
+    try {
+        const { codigo, descripcion } = req.body;
+        if (!codigo?.trim() || !descripcion?.trim()) {
+            return res.status(400).json({ success: false, message: 'Código y Descripción son obligatorios' });
+        }
+        const existing = await FormaPago.findOne({ codigo: codigo.trim().toUpperCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Ya existe una forma de pago con este código' });
+        }
+        const nuevaFormaPago = await FormaPago.create({
+            codigo: codigo.trim().toUpperCase(),
+            descripcion: descripcion.trim().toUpperCase()
+        });
+        res.status(201).json({ success: true, message: '✅ Forma de pago creada exitosamente', data: nuevaFormaPago });
+    } catch (error) {
+        console.error('❌ Error POST /api/config/formapago:', error);
+        if (error.code === 11000) return res.status(409).json({ success: false, message: 'El código ya existe' });
+        res.status(500).json({ success: false, message: 'Error al crear', error: error.message });
+    }
+});
+
+// PUT: Editar descripción de forma de pago
+app.put('/api/config/formapago/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        
+        const updateData = { ...req.body };
+        delete updateData.codigo; // No permitir cambiar el código
+        delete updateData._id;
+        updateData.fechaActualizacion = new Date().toISOString();
+        if (updateData.descripcion) updateData.descripcion = updateData.descripcion.trim().toUpperCase();
+
+        const actualizado = await FormaPago.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        if (!actualizado) return res.status(404).json({ success: false, message: 'Forma de pago no encontrada' });
+        
+        res.json({ success: true, message: '✅ Forma de pago actualizada', data: actualizado });
+    } catch (error) {
+        console.error('❌ Error PUT /api/config/formapago:', error);
+        res.status(500).json({ success: false, message: 'Error al actualizar', error: error.message });
+    }
+});
+
+// DELETE: Eliminar forma de pago
+app.delete('/api/config/formapago/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
+        
+        const eliminado = await FormaPago.findByIdAndDelete(id);
+        if (!eliminado) return res.status(404).json({ success: false, message: 'Forma de pago no encontrada' });
+        
+        res.json({ success: true, message: '🗑️ Forma de pago eliminada exitosamente' });
+    } catch (error) {
+        console.error('❌ Error DELETE /api/config/formapago:', error);
+        res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
     }
 });
 // ============================================================================
