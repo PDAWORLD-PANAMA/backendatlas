@@ -986,11 +986,6 @@ var Schematrancxcobrar = new mongoose.Schema({
 });
 
 const TranCxCobrar = mongoose.model('Schemarectrancxcobrar',Schematrancxcobrar);
-
-// ✅ Helper para calcular subtotal de línea
-// ============================================================================
-// 🔹 RUTAS: DASHBOARD (CON DATOS REALES DE CotizaHead Y FacturaHead)
-// ============================================================================
 app.get("/api/dashboard", async (req, res) => {
   try {
     // ═══════════════════════════════════════════════════════
@@ -1023,14 +1018,22 @@ app.get("/api/dashboard", async (req, res) => {
     const yesterdayStr = formatDate(yesterday);
     const currentMonthStr = todayStr.substring(0, 7); // "YYYY-MM"
     
-    // ✅ NEW: Current year and current month number (1 = Enero, 12 = Diciembre)
     const currentYear = today.getFullYear();
-    const mesActual = today.getMonth() + 1; 
+    const mesActual = today.getMonth() + 1; // 1 = Enero, 12 = Diciembre
 
     // Consultar facturas por fecha (excluir anuladas)
-    const facturasHoy = await FacturaHead.find({ fechafactura: todayStr, estado: { $eq: 'A' } });
-    const facturasAyer = await FacturaHead.find({ fechafactura: yesterdayStr, estado: { $eq: 'A' } });
-    const facturasMes = await FacturaHead.find({ fechafactura: { $regex: `^${currentMonthStr}` }, estado: { $eq: 'A' } });
+    const facturasHoy = await FacturaHead.find({ 
+      fechafactura: { $regex: `^${todayStr}` }, 
+      estado: { $eq: 'A' } 
+    });
+    const facturasAyer = await FacturaHead.find({ 
+      fechafactura: { $regex: `^${yesterdayStr}` }, 
+      estado: { $eq: 'A' } 
+    });
+    const facturasMes = await FacturaHead.find({ 
+      fechafactura: { $regex: `^${currentMonthStr}` }, 
+      estado: { $eq: 'A' } 
+    });
 
     const ventasHoy = facturasHoy.reduce((sum, f) => sum + (f.total || 0), 0);
     const ventasAyer = facturasAyer.reduce((sum, f) => sum + (f.total || 0), 0);
@@ -1044,21 +1047,28 @@ app.get("/api/dashboard", async (req, res) => {
       crecimiento = ((ventasHoy - ventasAyer) / ventasAyer) * 100;
     }
 
-    // ✅ NEW: AGGREGATION TO GET REAL SALES FOR ALL 12 MONTHS OF THE CURRENT YEAR
+    // ✅ BULLETPROOF AGGREGATION: Works whether fechafactura is a String or a Date object
     const ventasPorMes = await FacturaHead.aggregate([
-      {
-        $match: {
-          estado: { $eq: 'A' },
-          fechafactura: { $regex: `^${currentYear}` } // Matches "YYYY-MM-DD"
-        }
+      { $match: { estado: { $eq: 'A' } } },
+      { 
+        $addFields: { 
+          // Converts Date to ISO string, or leaves String as is, ensuring $regex works
+          fechaStr: { $toString: "$fechafactura" } 
+        } 
+      },
+      { 
+        $match: { 
+          // Safely matches the year at the start of the string (e.g., "2023" or "2024")
+          fechaStr: { $regex: `^${currentYear}` } 
+        } 
       },
       {
         $group: {
-          _id: { $substr: ["$fechafactura", 5, 2] }, // Extracts the "MM" part
+          _id: { $substr: ["$fechaStr", 5, 2] }, // Extracts "MM" from "YYYY-MM-DD" or ISO string
           totalVentas: { $sum: { $ifNull: ["$total", 0] } }
         }
       },
-      { $sort: { "_id": 1 } } // Sort by month ascending
+      { $sort: { "_id": 1 } }
     ]);
 
     // Create an array of 12 zeros, then populate with real data
@@ -1091,8 +1101,8 @@ app.get("/api/dashboard", async (req, res) => {
       porcentajeConversion: parseFloat(porcentajeConversion.toFixed(2)),
       totalCotizado: parseFloat(totalCotizado.toFixed(2)),
       totalConvertido: parseFloat(totalConvertido.toFixed(2)),
-      mesActual: mesActual,               // ✅ ADDED
-      ventasMensuales: ventasMensuales    // ✅ ADDED: Array of 12 real values
+      mesactual: mesActual,               // ✅ FIXED: lowercase 'a' to match Kotlin data class
+      ventasMensuales: ventasMensuales
     } : {
       ventasHoy: 0, facturasHoy: 0,
       ventasAyer: 0, facturasAyer: 0,
@@ -1103,8 +1113,8 @@ app.get("/api/dashboard", async (req, res) => {
       porcentajeConversion: 0,
       totalCotizado: 0,
       totalConvertido: 0,
-      mesActual: mesActual,               // ✅ ADDED
-      ventasMensuales: Array(12).fill(0)  // ✅ ADDED: Fallback array
+      mesactual: mesActual,               // ✅ FIXED: lowercase 'a'
+      ventasMensuales: Array(12).fill(0)
     };
 
     // ═══════════════════════════════════════════════════════
@@ -1128,7 +1138,6 @@ app.get("/api/dashboard", async (req, res) => {
     res.status(500).json({ message: "Error interno", error: err.message });
   }
 });
-
 // ============================================================================
 // 🔹 RUTAS: EMPRESA CONFIG
 // ============================================================================
