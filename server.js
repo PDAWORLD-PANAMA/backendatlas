@@ -33,6 +33,7 @@ const Dashboard = mongoose.model("Dashboard", {
   ventasAyer: Number,
   facturasAyer: Number,
   ventasMes: Number,
+  mesactual: Number,
   crecimiento: Number,
   cotizacionesTotal: Number,
   cotizacionesConvertidas: Number,
@@ -998,20 +999,15 @@ app.get("/api/dashboard", async (req, res) => {
     const todasCotizaciones = await CotizaHead.find({ activo: { $eq: "A" } });
     const cotizacionesTotal = todasCotizaciones.length;
 
-    // Contar cotizaciones convertidas (coticonvertido = "S" o "SI")
-    const cotizacionesConvertidasArr = todasCotizaciones.filter(c =>
-      c.coticonvertido === 'S' 
-    );
+    const cotizacionesConvertidasArr = todasCotizaciones.filter(c => c.coticonvertido === 'S');
     const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
     const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
 
-    // Calcular porcentaje de conversión
     let porcentajeConversion = 0;
     if (cotizacionesTotal > 0) {
       porcentajeConversion = (cotizacionesConvertidas / cotizacionesTotal) * 100;
     }
 
-    // Calcular totales monetarios
     const totalCotizado = todasCotizaciones.reduce((sum, c) => sum + (c.total || 0), 0);
     const totalConvertido = cotizacionesConvertidasArr.reduce((sum, c) => sum + (c.total || 0), 0);
 
@@ -1026,24 +1022,16 @@ app.get("/api/dashboard", async (req, res) => {
     const todayStr = formatDate(today);
     const yesterdayStr = formatDate(yesterday);
     const currentMonthStr = todayStr.substring(0, 7); // "YYYY-MM"
+    
+    // ✅ NEW: Current year and current month number (1 = Enero, 12 = Diciembre)
+    const currentYear = today.getFullYear();
+    const mesActual = today.getMonth() + 1; 
 
     // Consultar facturas por fecha (excluir anuladas)
-    const facturasHoy = await FacturaHead.find({
-      fechafactura: todayStr,
-      estado: { $eq: 'A' }
-    });
+    const facturasHoy = await FacturaHead.find({ fechafactura: todayStr, estado: { $eq: 'A' } });
+    const facturasAyer = await FacturaHead.find({ fechafactura: yesterdayStr, estado: { $eq: 'A' } });
+    const facturasMes = await FacturaHead.find({ fechafactura: { $regex: `^${currentMonthStr}` }, estado: { $eq: 'A' } });
 
-    const facturasAyer = await FacturaHead.find({
-      fechafactura: yesterdayStr,
-      estado: { $eq: 'A' }
-    });
-
-    const facturasMes = await FacturaHead.find({
-      fechafactura: { $regex: `^${currentMonthStr}` },
-      estado: { $eq: 'A' }
-    });
-
-    // Calcular totales de ventas
     const ventasHoy = facturasHoy.reduce((sum, f) => sum + (f.total || 0), 0);
     const ventasAyer = facturasAyer.reduce((sum, f) => sum + (f.total || 0), 0);
     const ventasMes = facturasMes.reduce((sum, f) => sum + (f.total || 0), 0);
@@ -1051,11 +1039,36 @@ app.get("/api/dashboard", async (req, res) => {
     const countFacturasHoy = facturasHoy.length;
     const countFacturasAyer = facturasAyer.length;
 
-    // Calcular crecimiento porcentual
     let crecimiento = 0;
     if (ventasAyer > 0) {
       crecimiento = ((ventasHoy - ventasAyer) / ventasAyer) * 100;
     }
+
+    // ✅ NEW: AGGREGATION TO GET REAL SALES FOR ALL 12 MONTHS OF THE CURRENT YEAR
+    const ventasPorMes = await FacturaHead.aggregate([
+      {
+        $match: {
+          estado: { $eq: 'A' },
+          fechafactura: { $regex: `^${currentYear}` } // Matches "YYYY-MM-DD"
+        }
+      },
+      {
+        $group: {
+          _id: { $substr: ["$fechafactura", 5, 2] }, // Extracts the "MM" part
+          totalVentas: { $sum: { $ifNull: ["$total", 0] } }
+        }
+      },
+      { $sort: { "_id": 1 } } // Sort by month ascending
+    ]);
+
+    // Create an array of 12 zeros, then populate with real data
+    const ventasMensuales = Array(12).fill(0);
+    ventasPorMes.forEach(item => {
+      const monthIndex = parseInt(item._id, 10) - 1; // "01" becomes 0, "12" becomes 11
+      if (monthIndex >= 0 && monthIndex < 12) {
+        ventasMensuales[monthIndex] = parseFloat(item.totalVentas.toFixed(2));
+      }
+    });
 
     // ═══════════════════════════════════════════════════════
     // 🔹 3. VERIFICAR SI HAY DATOS REALES
@@ -1077,9 +1090,10 @@ app.get("/api/dashboard", async (req, res) => {
       cotizacionesNoConvertidas,
       porcentajeConversion: parseFloat(porcentajeConversion.toFixed(2)),
       totalCotizado: parseFloat(totalCotizado.toFixed(2)),
-      totalConvertido: parseFloat(totalConvertido.toFixed(2))
+      totalConvertido: parseFloat(totalConvertido.toFixed(2)),
+      mesActual: mesActual,               // ✅ ADDED
+      ventasMensuales: ventasMensuales    // ✅ ADDED: Array of 12 real values
     } : {
-      // Valores fijos de respaldo si la BD está vacía
       ventasHoy: 0, facturasHoy: 0,
       ventasAyer: 0, facturasAyer: 0,
       ventasMes: 0, crecimiento: 0,
@@ -1088,7 +1102,9 @@ app.get("/api/dashboard", async (req, res) => {
       cotizacionesNoConvertidas: 0,
       porcentajeConversion: 0,
       totalCotizado: 0,
-      totalConvertido: 0
+      totalConvertido: 0,
+      mesActual: mesActual,               // ✅ ADDED
+      ventasMensuales: Array(12).fill(0)  // ✅ ADDED: Fallback array
     };
 
     // ═══════════════════════════════════════════════════════
