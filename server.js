@@ -77,7 +77,12 @@ const empresaSchema = new mongoose.Schema({
   nofoliospac: { type: Number, default: 0 },
   firmadigitalemision: { type: String, trim: true },
   firmadigitalexpira: { type: String, trim: true },
-  vigencialicencia: { type: String, trim: true }
+  vigencialicencia: { type: String, trim: true },
+   logoempresa: { type: String, trim: true },
+   banner1:{ type: String, trim: true },
+   banner2:{ type: String, trim: true },
+   banner3:{ type: String, trim: true },
+
 }, { timestamps: true });
 
 const EmpresaConfig = mongoose.model('EmpresaConfig', empresaSchema);
