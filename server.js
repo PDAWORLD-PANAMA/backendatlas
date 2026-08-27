@@ -1078,12 +1078,22 @@ app.get("/api/dashboard", async (req, res) => {
     ]);
 
     // Create an array of 12 zeros, then populate with real data
-    const ventasMensuales = Array(12).fill(0);
-    ventasPorMes.forEach(item => {
-      const monthIndex = parseInt(item._id, 10) - 1; // "01" becomes 0, "12" becomes 11
-      if (monthIndex >= 0 && monthIndex < 12) {
-        ventasMensuales[monthIndex] = parseFloat(item.totalVentas.toFixed(2));
-      }
+   // Create an array of 12 zeros, then populate with real data
+const ventasMensuales = Array(12).fill(0);
+
+ventasPorMes.forEach(item => {
+  const monthIndex = parseInt(item._id, 10) - 1; // "01" becomes 0, "12" becomes 11
+
+  if (monthIndex >= 0 && monthIndex < 12) {
+    ventasMensuales[monthIndex] = parseFloat(item.totalVentas.toFixed(2));
+  }
+});
+
+// ✅ ENSURE CURRENT MONTH USES THE SAME VERIFIED VALUE AS ventasMes
+// ventasMes is already calculated directly from the current month's invoices.
+if (mesActual >= 1 && mesActual <= 12) {
+  ventasMensuales[mesActual - 1] = parseFloat(ventasMes.toFixed(2));
+}
     });
 
     // ═══════════════════════════════════════════════════════
