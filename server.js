@@ -897,6 +897,7 @@ var Schemadetanotadebito = new mongoose.Schema({
     descripcion: { type : String  },
     impuesto: { type : Number   },   
     precio: { type : Number },
+    costo1: { type : Number },
     ancho: {  type : Number },
     alto: {  type : Number  },
     unidad: { type : String },
@@ -6096,24 +6097,25 @@ app.post('/api/ventas/notasdebito/enviar-Thefactory/:nofactura', async (req, res
         const nofacturaUpper = nofactura;
 
        // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
+       console.log(`🔍 [Paso 1] Buscando Factura Original Nota Debito: "${nofactura}"...`);
 const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
 if (!factura) return res.status(404).json({ success: false, message: 'Factura original no encontrada' });
 if (factura.estado === 'E' || factura.estado === 'Anulada') {
     return res.status(400).json({ success: false, message: 'No se puede aplicar ND a una factura anulada' });
 }
-
+console.log(`🔍 [Paso 1] Factura Original Encontrado Para NotaDebito  : "${nofactura}"...`);
 const detallesFactura = await FacturaDetalle.find({ nofactura: nofacturaUpper });
 if (!detallesFactura || detallesFactura.length === 0) {
     return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
 }
-
+console.log(`🔍 [Paso 2] Factura Detalle encontrado: "${nofactura}"...`);
 // ✅ OBTENER EMPRESA Y GENERAR NÚMERO SECUENCIAL
 const empresa = await EmpresaConfig.findOne({});
 if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 
 const countND = parseInt(empresa.countnotadebito) || 0;
 const nodebito = String(countND).padStart(10, '0');  // ✅ 10 dígitos
-
+console.log(`🔍 [Paso 3] Buscando Empresa Original contador Nota Credito : "${nodebito }"...`);
 // ✅ INCREMENTAR CONTADOR INMEDIATAMENTE
 await EmpresaConfig.findByIdAndUpdate(empresa._id, {
     $set: { countnotadebito: String(countND + 1) }
@@ -6123,6 +6125,19 @@ const tablaUbicacion = await Ubicacion.find({});
 
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
+const fechaEmisiontmp = getPanamaISODate(factura.fechaEmision || new Date());
+const fechaSalidatmp = getPanamaISODate(factura.fechaSalida || new Date());
+console.log("🔍 DEBUG FECHA EMISION:", fechaEmisiontmp);
+console.log("🔍 DEBUG FECHA SALIDA:", fechaSalidatmp);
+//
+const regexPanamaDate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-05:00$/;
+if (!regexPanamaDate.test(fechaEmisiontmp)) {
+    console.error("❌ EL FORMATO DE FECHA ES INCORRECTO:", fechaEmisiontmp);
+}
+
+
+
+
 const fetipodocumento = tipoNota === "1" ? "05" : "07";
 
         // 3. CREAR REGISTROS EN BD - NOTA DEBITO HEAD
