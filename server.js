@@ -213,6 +213,20 @@ descripubicacion : { type : String}
 
 const Ubicacion = mongoose.model('Ubicacion', Schemageoubicacion);
 
+
+// ✅ 1. ADD THIS NEW SCHEMA FOR SUBSIDIARIES
+const SucursalSchema = new mongoose.Schema({
+    id_sucursal: { type: String, required: true },
+    nombre_sucursal: { type: String, uppercase: true },
+    direccion: { type: String, uppercase: true },
+    telefono: { type: String },
+    email: { type: String },
+    rucNit: { type: String },
+    esPrincipal: { type: Boolean, default: false }
+}, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
+
+const Sucursal = mongoose.model('Sucursal', SucursalSchema);
+
 const SchemadelCliente = new mongoose.Schema({
   idcliente: { type: String },
   clientenombre: { type: String, uppercase: true },
@@ -253,6 +267,7 @@ const SchemadelCliente = new mongoose.Schema({
   historialcambio: [String], 
   latgps: { type: String },
   lnggps: { type: String},
+ sucursales: [SucursalSchema] 
   
   // The GeoJSON field for Google Maps
  
@@ -2757,6 +2772,16 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
        updateData.vendedorcliente = updateData.vendedorcliente;
        updateData.codigopreciocliente = updateData.codigopreciocliente;
        updateData.estadoctacliente = updateData.estadoctacliente.trim().toUpperCase();
+
+        // ✅ 3. ADD THIS BLOCK TO CAPTURE THE SUBSIDIARIES ARRAY
+        if (req.body.sucursales && Array.isArray(req.body.sucursales)) {
+            updateData.sucursales = req.body.sucursales;
+        }
+
+
+
+
+
         const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
