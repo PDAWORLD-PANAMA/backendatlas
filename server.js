@@ -115,6 +115,7 @@ const Schemadelinventariosede = new mongoose.Schema({
   pormayor : { type : Number },
   comisionvendedor: { type: Number },
   tipoproducto: { type: String },
+  tipoempresa: { type: String },
   fechaexpiracion: { type: String },
   codigoprodproveedor: { type: String },
   imagenproducto: { type: String },
@@ -267,6 +268,7 @@ const SchemadelCliente = new mongoose.Schema({
   historialcambio: [String], 
   latgps: { type: String },
   lnggps: { type: String},
+  webdireccion : { type: String},
  sucursales: [SucursalSchema] 
   
   // The GeoJSON field for Google Maps
