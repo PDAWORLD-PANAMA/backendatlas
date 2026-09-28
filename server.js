@@ -223,6 +223,7 @@ const SucursalSchema = new mongoose.Schema({
     telefono: { type: String },
     email: { type: String },
     rucNit: { type: String },
+    contacto: { type: String },
     esPrincipal: { type: Boolean, default: false }
 }, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
 
