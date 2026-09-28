@@ -2780,11 +2780,6 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
         if (req.body.sucursales && Array.isArray(req.body.sucursales)) {
             updateData.sucursales = req.body.sucursales;
         }
-
-
-
-
-
         const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
@@ -3721,17 +3716,48 @@ app.get("/api/ventas/facturas/head", async (req, res) => {
     });
   }
 });
-
 app.post("/api/ventas/facturas/head", async (req, res) => {
   try {
     const data = { ...req.body };
     const fechaISO = new Date().toISOString();
 
+    var fechasistema = formatLocalYmd(new Date()); 
+    var temcondiciones = data.condiciones;
+var fechavencimientotmp = fechasistema;
+  if (temcondiciones == "2") {
+        var fechax = new Date(fechasistema);
+        var resul1 = new Date(fechax.setDate(fechax.getDate() + 30));
+console.log("DEUDA A 30 DIAS conta ",formatDate(resul1))
+var resul2 = formatDate(resul1);
+fechavencimientotmp = resul2;
+    }
+    if (temcondiciones == "3") {
+        var fechax = new Date(fechasistema);
+        var resul1 = new Date(fechax.setDate(fechax.getDate() + 45));
+console.log("DEUDA A 45 DIAS conta",formatDate(resul1))
+var resul2 = formatDate(resul1);
+fechavencimientotmp = resul2;
+    }
+    if (temcondiciones == "4") {
+        var fechax = new Date(fechasistema);
+        var resul1 = new Date(fechax.setDate(fechax.getDate() + 60));
+console.log("DEUDA A 60 DIAS conta ",formatDate(resul1))
+var resul2 = formatDate(resul1);
+fechavencimientotmp = resul2;
+    }
+    if (temcondiciones == "5") {
+        var fechax = new Date(fechasistema);
+        var resul1 = new Date(fechax.setDate(fechax.getDate() + 90));
+console.log("DEUDA A 90 DIAS conta ",formatDate(resul1))
+var resul2 = formatDate(resul1);
+fechavencimientotmp = resul2;
+    }
+       data.fechavencimiento = fechavencimientotmp;
     // Asegurar valores predeterminados para campos de control
     if (!data.fechaCreacion) data.fechaCreacion = fechaISO;
     if (!data.fechaActualizacion) data.fechaActualizacion = fechaISO;
     if (!data.estado) data.estado = "A";
-
+  
     // Sanitizar numéricos si vienen nulos o indefinidos
     data.subtotal1 = data.subtotal1 || 0.0;
     data.subtotal2 = data.subtotal2 || 0.0;
