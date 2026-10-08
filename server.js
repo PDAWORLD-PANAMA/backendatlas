@@ -2643,9 +2643,111 @@ app.post('/api/ventas/clientes', async (req, res) => {
     const existing = await Cliente.findOne({ idcliente });
     if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este Codigo" });
     const nuevoCliente = new Cliente(req.body);
-    const guardado = await nuevoCliente.save();
-    res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });
-  } catch (err) {
+//************//
+//%%%%%%%%%%%%%%%%%%%%% CONSULTAR RUC CON LA DGI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+ var contador  = 0;
+ var restiporuc = " ";
+ var resruc = " ";
+ var codigoHandle = " ";
+ var msgHandle = " ";
+ var resdv = " ";
+ var resrazonSocial = " ";
+ var resproceso  = " ";
+//***********************************************//
+
+// ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
+ //**************************************************//
+const empresaconfig = await EmpresaConfig.find({});
+console.log("Ruc Enviado ",nuevoCliente.ruccliente);
+tipocontri = nuevoCliente.tipocontribuyente;
+console.log("Empresa Token ",empresaconfig[0].tokenempresa);
+console.log("Tipo Contribuyente ",tipocontri);
+console.log("llamar thefactory Consulta ");
+let xmllinea = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ApiRest">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:ConsultarRucDV>
+         <!--Optional:-->
+         <tem:consultarRucDVRequest>
+            <!--Optional:-->
+            <ser:tokenEmpresa>${empresaconfig[0].tokenempresa}</ser:tokenEmpresa>
+            <!--Optional:-->
+            <ser:tokenPassword>${empresaconfig[0].tokenclave}</ser:tokenPassword>
+            <!--Optional:-->
+            <ser:tipoRuc>${tipocontri}</ser:tipoRuc>
+            <!--Optional:-->
+            <ser:ruc>${nuevoCliente.ruccliente}</ser:ruc>
+         </tem:consultarRucDVRequest>
+      </tem:ConsultarRucDV>
+   </soapenv:Body>
+</soapenv:Envelope>
+`
+let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+
+const soapResponse = await fetch(soapUrl, {
+        method: 'POST',
+        body: xmllinea,
+        headers: {
+            'User-Agent': 'NODEJS-FETCH',
+            'Content-Type': 'text/xml;charset=utf-8',
+            'SOAPAction': 'http://tempuri.org/IService/ConsultarRucDV'
+        }
+    });
+
+if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+const bodyXml = await soapResponse.text();
+    
+    const extractTag = (xml, tag) => {
+        const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+        const match = xml.match(regex);
+        return match ? match[1].trim() : "";
+    };
+    const resultadoSOAP = {
+           restiporuc : extractTag(bodyXml, "tipoRuc"),
+            resruc : extractTag(bodyXml, "ruc"),
+            codigoHandle : extractTag(bodyXml, "codigo"),
+            msgHandle : extractTag(bodyXml, "mensaje"),
+            resdv : extractTag(bodyXml, "dv"),
+            resrazonSocial  : extractTag(bodyXml, "razonSocial"),
+            resproceso  : extractTag(bodyXml, "resultado")
+    };
+            console.log("Tipo de Ruc   ",resultadoSOAP.restiporuc);
+            console.log("Ruc     ", resultadoSOAP.resruc);
+            console.log("CODIGO ", resultadoSOAP.codigoHandle);
+            console.log("Resp DV ", resultadoSOAP.resdv);
+            console.log("Razon Social ", resultadoSOAP.resrazonSocial);
+            console.log("Resp Proceso ", resultadoSOAP.resproceso);
+            var mensajeregistro = "Es contribuyente y existe";
+        if (resultadoSOAP.codigoHandle === "102" ) {
+            console.log("Entre a codigo 102 *********")
+                const error = new Error(`SOAP Error ${resultadoSOAP.codigoHandle}`);
+                error.codigo = resultadoSOAP.codigoHandle;
+                error.mensaje = resultadoSOAP.resproceso;
+                resultadoSOAP.resrazonSocial = req.body.clientenombre + " ** No Contribuyente";
+                resultadoSOAP.resdv = "00";
+        }
+var clientebusqueda = nuevoCliente.idcliente;
+console.log("Codigo Respuesta ",resultadoSOAP.codigoHandle);
+console.log("Razon Social     ",resultadoSOAP.resrazonSocial);
+console.log("Cliente Busqueda >>>>> ",clientebusqueda);
+ if (resultadoSOAP.resdv == "00"){
+       nuevoCliente.tipoclientefe = "02";   
+    }
+    if (resultadoSOAP.resdv !== "00"){
+       nuevoCliente.tipoclientefe = "01";   
+    }
+console.log("Tipo CLiente Fe *********  ",nuevoCliente.tipoclientefe); 
+  if (resultadoSOAP.codigoHandle === "102" || resultadoSOAP.codigoHandle === "200") {
+       nuevoCliente.clientenombre = resultadoSOAP.resrazonSocial.trim().toUpperCase();
+       nuevoCliente.digitoverificador = resultadoSOAP.resdv;
+       const guardado = nuevoCliente.save();
+         res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });
+             }
+        
+    }
+//********************************//
+  catch (err) {
     console.error("❌ Error POST /api/ventas/clientes:", err);
     if (err.code === 11000) return res.status(409).json({ success: false, message: "❌ El codigo de cliente ya está registrado" });
     res.status(500).json({ success: false, message: "Error al crear Cliente en server endpoint ", error: err.message });
@@ -4927,19 +5029,64 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
 <ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario><ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
 <ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem><ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
 
-            let xmlenviartasa = "";
-            if (wtasaitbms === "01") {
-                let wintermedio = Math.floor(wvalorimpuestoitem).toString();
-                let decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
-                let winter2 = 9 - wintermedio.length;
-                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS><ser:valorITBMS>${"0".repeat(Math.max(0, winter2)) + wintermedio + "." + decimalStr}</ser:valorITBMS>\n`;
-            } else {
-                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS><ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+            var xmlenviartasa = "";
+            if (wtasaitbms == "01") {
+                var wparinter = Math.floor(wvalorimpuestoitem);
+                var wintermedio = wparinter.toString();
+                var decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+                var larente = wintermedio.length;
+                var winter2 = 9 - larente;
+                var wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
+
+                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n
+                 <ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
             }
-            xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
+            if (wtasaitbms == "00") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+            }
+            if (wtasaitbms == "02") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n
+      <ser:tasaISC>${wtasaisc}</ser:tasaISC>\n
+                 <ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
+            }
+
+            xmlenviarlist += xmlenviartasa;
+            xmlenviarlist += `</ser:item>\n`;
         }
 
-        let xmltotal = `<ser:totalesSubTotales>
+       let xmlfinitems = `</ser:listaItems>`;
+        var fefechavenceplazo = "x";
+        var fecuotadepagocre = 0;
+        const formatYmd = date => date.toISOString().slice(0, 10);
+        var fechasistema = formatLocalYmd(new Date());
+        var s2x = 0;
+        var fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
+        var fevalorecibido = parseFloat(wtotaldefactura).toFixed(2);
+
+        if (factura.condiciones != "1") {
+            var addDays = (days) => {
+                var d = new Date();
+                d.setDate(d.getDate() + days);
+                return dayjs(d.toLocaleDateString("en-US"));
+            };
+            if (factura.condiciones == "2") {
+                fefechavenceplazo = addDays(30).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "3") {
+                fefechavenceplazo = addDays(45).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "4") {
+                fefechavenceplazo = addDays(60).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "5") {
+                fefechavenceplazo = addDays(90).format();
+                fecuotadepagocre = fevalorcuota;
+            }
+        }
+
+        var xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
 <ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
 <ser:totalMontoGravado>${wtotalitbms.toFixed(2)}</ser:totalMontoGravado>
