@@ -2719,6 +2719,12 @@ const bodyXml = await soapResponse.text();
             console.log("Razon Social ", resultadoSOAP.resrazonSocial);
             console.log("Resp Proceso ", resultadoSOAP.resproceso);
             var mensajeregistro = "Es contribuyente y existe";
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
+
+var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
+
+//%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%//
+
         if (resultadoSOAP.codigoHandle === "102" ) {
             console.log("Entre a codigo 102 *********")
                 const error = new Error(`SOAP Error ${resultadoSOAP.codigoHandle}`);
@@ -2732,11 +2738,16 @@ console.log("Codigo Respuesta ",resultadoSOAP.codigoHandle);
 console.log("Razon Social     ",resultadoSOAP.resrazonSocial);
 console.log("Cliente Busqueda >>>>> ",clientebusqueda);
  if (resultadoSOAP.resdv == "00"){
-       nuevoCliente.tipoclientefe = "02";   
+      if (tipocontri == "1"){
+       nuevoCliente.tipoclientefe = "02";
+      }else{
+          nuevoCliente.tipoclientefe = "01";
+      }   
     }
     if (resultadoSOAP.resdv !== "00"){
        nuevoCliente.tipoclientefe = "01";   
     }
+
 console.log("Tipo CLiente Fe *********  ",nuevoCliente.tipoclientefe); 
   if (resultadoSOAP.codigoHandle === "102" || resultadoSOAP.codigoHandle === "200") {
        nuevoCliente.clientenombre = resultadoSOAP.resrazonSocial.trim().toUpperCase();
@@ -8143,4 +8154,67 @@ app.listen(PORT, () => {
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
-        }
+}
+/**
+ * Determina el código de tipo de cliente según tipoRuc y la estructura del RUC (sin DV).
+ *
+ * @param {number|string} tipoRuc - 1: Persona Natural, 2: Persona Jurídica
+ * @param {string} ruc - Número de RUC sin DV (Ej: "8-765-4321", "155699999-2-2023")
+ * @returns {string} "01" Contribuyente | "02" Consumidor final | "03" Gobierno | "04" Extranjero
+ */
+function determinarTipoCliente(tipoRuc, ruc) {
+ const TIPO_CLIENTE = Object.freeze({
+  CONTRIBUYENTE: '01',
+  CONSUMIDOR_FINAL: '02',
+  GOBIERNO: '03',
+  EXTRANJERO: '04',
+});
+
+const REGEX = Object.freeze({
+  // Persona Natural (tipoRuc = 1)
+  naturalExtranjero: /^\d{1,2}-NT-\d+-\d+$/,          // 3-NT-1-2345
+  naturalNacional:   /^(\d{1,2}|AV|PI|PA)-\d{1,5}-\d{1,6}$/, // 8-765-4321
+  naturalResidente:  /^(E|N|PE)-\d{1,2}-\d{1,6}$/,    // E-8-123456
+
+  // Persona Jurídica (tipoRuc = 2)
+  juridicaGobierno:  /^\d{1,2}NT-\d+-\d+$/,           // 8NT-0002-004249
+  juridicaExtranjera:/^\d{1,2}-NT-\d+-\d+$/,          // 3-NT-1-2345
+  juridicaModerno:   /^\d{5,12}-[1-9]-\d{4}$/,        // 155699999-2-2023
+  juridicaAntiguo:   /^\d{3,8}-\d{1,4}-\d{3,8}$/,     // 12345-67-8910
+});
+
+  if (!ruc || typeof ruc !== 'string') {
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+  }
+
+  const rucLimpio = ruc.trim().toUpperCase();
+  const tipo = Number(tipoRuc);
+
+  // ---------------- PERSONA NATURAL ----------------
+  if (tipo === 1) {
+    if (REGEX.naturalExtranjero.test(rucLimpio)) {
+      return TIPO_CLIENTE.EXTRANJERO;
+    }
+    if (REGEX.naturalNacional.test(rucLimpio) || REGEX.naturalResidente.test(rucLimpio)) {
+      return TIPO_CLIENTE.CONTRIBUYENTE;
+    }
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+  }
+
+  // ---------------- PERSONA JURÍDICA ----------------
+  if (tipo === 2) {
+    if (REGEX.juridicaGobierno.test(rucLimpio)) {
+      return TIPO_CLIENTE.GOBIERNO;
+    }
+    if (REGEX.juridicaExtranjera.test(rucLimpio)) {
+      return TIPO_CLIENTE.EXTRANJERO;
+    }
+    if (REGEX.juridicaModerno.test(rucLimpio) || REGEX.juridicaAntiguo.test(rucLimpio)) {
+      return TIPO_CLIENTE.CONTRIBUYENTE;
+    }
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+  }
+
+  // tipoRuc inválido
+  return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+}
