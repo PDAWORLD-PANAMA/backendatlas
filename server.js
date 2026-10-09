@@ -82,6 +82,8 @@ const empresaSchema = new mongoose.Schema({
    banner1:{ type: String, trim: true },
    banner2:{ type: String, trim: true },
    banner3:{ type: String, trim: true },
+   banner4:{ type: String, trim: true },
+   banner5:{ type: String, trim: true },
 
 }, { timestamps: true });
 
@@ -2720,7 +2722,15 @@ const bodyXml = await soapResponse.text();
             console.log("Resp Proceso ", resultadoSOAP.resproceso);
             var mensajeregistro = "Es contribuyente y existe";
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
+const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
+if (!resultado.isValid) {
+  return res.status(400).json({
+    success: false,
+    message: resultado.message
+  });
+}
 
+console.log("RUC válido:", resultado.rucNormalizado);
 var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
 
 //%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%//
@@ -8218,3 +8228,124 @@ const REGEX = Object.freeze({
   // tipoRuc inválido
   return TIPO_CLIENTE.CONSUMIDOR_FINAL;
 }
+
+// rucValidator.js
+// ═══════════════════════════════════════════════════════════════════
+// Valida que el RUC cumpla la estructura DGI y que coincida con el
+// tipoRuc declarado. El RUC se recibe SIN Dígito Verificador.
+// ═══════════════════════════════════════════════════════════════════
+
+const REGEX_DGI = Object.freeze({
+  naturalNacional:  /^(\d{1,2}|\d{1}N|AV|PI|PA)-\d{1,5}-\d{1,6}$/, // 8-765-4321
+  naturalResidente: /^(E|N|PE)-\d{1,2}-\d{1,6}$/,                  // E-8-123456
+  juridicaActual:   /^\d{5,12}-[1-9]-\d{4}$/,                      // 155699999-2-2023
+  juridicaAntigua:  /^\d{3,8}-\d{1,4}-\d{3,8}$/,                   // 12345-67-8910
+  extranjera:       /^\d{1,2}-NT-\d+-\d+$/,                        // 3-NT-1-2345
+  gobierno:         /^\d{1,2}NT-\d+-\d+$/,                         // 8NT-0002-004249
+});
+
+/**
+ * Valida estructura del RUC y coherencia con tipoRuc.
+ * @param {string|number} tipoRuc - "1": Persona Natural, "2": Persona Jurídica
+ * @param {string} ruc - RUC sin DV (ej: "8-765-4321", "8NT-0002-004249")
+ * @returns {boolean} true si el formato es válido Y coherente con tipoRuc
+ */
+function validarRucDgiDetalle(tipoRuc, ruc) {
+  if (!ruc || typeof ruc !== 'string' || ruc.trim() === '') {
+    return {
+      isValid: false,
+      message: 'El RUC es obligatorio',
+      tipoDetectado: null,
+      rucNormalizado: null
+    };
+  }
+
+  const rucLimpio = ruc.trim().toUpperCase();
+  const tipo = String(tipoRuc).trim();
+
+  const REGEX_DGI = {
+    naturalNacional: /^(\d{1,2}|\d{1}N|AV|PI|PA)-\d{1,5}-\d{1,6}$/,
+    naturalResidente: /^(E|N|PE)-\d{1,2}-\d{1,6}$/,
+    juridicaActual: /^\d{5,12}-[1-9]-\d{4}$/,
+    juridicaAntigua: /^\d{3,8}-\d{1,4}-\d{3,8}$/,
+    extranjera: /^\d{1,2}-NT-\d+-\d+$/,
+    gobierno: /^\d{1,2}NT-\d+-\d+$/,
+  };
+
+  let tipoDetectado = null;
+
+  if (REGEX_DGI.gobierno.test(rucLimpio)) {
+    tipoDetectado = 'GOBIERNO';
+  } else if (REGEX_DGI.extranjera.test(rucLimpio)) {
+    tipoDetectado = 'EXTRANJERA';
+  } else if (
+    REGEX_DGI.juridicaActual.test(rucLimpio) ||
+    REGEX_DGI.juridicaAntigua.test(rucLimpio)
+  ) {
+    tipoDetectado = 'JURIDICA';
+  } else if (
+    REGEX_DGI.naturalNacional.test(rucLimpio) ||
+    REGEX_DGI.naturalResidente.test(rucLimpio)
+  ) {
+    tipoDetectado = 'NATURAL';
+  }
+
+  if (!tipoDetectado) {
+    return {
+      isValid: false,
+      message: 'El RUC no cumple con ningún formato válido de la DGI',
+      tipoDetectado: null,
+      rucNormalizado: rucLimpio
+    };
+  }
+
+  if (tipo !== '1' && tipo !== '2') {
+    return {
+      isValid: false,
+      message: 'El tipoRuc debe ser 1 para Natural o 2 para Jurídica',
+      tipoDetectado,
+      rucNormalizado: rucLimpio
+    };
+  }
+
+  if (tipo === '1') {
+    if (tipoDetectado === 'NATURAL' || tipoDetectado === 'EXTRANJERA') {
+      return {
+        isValid: true,
+        message: 'RUC válido',
+        tipoDetectado,
+        rucNormalizado: rucLimpio
+      };
+    }
+
+    return {
+      isValid: false,
+      message: `El RUC corresponde a ${tipoDetectado}, pero el tipoRuc enviado es Natural`,
+      tipoDetectado,
+      rucNormalizado: rucLimpio
+    };
+  }
+
+  if (tipo === '2') {
+    if (
+      tipoDetectado === 'JURIDICA' ||
+      tipoDetectado === 'EXTRANJERA' ||
+      tipoDetectado === 'GOBIERNO'
+    ) {
+      return {
+        isValid: true,
+        message: 'RUC válido',
+        tipoDetectado,
+        rucNormalizado: rucLimpio
+      };
+    }
+
+    return {
+      isValid: false,
+      message: `El RUC corresponde a ${tipoDetectado}, pero el tipoRuc enviado es Jurídica`,
+      tipoDetectado,
+      rucNormalizado: rucLimpio
+    };
+  }
+}
+
