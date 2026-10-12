@@ -1211,7 +1211,6 @@ app.put("/api/empresa/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
-    delete updateData.rucempresa;
     delete updateData._id;
     delete updateData.createdAt;
     const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData, { new: true, runValidators: true, context: 'query' });
