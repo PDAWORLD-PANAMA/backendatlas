@@ -1213,7 +1213,8 @@ app.put("/api/empresa/:id", async (req, res) => {
     const updateData = { ...req.body };
     delete updateData._id;
     delete updateData.createdAt;
-    const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData, { new: true, runValidators: true, context: 'query' });
+    const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData,
+    { new: true, runValidators: true, context: 'query' });
     if (!updated) return res.status(404).json({ success: false, message: "Configuración no encontrada" });
     res.json({ success: true, message: "✅ Configuración actualizada exitosamente", data: updated });
   } catch (err) {
