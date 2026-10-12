@@ -1211,6 +1211,7 @@ app.put("/api/empresa/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
+    console.log("RUC received:", JSON.stringify(req.body.rucempresa));
     delete updateData._id;
     delete updateData.createdAt;
     const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData,
