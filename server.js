@@ -3347,7 +3347,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 
 console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la factura...`);
 
-var  resultadoproceso = convertirEnviarThefactory(nofactura);
+var  resultadoproceso = convertirEnviarThefactory(nofactura,res);
 
 console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
 var facturaseacrh = nofactura;
@@ -8365,25 +8365,21 @@ function validarRucDgiDetalle(tipoRuc, ruc) {
     };
   }
 }
-async function convertirEnviarThefactory(nofactura) {
+async function convertirEnviarThefactory(nofactura,res) {
     try {
         const nofacturaUpper = nofactura.toUpperCase();
-console.log("Obtener datos de mongo atlas factura ");
+console.log("Obtener datos de mongo atlas factura en la funcion convertirEnviarTheFactory  ");
         // 1. OBTENER DATOS DESDE ATLAS DB
-        const factura =  await FacturaHead.findOne({ nofactura: nofacturaUpper });
-        if (!factura) {
-        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: null } };
-        }
+        const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+console.log("Obtener datos de mongo atlas detallefactura ");
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
-        if (!detalles || detalles.length === 0){ 
-return { status: 400, body: { success: false,message: 'La factura no tiene detalles', data: null } };
-        }
+        if (!detalles || detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+console.log("Obtener datos de mongo atlas EmpresaConfig ");
         const empresa = await EmpresaConfig.findOne({});
-        if (!empresa) {
-return { status: 403, body: { success: false, message: 'Configuración de empresa no encontrada' ,data: null } };
-        }
+        if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+console.log("Obtener datos de mongo atlas Ubicacion ");
         const tablaUbicacion = await Ubicacion.find({});
-
         // 2. PREPARAR VARIABLES (Mapeo desde tu Schema de Mongoose)
         const escapeXml = (unsafe) => {
             if (!unsafe) return '';
