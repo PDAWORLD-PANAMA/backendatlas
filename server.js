@@ -8715,6 +8715,8 @@ console.log("Ejecutar la llamada al SOAP");
         }
     });
 
+    console.log("Respuesta del SOAP  >>>>>>> ", soapResponse);
+
     if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
 
     const bodyXml = await soapResponse.text();
@@ -8736,7 +8738,7 @@ console.log("Ejecutar la llamada al SOAP");
 
     // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
     if (resultadoSOAP.codigoHandle === "200") {
-        const today = new Date().toISOString().slice(0, 10);
+       
         
         // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
         const facturaActualizada = await FacturaHead.findByIdAndUpdate(
@@ -8745,8 +8747,6 @@ console.log("Ejecutar la llamada al SOAP");
                 $set: {
                     facturaelectronica: resultadoSOAP.cufeHandle,
                     facturaqr: resultadoSOAP.qrHandle,
-                    fechaEmision: today,
-                    fechaSalida: today,
                     fechadgiauto: resultadoSOAP.fecharecepHandle,
                     autorizandgi: resultadoSOAP.protocoloHandle,
                     estado: 'A',
