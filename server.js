@@ -3348,7 +3348,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la factura...`);
 
 var  resultadoproceso = convertirEnviarThefactory(nofactura);
-console.log("Retorno de funcion Enviar a Thefactory  ",resultado´roceso);
+console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
 
 //***********************************************************//
 
