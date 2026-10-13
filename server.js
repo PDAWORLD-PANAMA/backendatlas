@@ -8579,6 +8579,7 @@ console.log("Construyendo SOAP XML ");
             let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
             let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
             let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+            let wcodtasaisc  = det.codtasaisc;
 
             let wtasaitbms = "00";
             if (wcodimpuesto1 !== 0) wtasaitbms = "01";
@@ -8637,8 +8638,8 @@ if (wtasaitbms === "01" || wtasaitbms === "02" || wtasaitbms === "03") {
         `<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
 }
 
-if (codtasaisc === "01" || codtasaisc === "02" || codtasaisc === "03" ||
-    codtasaisc === "04" || codtasaisc === "05" || codtasaisc === "06") {
+if (wcodtasaisc === "01" || wcodtasaisc === "02" || wcodtasaisc === "03" ||
+    wcodtasaisc === "04" || wcodtasaisc === "05" || wcodtasaisc === "06") {
     const wvalorisc = Number(det.valorisc) || 0;
     xmlenviartasa +=
         `<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n` +
