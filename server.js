@@ -3349,11 +3349,16 @@ console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la fac
 
 var  resultadoproceso = convertirEnviarThefactory(nofactura);
 console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
-
+var facturaseacrh = nofactura;
 //***********************************************************//
 
         // 9. ACTUALIZAR COTIZACIÓN ORIGINAL
         console.log(`🔍 [Paso 9] Actualizando marca de conversión en CotizaHead...`);
+        const facturaEncontrada =  await FacturaHead.findOne({ nofactura: facturaseacrh });
+        if (!facturaEncontrada) {
+        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: null } };
+        }
+        if (facturaEncontrada.estado !== "Rechazada"){
         const cotizaActualizada = await CotizaHead.findOneAndUpdate(
             { nocotiza: nocotizaUpper },
             {
@@ -3371,7 +3376,10 @@ console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
             throw new Error("No se pudo actualizar la cotización tras la conversión");
         }
         console.log(`✅ [Paso 9 Éxito] CotizaHead actualizada a coticonvertido = 'S'.`);
-
+          }
+          else{
+            console.log(`✅ [Paso 9 Fallo] Factura Rechazada por Thefactory en conversion paso 9 regreso de la funcion.`);
+          }
         // 10. ACTUALIZAR EMPRESACONFIG
         console.log(`🔍 [Paso 10] Actualizando contador de factura en EmpresaConfig a ${countFactura}...`);
         await EmpresaConfig.findByIdAndUpdate(
@@ -8363,15 +8371,15 @@ async function convertirEnviarThefactory(nofactura) {
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura =  await FacturaHead.findOne({ nofactura: nofacturaUpper });
         if (!factura) 
-        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: facturaActualizada } };
+        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: null } };
 
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
         if (!detalles || detalles.length === 0) 
-return { status: 400, body: { success: false,message: 'La factura no tiene detalles', data: facturaActualizada } };
+return { status: 400, body: { success: false,message: 'La factura no tiene detalles', data: null } };
 
         const empresa = await EmpresaConfig.findOne({});
         if (!empresa) return
-return { status: 403, body: { success: false, message: 'Configuración de empresa no encontrada' ,data: facturaActualizada } };
+return { status: 403, body: { success: false, message: 'Configuración de empresa no encontrada' ,data: null } };
 
         const tablaUbicacion = await Ubicacion.find({});
 
@@ -8415,7 +8423,7 @@ console.log("Preparando datos de factura en funcion ");
         let fesucursalemisor = empresa.codigosucemisor || "001";
         let fetokenempresa = (empresa.tokenempresa || "").trim();
         let fetokenclave = (empresa.tokenclave || "").trim();
-console.log("Construyendo SOAP XML ")
+console.log("Construyendo SOAP XML ");
         // 3. CONSTRUIR XML SOAP (Sintaxis XML corregida)
         let xmlniv1 = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
@@ -8446,7 +8454,7 @@ console.log("Construyendo SOAP XML ")
         let xmlenviarlist = "";
         let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
 
-        console.log("Cargando detalle de factura al SOAP ")
+        console.log("Cargando detalle de factura al SOAP ");
         for (let det of detalles) {
             let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : new Date().toISOString().slice(0, 10);
             let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : new Date().toISOString().slice(0, 10);
