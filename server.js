@@ -3348,6 +3348,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la factura...`);
 
 var  resultadoproceso = convertirEnviarThefactory(nofactura);
+
 console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
 var facturaseacrh = nofactura;
 //***********************************************************//
@@ -8367,20 +8368,20 @@ function validarRucDgiDetalle(tipoRuc, ruc) {
 async function convertirEnviarThefactory(nofactura) {
     try {
         const nofacturaUpper = nofactura.toUpperCase();
-
+console.log("Obtener datos de mongo atlas factura ");
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura =  await FacturaHead.findOne({ nofactura: nofacturaUpper });
-        if (!factura) 
+        if (!factura) {
         return { status: 404, body: { success: false, message: 'Factura no encontrada', data: null } };
-
+        }
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
-        if (!detalles || detalles.length === 0) 
+        if (!detalles || detalles.length === 0){ 
 return { status: 400, body: { success: false,message: 'La factura no tiene detalles', data: null } };
-
+        }
         const empresa = await EmpresaConfig.findOne({});
-        if (!empresa) return
+        if (!empresa) {
 return { status: 403, body: { success: false, message: 'Configuración de empresa no encontrada' ,data: null } };
-
+        }
         const tablaUbicacion = await Ubicacion.find({});
 
         // 2. PREPARAR VARIABLES (Mapeo desde tu Schema de Mongoose)
