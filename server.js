@@ -3345,8 +3345,22 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             console.log(`✅ [Paso 8 Éxito] FacturaDetalle insertado exitosamente.`);
         }
 
-console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la factura...`);
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('❌ ==================================================');
+        console.error(`❌ ERROR CRÍTICO AL CONVERTIR COTIZACIÓN "${nocotiza}":`);
+        console.error(`❌ Mensaje: ${error.message}`);
+        console.error(`❌ Stack Trace:\n`, error.stack || error);
+        console.error('❌ ==================================================');
 
+        return res.status(500).json({
+            success: false,
+            message: 'Error al convertir cotización a factura',
+            error: error.message || String(error)
+        });
+    } finally {
+        session.endSession();
+//***************//
 var  resultadoproceso = convertirEnviarThefactory(nofactura,res);
 
 console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
@@ -3408,21 +3422,8 @@ var facturaseacrh = nofactura;
             }
         });
 
-    } catch (error) {
-        await session.abortTransaction();
-        console.error('❌ ==================================================');
-        console.error(`❌ ERROR CRÍTICO AL CONVERTIR COTIZACIÓN "${nocotiza}":`);
-        console.error(`❌ Mensaje: ${error.message}`);
-        console.error(`❌ Stack Trace:\n`, error.stack || error);
-        console.error('❌ ==================================================');
 
-        return res.status(500).json({
-            success: false,
-            message: 'Error al convertir cotización a factura',
-            error: error.message || String(error)
-        });
-    } finally {
-        session.endSession();
+//**************//
         console.log(`🔚 [FIN SESIÓN] Sesión Mongoose cerrada para la conversión de "${nocotiza}".\n`);
     }
 });
