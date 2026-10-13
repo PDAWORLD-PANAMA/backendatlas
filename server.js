@@ -3168,78 +3168,37 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
 // ---------------------------------------------------------------
 console.log(`🔍 [Paso 3] Reservando siguiente número de factura (atómico)...`);
 
-const empresa = await EmpresaConfig.findOneAndUpdate(
-    {},
-    [
-        {
-            $set: {
-                countfactura: {
-                    $toString: {
-                        $add: [
-                            {
-                                $convert: {
-                                    input:  '$countfactura',
-                                    to:     'int',
-                                    onError: 0,     // corrupt value → treat as 0
-                                    onNull:  0      // missing value  → treat as 0
-                                }
-                            },
-                            1
-                        ]
-                    }
-                }
-            }
-        }
-    ],
-    { new: true, returnDocument: 'after' }
-);
+// ---------------------------------------------------------------
+// 3. GENERAR NÚMERO DE FACTURA (SIMPLE)
+// ---------------------------------------------------------------
+console.log(`🔍 [Paso 3] Consultando EmpresaConfig para obtener contador de facturas...`);
 
+const empresa = await EmpresaConfig.findOne({});
 if (!empresa) {
     console.log(`❌ [Paso 3 Fallo] Configuración de empresa no encontrada.`);
     return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 }
 
-// empresa.countfactura is already the *new* string value
-countFactura = parseInt(empresa.countfactura, 10);
-
+// countfactura is a STRING in the DB — convert to number
+countFactura = parseInt(empresa.countfactura || '0', 10);
 if (!Number.isFinite(countFactura)) {
-    // Extremely unlikely now, because $convert + $add guarantees a number,
-    // but keep a defensive fallback anyway.
-    console.log(`⚠️ [Paso 3 Aviso] countfactura inválido ("${empresa.countfactura}"), reiniciando a 1.`);
-    countFactura = 1;
-    await EmpresaConfig.findByIdAndUpdate(
-    empresa._id,
-    [
-        {
-            $set: {
-                countfactura: {
-                    $toString: {
-                        $max: [
-                            0,
-                            {
-                                $add: [
-                                    {
-                                        $convert: {
-                                            input:  '$countfactura',
-                                            to:     'int',
-                                            onError: 0,
-                                            onNull:  0
-                                        }
-                                    },
-                                    -1
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    ]
-);
+    console.log(`⚠️ [Paso 3 Aviso] countfactura inválido ("${empresa.countfactura}"), usando 0.`);
+    countFactura = 0;
 }
 
+// Increment
+countFactura = countFactura + 1;
+
+// Build the 10-digit invoice number
 nofactura = String(countFactura).padStart(10, '0');
-console.log(`✅ [Paso 3 Éxito] Nuevo número de factura reservado: "${nofactura}"`);
+
+// Save back as a STRING
+await EmpresaConfig.findByIdAndUpdate(
+    empresa._id,
+    { $set: { countfactura: String(countFactura) } }
+);
+
+console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura}" (countfactura=${countFactura})`);
 
         // ---------------------------------------------------------------
         // 4. OBTENER DETALLES DE LA COTIZACIÓN
@@ -3249,35 +3208,6 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura reservado: "${nofactur
         if (!cotizaDetalles || cotizaDetalles.length === 0) {
             console.log(`❌ [Paso 4 Fallo] Sin líneas de detalle para "${nocotizaUpper}".`);
             // Release the reserved counter since we're not creating a factura
-            await EmpresaConfig.findByIdAndUpdate(
-    empresa._id,
-    [
-        {
-            $set: {
-                countfactura: {
-                    $toString: {
-                        $max: [
-                            0,
-                            {
-                                $add: [
-                                    {
-                                        $convert: {
-                                            input:  '$countfactura',
-                                            to:     'int',
-                                            onError: 0,
-                                            onNull:  0
-                                        }
-                                    },
-                                    -1
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-    ]
-);
             return res.status(400).json({ success: false, message: 'La cotización no tiene detalles' });
         }
         console.log(`✅ [Paso 4 Éxito] Se encontraron ${cotizaDetalles.length} detalle(s).`);
