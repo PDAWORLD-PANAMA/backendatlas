@@ -3306,8 +3306,8 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
             fechainicial: fechasistema,
             fechafinal: fechasistema,
             procesoalquiler: '',
-            fechaEmision: today,
-            fechaSalida: today,
+            fechaEmision: formatPanamaDate(),
+            fechaSalida: formatPanamaDate(),
             duraciondias: 0,
             retenedor: cotiza.retenedor || '0',
             montoretencion: 0,
@@ -8449,6 +8449,23 @@ function validarRucDgiDetalle(tipoRuc, ruc) {
     };
   }
 }
+/**
+ * Returns a Panama-local timestamp as "YYYY-MM-DDTHH:mm:ss-05:00".
+ * Panama is UTC-5 with no DST.
+ */
+function formatPanamaDate(date = new Date()) {
+    // Shift the instant to Panama wall-clock time by subtracting 5h from UTC.
+    const panama = new Date(date.getTime() - 5 * 60 * 60 * 1000);
+
+    const yyyy = panama.getUTCFullYear();
+    const mm   = String(panama.getUTCMonth() + 1).padStart(2, '0');
+    const dd   = String(panama.getUTCDate()).padStart(2, '0');
+    const hh   = String(panama.getUTCHours()).padStart(2, '0');
+    const mi   = String(panama.getUTCMinutes()).padStart(2, '0');
+    const ss   = String(panama.getUTCSeconds()).padStart(2, '0');
+
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}-05:00`;
+}
 async function convertirEnviarThefactory(nofactura,res) {
     try {
         const nofacturaUpper = nofactura.toUpperCase();
@@ -8472,8 +8489,8 @@ console.log("Obtener datos de mongo atlas Ubicacion ");
 console.log("Preparando datos de factura en funcion ");
 const today = new Date().toISOString().slice(0, 10);
         const wkimptocontrol = factura.impuesto || 0;
-        const fechaEmision = today;
-        const fechaSalida =  today;
+        const fechaEmision = formatPanamaDate();
+        const fechaSalida =  formatPanamaDate();
 
         let fenaturalezaop = factura.naturalezaoperacion || '01';
         let fetipodocumento = factura.tipodocumento || '01';
