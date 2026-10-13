@@ -8739,29 +8739,28 @@ console.log("Ejecutar la llamada al SOAP");
     // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
     if (resultadoSOAP.codigoHandle === "200") {
        
-        
         // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
-        const facturaActualizada = await FacturaHead.findByIdAndUpdate(
-            factura._id,
-            {
-                $set: {
+         await FacturaHead.findByIdAndUpdate(factura._id,
+            { $set: 
+                {
                     facturaelectronica: resultadoSOAP.cufeHandle,
                     facturaqr: resultadoSOAP.qrHandle,
                     fechadgiauto: resultadoSOAP.fecharecepHandle,
                     autorizandgi: resultadoSOAP.protocoloHandle,
                     estado: 'A',
                     fechaActualizacion: new Date().toISOString()
-                }
-            },
-            { new: true } // Devuelve el documento ya actualizado
-        );
+                } 
+            }, { returnDocument: 'after' })
+console.log("CodigoHandle = 200  convirtiendo cotizacion a factura ");
            await descontarFolioPAC();
         // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
          return { status: 200, body: { success: true, message: 'Factura electrónica aceptada por TheFactory',data: facturaActualizada } };
     }    // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
-            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
+            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' }},
+                 { returnDocument: 'after' }
+            );
             
             // 🔹 REVERTIR INVENTARIO (Al ser rechazada, no se debe descontar nada)
             for (const det of detalles) {
