@@ -5655,6 +5655,7 @@ try {
 const { nofactura } = req.params;
 const { tipoNota, motivo, detalles, montoTotal } = req.body;
 const nofacturaUpper = nofactura;
+const today = new Date().toISOString().slice(0, 10);
     // 1. OBTENER FACTURA ORIGINAL Y VALIDAR
     console.log(`🔍 [Paso 1] Buscando Factura Original Nota credito: "${nofactura}"...`);
 const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
@@ -5747,8 +5748,8 @@ var resultado = totalNC - impuestoNC
          fechafactura: factura.fechafactura,
          fechacredito: fechasistema,
          fechavencimiento: factura.fechavencimiento,
-         fechaEmision: fechaEmisiontmp,
-         fechaSalida: fechaSalidatmp,
+         fechaEmision: today,
+         fechaSalida: today,
          tipoclientefe: factura.tipoclientefe,
          codcliente: factura.codcliente,
          idglobalcorpo: factura.idglobalcorporp,
@@ -6457,7 +6458,7 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
 });
 
 const tablaUbicacion = await Ubicacion.find({});
-
+const today = new Date().toISOString().slice(0, 10);
 // 2. GENERAR FECHAS
 var fechasistema = formatLocalYmd(new Date());
 const fechaEmisiontmp = getPanamaISODate(factura.fechaEmision || new Date());
@@ -6504,8 +6505,8 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
             fechafactura: factura.fechafactura,
             fechadebito: fechasistema,
             fechavencimiento: factura.fechavencimiento,
-            fechaEmision: fechasistema,
-            fechaSalida: fechasistema,
+            fechaEmision: today,
+            fechaSalida: today,
             formatocafe: factura.formatocafe,
             entregacafe: factura.entregacafe,
             procesogeneracion: factura.procesogeneracion,
@@ -8469,9 +8470,10 @@ console.log("Obtener datos de mongo atlas Ubicacion ");
             return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
         };
 console.log("Preparando datos de factura en funcion ");
+const today = new Date().toISOString().slice(0, 10);
         const wkimptocontrol = factura.impuesto || 0;
-        const fechaEmision = factura.fechaEmision;
-        const fechaSalida =  factura.fechaSalida;
+        const fechaEmision = today;
+        const fechaSalida =  today;
 
         let fenaturalezaop = factura.naturalezaoperacion || '01';
         let fetipodocumento = factura.tipodocumento || '01';
