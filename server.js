@@ -3407,7 +3407,8 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         // ---------------------------------------------------------------
         console.log(`🔍 [Paso 9] Llamando a convertirEnviarThefactory("${nofactura}")...`);
         const resultadoproceso = await convertirEnviarThefactory(nofactura, res);
-        console.log(`✅ [Paso 9 Retorno] TheFactory:`, resultadoproceso);
+
+     //********   console.log(`✅ [Paso 9 Retorno] TheFactory:`, resultadoproceso);  *************//
 
         // Re-read the header to see the estado TheFactory wrote
         const facturaEncontrada = await FacturaHead.findOne({ nofactura: nofactura });
@@ -8450,6 +8451,18 @@ function validarRucDgiDetalle(tipoRuc, ruc) {
   }
 }
 /**
+ * Formats a value as a non-negative number with exactly 2 decimals.
+ * Returns "0.00" for anything NaN / Infinity / negative.
+ * Matches TheFactory's `N|1..9|2` contract for valorITBMS.
+ */
+function fmtTax(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0) return '0.00';
+    // Guard against "-0.00" sneaking out of toFixed
+    const r = n.toFixed(2);
+    return r === '-0.00' ? '0.00' : r;
+}
+/**
  * Returns a Panama-local timestamp as "YYYY-MM-DDTHH:mm:ss-05:00".
  * Panama is UTC-5 with no DST.
  */
@@ -8610,31 +8623,30 @@ console.log("Construyendo SOAP XML ");
 <ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario><ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
 <ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem><ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
 
-            var xmlenviartasa = "";
-            if (wtasaitbms == "01") {
-                var wparinter = Math.floor(wvalorimpuestoitem);
-                var wintermedio = wparinter.toString();
-                var decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
-                var larente = wintermedio.length;
-                var winter2 = 9 - larente;
-                var wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
+            let xmlenviartasa = "";
 
-                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n
-                 <ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
-            }
-            if (wtasaitbms == "00") {
-                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
-                 <ser:valorITBMS>0.00</ser:valorITBMS>\n`;
-            }
-            if (wtasaitbms == "02") {
-                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
-                 <ser:valorITBMS>0.00</ser:valorITBMS>\n
-      <ser:tasaISC>${wtasaisc}</ser:tasaISC>\n
-                 <ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
-            }
+if (wtasaitbms === "01" || wtasaitbms === "02" || wtasaitbms === "03") {
+    // Never emit a nonzero rate with a zero amount
+    const valorStr = fmtTax(wvalorimpuestoitem);
+    xmlenviartasa =
+        `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n` +
+        `<ser:valorITBMS>${valorStr}</ser:valorITBMS>\n`;
+} else {
+    xmlenviartasa =
+        `<ser:tasaITBMS>00</ser:tasaITBMS>\n` +
+        `<ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+}
 
-            xmlenviarlist += xmlenviartasa;
-            xmlenviarlist += `</ser:item>\n`;
+if (codtasaisc === "01" || codtasaisc === "02" || codtasaisc === "03" ||
+    codtasaisc === "04" || codtasaisc === "05" || codtasaisc === "06") {
+    const wvalorisc = Number(det.valorisc) || 0;
+    xmlenviartasa +=
+        `<ser:tasaISC>${wtasaisc}</ser:tasaISC>\n` +
+        `<ser:valorISC>${fmtTax(wvalorisc)}</ser:valorISC>\n`;
+    if (typeof wtotalisc !== 'undefined') wtotalisc += wvalorisc;
+}
+
+xmlenviarlist += xmlenviartasa + `</ser:item>\n`;
         }
 
         console.log("Viendo condiciones de pago ");
