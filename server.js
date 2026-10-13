@@ -8371,6 +8371,7 @@ async function convertirEnviarThefactory(nofactura,res) {
 console.log("Obtener datos de mongo atlas factura en la funcion convertirEnviarTheFactory  ");
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        console.log("Retorno Factura ",factura);
         if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
 console.log("Obtener datos de mongo atlas detallefactura ");
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
