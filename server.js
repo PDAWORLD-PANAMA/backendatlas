@@ -3345,6 +3345,13 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             console.log(`✅ [Paso 8 Éxito] FacturaDetalle insertado exitosamente.`);
         }
 
+console.log(`🔍 [Paso The factory ] LLamar a la rutina de generacion de la factura...`);
+
+var  resultadoproceso = convertirEnviarThefactory(nofactura);
+console.log("Retorno de funcion Enviar a Thefactory  ",resultado´roceso);
+
+//***********************************************************//
+
         // 9. ACTUALIZAR COTIZACIÓN ORIGINAL
         console.log(`🔍 [Paso 9] Actualizando marca de conversión en CotizaHead...`);
         const cotizaActualizada = await CotizaHead.findOneAndUpdate(
@@ -8348,5 +8355,313 @@ function validarRucDgiDetalle(tipoRuc, ruc) {
       rucNormalizado: rucLimpio
     };
   }
+}
+async function convertirEnviarThefactory(nofactura) {
+    try {
+        const nofacturaUpper = nofactura.toUpperCase();
+
+        // 1. OBTENER DATOS DESDE ATLAS DB
+        const factura =  await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+
+        const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+        if (!detalles || detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+
+        const empresa = await EmpresaConfig.findOne({});
+        if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+
+        const tablaUbicacion = await Ubicacion.find({});
+
+        // 2. PREPARAR VARIABLES (Mapeo desde tu Schema de Mongoose)
+        const escapeXml = (unsafe) => {
+            if (!unsafe) return '';
+            return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        };
+
+        const wkimptocontrol = factura.impuesto || 0;
+        const fechaEmision = factura.fechaEmision;
+        const fechaSalida =  factura.fechaSalida;
+
+        let fenaturalezaop = factura.naturalezaoperacion || '01';
+        let fetipodocumento = factura.tipodocumento || '01';
+        let fetipoventa = factura.tipoventa || '1';
+        let fetipoclientefe = factura.tipoclientefe || '01';
+        let fetipocontribuyente = factura.tipocontribuyente || '1';
+        
+        let ferucprt = factura.ruccliente || '';
+        let fedigiverificaprt = factura.digitoverificadoruc || '';
+        let ferazonsocialprt = factura.razonsocial || '';
+        let fedireccionprt = factura.direccioncontribuyente || '';
+        let feemailprt = factura.correocliefe || '';
+        
+        // Reemplazo de variable global gcorreo2
+        if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
+        let fenundocfiscal = factura.nofactura;
+        var fetiempopago = "";
+        var condicionventatmp = factura.condiciones; 
+        if (condicionventatmp !== null){
+         fetiempopago = condicionventatmp;
+        }
+        var feubicacion = "8-8-6"; var feprovincia = "PANAMA"; var fedistrito = "PANAMA"; var fecorregimiento = "BETHANIA";
+        if (fetipoclientefe === "03") {
+            feubicacion = factura.ubicacionid || feubicacion;
+            const ubi = tablaUbicacion.find(u => u.ubicacionid === feubicacion);
+            if (ubi) { feprovincia = ubi.provincia; fedistrito = ubi.distrito; fecorregimiento = ubi.corregimiento; }
+        }
+
+        let fesucursalemisor = empresa.codigosucemisor || "001";
+        let fetokenempresa = (empresa.tokenempresa || "").trim();
+        let fetokenclave = (empresa.tokenclave || "").trim();
+
+        // 3. CONSTRUIR XML SOAP (Sintaxis XML corregida)
+        let xmlniv1 = `
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
+<soapenv:Header/><soapenv:Body><tem:Enviar>
+<tem:tokenEmpresa>${fetokenempresa}</tem:tokenEmpresa>
+<tem:tokenPassword>${fetokenclave}</tem:tokenPassword>
+<tem:documento>
+<ser:codigoSucursalEmisor>${fesucursalemisor}</ser:codigoSucursalEmisor><ser:tipoSucursal>1</ser:tipoSucursal>
+<ser:datosTransaccion>
+<ser:tipoEmision>01</ser:tipoEmision><ser:tipoDocumento>${fetipodocumento}</ser:tipoDocumento>
+<ser:numeroDocumentoFiscal>${fenundocfiscal}</ser:numeroDocumentoFiscal><ser:puntoFacturacionFiscal>001</ser:puntoFacturacionFiscal>
+<ser:fechaEmision>${fechaEmision}</ser:fechaEmision><ser:fechaSalida>${fechaSalida}</ser:fechaSalida>
+<ser:naturalezaOperacion>${fenaturalezaop}</ser:naturalezaOperacion><ser:tipoOperacion>1</ser:tipoOperacion>
+<ser:destinoOperacion>1</ser:destinoOperacion><ser:formatoCAFE>1</ser:formatoCAFE>
+<ser:entregaCAFE>1</ser:entregaCAFE><ser:envioContenedor>1</ser:envioContenedor>
+<ser:procesoGeneracion>1</ser:procesoGeneracion><ser:tipoVenta>${fetipoventa}</ser:tipoVenta>
+<ser:informacionInteres>Informacion Interes</ser:informacionInteres>
+<ser:cliente>
+<ser:tipoClienteFE>${fetipoclientefe}</ser:tipoClienteFE><ser:tipoContribuyente>${fetipocontribuyente}</ser:tipoContribuyente>
+<ser:numeroRUC>${ferucprt}</ser:numeroRUC><ser:digitoVerificadorRUC>${fedigiverificaprt}</ser:digitoVerificadorRUC>
+<ser:razonSocial>${escapeXml(ferazonsocialprt)}</ser:razonSocial><ser:direccion>${escapeXml(fedireccionprt)}</ser:direccion>
+<ser:codigoUbicacion>${feubicacion}</ser:codigoUbicacion><ser:provincia>${feprovincia}</ser:provincia>
+<ser:distrito>${fedistrito}</ser:distrito><ser:corregimiento>${fecorregimiento}</ser:corregimiento>
+<ser:correoElectronico1>${feemailprt}</ser:correoElectronico1><ser:pais>PA</ser:pais>
+</ser:cliente></ser:datosTransaccion>`;
+
+        let xmlistseg = "\n<ser:listaItems>\n";
+        let xmlenviarlist = "";
+        let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
+
+        for (let det of detalles) {
+            let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : new Date().toISOString().slice(0, 10);
+            let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : new Date().toISOString().slice(0, 10);
+
+            let descpor = parseFloat(det.descuento || 0) / 100;
+            let wpreciowk = parseFloat(det.precio || 0);
+            let wcantidaditem = parseFloat(det.cantidad || 0);
+            let wimpuestoitem = parseFloat(det.impuesto1 || 0) / 100;
+            let wtasaisc = parseFloat(det.tasaisc || 0);
+            let wcodimpuesto1 = parseFloat(det.impuesto1 || 0);
+            let wcodimpuesto2 = parseFloat(det.impuesto2 || 0);
+            let wcodimpuesto3 = parseFloat(det.impuesto3 || 0);
+
+            let wtasaitbms = "00";
+            if (wcodimpuesto1 !== 0) wtasaitbms = "01";
+            if (wcodimpuesto2 !== 0) wtasaitbms = "02";
+            if (wcodimpuesto3 !== 0) wtasaitbms = "03";
+
+            let wvalordesc = 0; let wprecioitem = wpreciowk * wcantidaditem;
+            if (descpor > 0) {
+                wvalordesc = wpreciowk * descpor;
+                wtotaldescuento += wvalordesc;
+                wprecioitem = (wpreciowk - wvalordesc) * wcantidaditem;
+            }
+            wtotalprecioneto += wprecioitem;
+
+            let wvalorimpuestoitem = 0;
+            if (wtasaitbms === "00" || wtasaitbms === "01") wvalorimpuestoitem = wprecioitem * wimpuestoitem;
+            wvalorimpuestoitem = parseFloat(wvalorimpuestoitem.toFixed(2));
+
+            if (parseFloat(wkimptocontrol) === 0) { wtasaitbms = "00"; wvalorimpuestoitem = 0; }
+            if (wtasaitbms === "01") wtotalitbms += parseFloat(wvalorimpuestoitem);
+
+            let wtotlinitem = wprecioitem;
+            if (wtasaitbms === "01") wtotlinitem += wvalorimpuestoitem;
+
+            let wpormayor = parseFloat(det.pormayor || 0);
+            if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
+            let wentrega = wpormayor * wcantidaditem;
+            wtotaldefactura += wtotlinitem;
+
+            xmlenviarlist += `<ser:item>
+<ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
+<ser:codigo>${escapeXml(det.codproducto)}</ser:codigo><ser:unidadMedida>und</ser:unidadMedida>
+<ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad><ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
+<ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
+
+            if (fetipoclientefe === "03" && det.codigobienes) {
+                xmlenviarlist += `<ser:codigoCPBSAbrev>${det.codigobienes.substring(0, 2)}</ser:codigoCPBSAbrev>
+<ser:codigoCPBS>${det.codigobienes}</ser:codigoCPBS><ser:unidadMedidaCPBS>und</ser:unidadMedidaCPBS>\n`;
+            }
+
+            xmlenviarlist += `<ser:infoItem>modelo : ${escapeXml(det.modelo)}   ${escapeXml(det.acabados)}</ser:infoItem>
+<ser:precioUnitario>${wpreciowk.toFixed(2)}</ser:precioUnitario><ser:precioUnitarioDescuento>${wvalordesc.toFixed(2)}</ser:precioUnitarioDescuento>
+<ser:precioItem>${wprecioitem.toFixed(2)}</ser:precioItem><ser:valorTotal>${wtotlinitem.toFixed(2)}</ser:valorTotal>\n`;
+
+            var xmlenviartasa = "";
+            if (wtasaitbms == "01") {
+                var wparinter = Math.floor(wvalorimpuestoitem);
+                var wintermedio = wparinter.toString();
+                var decimalStr = wvalorimpuestoitem.toString().split('.')[1] || '00';
+                var larente = wintermedio.length;
+                var winter2 = 9 - larente;
+                var wValornvatasa = "0".repeat(winter2) + wintermedio + "." + decimalStr;
+
+                xmlenviartasa = `<ser:tasaITBMS>${wtasaitbms}</ser:tasaITBMS>\n
+                 <ser:valorITBMS>${wValornvatasa}</ser:valorITBMS>\n`;
+            }
+            if (wtasaitbms == "00") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n`;
+            }
+            if (wtasaitbms == "02") {
+                xmlenviartasa = `<ser:tasaITBMS>00</ser:tasaITBMS>\n
+                 <ser:valorITBMS>0.00</ser:valorITBMS>\n
+      <ser:tasaISC>${wtasaisc}</ser:tasaISC>\n
+                 <ser:valorISC>${parseFloat(wvalorisc).toFixed(3)}</ser:valorISC>\n`;
+            }
+
+            xmlenviarlist += xmlenviartasa;
+            xmlenviarlist += `</ser:item>\n`;
+        }
+
+       let xmlfinitems = `</ser:listaItems>`;
+        var fefechavenceplazo = "x";
+        var fecuotadepagocre = 0;
+        const formatYmd = date => date.toISOString().slice(0, 10);
+        var fechasistema = formatLocalYmd(new Date());
+        var s2x = 0;
+        var fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
+        var fevalorecibido = parseFloat(wtotaldefactura).toFixed(2);
+
+        if (factura.condiciones != "1") {
+            var addDays = (days) => {
+                var d = new Date();
+                d.setDate(d.getDate() + days);
+                return dayjs(d.toLocaleDateString("en-US"));
+            };
+            if (factura.condiciones == "2") {
+                fefechavenceplazo = addDays(30).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "3") {
+                fefechavenceplazo = addDays(45).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "4") {
+                fefechavenceplazo = addDays(60).format();
+                fecuotadepagocre = fevalorcuota;
+            } else if (factura.condiciones == "5") {
+                fefechavenceplazo = addDays(90).format();
+                fecuotadepagocre = fevalorcuota;
+            }
+        }
+
+        var xmltotal = `<ser:totalesSubTotales>
+<ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
+<ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
+<ser:totalMontoGravado>${wtotalitbms.toFixed(2)}</ser:totalMontoGravado>
+<ser:totalFactura>${wtotaldefactura.toFixed(2)}</ser:totalFactura><ser:totalValorRecibido>${wtotaldefactura.toFixed(2)}</ser:totalValorRecibido>
+<ser:tiempoPago>${fetiempopago}</ser:tiempoPago><ser:nroItems>${detalles.length}</ser:nroItems>
+<ser:totalTodosItems>${wtotaldefactura.toFixed(2)}</ser:totalTodosItems>
+<ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${factura.formapago || '01'}</ser:formaPagoFact>
+<ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
+
+        let xmlineareten = ""; let montoreten = 0;
+        if (factura.retenedor && factura.retenedor !== "0") {
+            let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
+            montoreten = wtotalitbms * (tasareten / 100);
+            xmlineareten = `<ser:retencion><ser:codigoRetencion>${factura.retenedor}</ser:codigoRetencion><ser:montoRetencion>${montoreten.toFixed(2)}</ser:montoRetencion></ser:retencion>\n`;
+        }
+
+        let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
+        let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
+
+        // 4. EJECUTAR LLAMADA SOAP (CORREGIDO: La promesa ahora resuelve correctamente)
+      let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+    
+    const soapResponse = await fetch(soapUrl, {
+        method: 'POST',
+        body: xmlenviar,
+        headers: {
+            'User-Agent': 'NODEJS-FETCH',
+            'Content-Type': 'text/xml;charset=utf-8',
+            'SOAPAction': 'http://tempuri.org/IService/Enviar'
+        }
+    });
+
+    if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+
+    const bodyXml = await soapResponse.text();
+    
+    const extractTag = (xml, tag) => {
+        const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+        const match = xml.match(regex);
+        return match ? match[1].trim() : "";
+    };
+
+    const resultadoSOAP = {
+        cufeHandle: extractTag(bodyXml, "cufe"),
+        qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
+        codigoHandle: extractTag(bodyXml, "codigo"),
+        msgHandle: extractTag(bodyXml, "mensaje"),
+        fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
+        protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
+    };
+
+    // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
+    if (resultadoSOAP.codigoHandle === "200") {
+        const today = new Date().toISOString().slice(0, 10);
+        
+        // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
+        const facturaActualizada = await FacturaHead.findByIdAndUpdate(
+            factura._id,
+            {
+                $set: {
+                    facturaelectronica: resultadoSOAP.cufeHandle,
+                    facturaqr: resultadoSOAP.qrHandle,
+                    fechaEmision: today,
+                    fechaSalida: today,
+                    fechadgiauto: resultadoSOAP.fecharecepHandle,
+                    autorizandgi: resultadoSOAP.protocoloHandle,
+                    estado: 'A',
+                    fechaActualizacion: new Date().toISOString()
+                }
+            },
+            { new: true } // Devuelve el documento ya actualizado
+        );
+           await descontarFolioPAC();
+        // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
+        return res.status(200).json({
+            success: true,
+            message: 'Factura electrónica aceptada por TheFactory',
+            data: facturaActualizada 
+        });
+    }    // Si TheFactory la rechaza
+       else {
+            // Si TheFactory la rechaza
+            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
+            
+            // 🔹 REVERTIR INVENTARIO (Al ser rechazada, no se debe descontar nada)
+            for (const det of detalles) {
+                if (det.codproducto) {
+                    await Inventariosede.findOneAndUpdate(
+                        { idinventario: det.codproducto },
+                        { $inc: { cantidispo: (det.cantidad || 0) } 
+                    } // Sumamos lo que se había restado
+                    ),  { returnDocument: 'after' }
+                }
+            }
+            
+            return res.status(400).json({
+                success: false,
+                message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
+                data: null
+            });
+        }
+    }
+ catch (error) {
+    console.error('❌ error en conversion en rutina creando factura en funcion enviar-Thefactory:', error);
+    return res.status(500).json({ success: false, message: 'Error interno funcion convertir cotizacion a factura  ', error: error.message });
+}
 }
 
