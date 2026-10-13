@@ -3104,44 +3104,49 @@ app.put('/api/ventas/cotizaciones/editar/:id', async (req, res) => {
 // 🔹 CONVERTIR COTIZACIÓN A FACTURA
 // ============================================================================
 app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    
     const { nocotiza } = req.params;
     console.log(`\n==================================================`);
     console.log(`🚀 [CONVERTIR] Inicio de proceso para Cotización: "${nocotiza}"`);
     console.log(`==================================================`);
 
+    // These live at function scope so the finally block can use them
+    let nofactura = null;
+    let facturaDetalles = [];
+    let facturaGuardada = null;
+    let cotizaActualizada = null;
+    let countFactura = null;
+
     try {
         if (!nocotiza) {
             console.log(`❌ [CONVERTIR Bad Request] No se proporcionó el parámetro nocotiza.`);
-            await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'El número de cotización es requerido' });
         }
 
         const nocotizaUpper = nocotiza;
 
-        const fechasistema = typeof formatLocalYmd === 'function' 
-            ? formatLocalYmd(new Date()) 
+        const fechasistema = typeof formatLocalYmd === 'function'
+            ? formatLocalYmd(new Date())
             : new Date().toISOString().slice(0, 10);
 
         const today = new Date().toISOString().slice(0, 10);
 
+        // ---------------------------------------------------------------
         // 1. OBTENER COTIZACIÓN BASE (CotizaHead)
+        // ---------------------------------------------------------------
         console.log(`🔍 [Paso 1] Buscando CotizaHead con nocotiza: "${nocotizaUpper}"...`);
-        const cotiza = await CotizaHead.findOne({ nocotiza: nocotizaUpper }).session(session);
+        const cotiza = await CotizaHead.findOne({ nocotiza: nocotizaUpper });
         if (!cotiza) {
-            console.log(`❌ [Paso 1 Fallo] Cotización "${nocotizaUpper}" no encontrada en la base de datos.`);
-            await session.abortTransaction();
+            console.log(`❌ [Paso 1 Fallo] Cotización "${nocotizaUpper}" no encontrada.`);
             return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
         }
         console.log(`✅ [Paso 1 Éxito] Cotización encontrada. ID: ${cotiza._id}, Cliente: ${cotiza.codcliente}`);
 
+        // ---------------------------------------------------------------
         // 2. VALIDAR QUE NO HAYA SIDO CONVERTIDA PREVIAMENTE
+        // ---------------------------------------------------------------
         console.log(`🔍 [Paso 2] Verificando estado de conversión (coticonvertido: "${cotiza.coticonvertido}")...`);
         if (cotiza.coticonvertido === 'S') {
             console.log(`⚠️ [Paso 2 Fallo] La cotización ya fue convertida previamente.`);
-            await session.abortTransaction();
             return res.status(400).json({ success: false, message: 'Esta cotización ya fue convertida a factura' });
         }
         console.log(`✅ [Paso 2 Éxito] Cotización elegible para conversión.`);
@@ -3149,58 +3154,86 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
         // Búsqueda opcional del cliente
         const clientebusca = cotiza.codcliente || '';
         console.log(`🔍 [Paso 2.1] Buscando Cliente con ID/Código: "${clientebusca}"...`);
-        const cliente = await Cliente.findOne({ 
-            $or: [{ idcliente: clientebusca }, { codcliente: clientebusca }] 
-        }).session(session);
-        console.log(cliente ? `✅ [Cliente Encontrado] ${cliente.clientenombre || cliente.nombre}` : `⚠️ [Cliente No Encontrado] Se usarán datos por defecto de la cotización.`);
+        const cliente = await Cliente.findOne({
+            $or: [{ idcliente: clientebusca }, { codcliente: clientebusca }]
+        });
+        console.log(
+            cliente
+                ? `✅ [Cliente Encontrado] ${cliente.clientenombre || cliente.nombre}`
+                : `⚠️ [Cliente No Encontrado] Se usarán datos por defecto de la cotización.`
+        );
 
-        // 3. GENERAR NÚMERO DE FACTURA (10 DÍGITOS) DESDE EMPRESACONFIG
-        console.log(`🔍 [Paso 3] Consultando EmpresaConfig para obtener contador de facturas...`);
-        const empresa = await EmpresaConfig.findOne({}).session(session);
+        // ---------------------------------------------------------------
+        // 3. GENERAR NÚMERO DE FACTURA (ATÓMICO)
+        // ---------------------------------------------------------------
+        console.log(`🔍 [Paso 3] Reservando siguiente número de factura (atómico)...`);
+        const empresa = await EmpresaConfig.findOneAndUpdate(
+            {},
+            { $inc: { countfactura: 1 } },
+            { new: true }
+        );
         if (!empresa) {
-            console.log(`❌ [Paso 3 Fallo] Configuración de empresa no encontrada en DB.`);
-            await session.abortTransaction();
+            console.log(`❌ [Paso 3 Fallo] Configuración de empresa no encontrada.`);
             return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
         }
 
-        const countFactura = parseInt(empresa.countfactura || '0', 10) + 1;
-        const nofactura = String(countFactura).padStart(10, '0');
-        console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura}"`);
+        countFactura = parseInt(empresa.countfactura, 10);
+        if (!Number.isFinite(countFactura)) {
+            // Recover from a corrupt counter — reset to 1.
+            console.log(`⚠️ [Paso 3 Aviso] countfactura inválido ("${empresa.countfactura}"), reiniciando a 1.`);
+            countFactura = 1;
+            await EmpresaConfig.findByIdAndUpdate(empresa._id, { $set: { countfactura: '1' } });
+        }
+        nofactura = String(countFactura).padStart(10, '0');
+        console.log(`✅ [Paso 3 Éxito] Nuevo número de factura reservado: "${nofactura}"`);
 
-        // 4. OBTENER DETALLES DE LA COTIZACIÓN (CotizaDetalle)
+        // ---------------------------------------------------------------
+        // 4. OBTENER DETALLES DE LA COTIZACIÓN
+        // ---------------------------------------------------------------
         console.log(`🔍 [Paso 4] Buscando CotizaDetalle con nocotiza: "${nocotizaUpper}"...`);
-        const cotizaDetalles = await CotizaDetalle.find({ nocotiza: nocotizaUpper }).session(session);
+        const cotizaDetalles = await CotizaDetalle.find({ nocotiza: nocotizaUpper });
         if (!cotizaDetalles || cotizaDetalles.length === 0) {
-            console.log(`❌ [Paso 4 Fallo] No se encontraron líneas de detalle para la cotización "${nocotizaUpper}".`);
-            await session.abortTransaction();
+            console.log(`❌ [Paso 4 Fallo] Sin líneas de detalle para "${nocotizaUpper}".`);
+            // Release the reserved counter since we're not creating a factura
+            await EmpresaConfig.findByIdAndUpdate(empresa._id, { $inc: { countfactura: -1 } });
             return res.status(400).json({ success: false, message: 'La cotización no tiene detalles' });
         }
         console.log(`✅ [Paso 4 Éxito] Se encontraron ${cotizaDetalles.length} detalle(s).`);
 
+        // ---------------------------------------------------------------
         // 5. BÚSQUEDA DE PRODUCTOS EN INVENTARIO
+        // ---------------------------------------------------------------
         const codigosProductos = cotizaDetalles.map(d => d.codproducto).filter(Boolean);
         console.log(`🔍 [Paso 5] Consultando inventario para ${codigosProductos.length} código(s)...`);
-        const inventarios = await Inventariosede.find({ 
-            $or: [{ idinventario: { $in: codigosProductos } }, { codproducto: { $in: codigosProductos } }] 
-        }).session(session);
+        const inventarios = await Inventariosede.find({
+            $or: [
+                { idinventario: { $in: codigosProductos } },
+                { codproducto:  { $in: codigosProductos } }
+            ]
+        });
 
         const inventarioMap = new Map();
         inventarios.forEach(item => {
             if (item.idinventario) inventarioMap.set(String(item.idinventario), item);
-            if (item.codproducto) inventarioMap.set(String(item.codproducto), item);
+            if (item.codproducto)  inventarioMap.set(String(item.codproducto), item);
         });
         console.log(`✅ [Paso 5 Éxito] ${inventarios.length} producto(s) mapeado(s) desde inventario.`);
 
-        // 6. MAPEADO CON VALORES POR DEFECTO ESTÁNDAR
+        // ---------------------------------------------------------------
+        // 6. MAPEADO A FacturaDetalle
+        // ---------------------------------------------------------------
         console.log(`🔍 [Paso 6] Mapeando detalles de cotización a formato FacturaDetalle...`);
-        const facturaDetalles = cotizaDetalles.map((detalle, index) => {
+        facturaDetalles = cotizaDetalles.map((detalle, index) => {
             const itemInv = inventarioMap.get(String(detalle.codproducto)) || {};
 
-            const cantidad = Math.max(1, parseFloat(detalle.cantidad) || 1);
-            const precio = Math.max(0, parseFloat(detalle.precio) || 0);
+            const cantidad  = Math.max(1, parseFloat(detalle.cantidad) || 1);
+            const precio    = Math.max(0, parseFloat(detalle.precio) || 0);
             const descuento = Math.min(100, Math.max(0, parseFloat(detalle.descuento) || 0));
 
+            const subtotal = Math.round(((cantidad * precio) * (1 - (descuento / 100))) * 100) / 100;
+
             return {
+                nrolinea: index + 1,                          // ← added, unique per invoice
                 nofactura: nofactura,
                 fechafactura: fechasistema,
                 codcliente: cotiza.codcliente || '',
@@ -3210,12 +3243,12 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 descripcion: detalle.descripcion || itemInv.inventarioNombre || '',
                 precio: precio,
                 descuento: descuento,
-                impuesto: parseFloat(detalle.impuesto) || 0,
+                impuesto:  parseFloat(detalle.impuesto) || 0,
                 impuesto1: parseFloat(itemInv.impuesto1) || 0,
                 impuesto2: parseFloat(itemInv.impuesto2) || 0,
                 impuesto3: parseFloat(itemInv.impuesto3) || 0,
                 codtasaisc: itemInv.codtasaisc || '',
-                tasaisc: itemInv.tasaisc || '',
+                tasaisc:    itemInv.tasaisc    || '',
                 ancho: 0,
                 alto: 0,
                 numerolote: '',
@@ -3224,22 +3257,33 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 mercancia: detalle.mercancia || '1',
                 modelo: detalle.modelo || itemInv.modelo || '',
                 fechafabricacion: today,
-                fechaexpiracion: today,
+                fechaexpiracion:  today,
                 codigobienes: detalle.codigobienes || '0000',
                 codigoabrev: '',
                 valorisc: String(detalle.valorisc || ''),
                 tasaoti: '0',
-                hora: new Date().toLocaleTimeString(),
+                hora: new Date().toISOString().slice(11, 19),  // stable HH:MM:SS
                 acabados: detalle.acabados || '',
                 pormayor: parseInt(detalle.pormayor || itemInv.pormayor, 10) || 0,
                 detventa: '1',
                 especificaciones: itemInv.especificaciones || '',
-                subtotal: (cantidad * precio) * (1 - (descuento / 100))
+                subtotal: subtotal
             };
         });
+
+        // Recompute header totals from the detail rows (single source of truth)
+        const subtotalCalc   = facturaDetalles.reduce((s, d) => s + (d.subtotal || 0), 0);
+        const itbmsCalc      = facturaDetalles.reduce((s, d) => {
+            const rate = (d.impuesto1 || 0) / 100;
+            return s + (d.subtotal * rate);
+        }, 0);
+        const totalCalc      = Math.round((subtotalCalc + itbmsCalc) * 100) / 100;
+
         console.log(`✅ [Paso 6 Éxito] Mapeo completado para ${facturaDetalles.length} líneas.`);
 
+        // ---------------------------------------------------------------
         // 7. ENCABEZADO DE FACTURA
+        // ---------------------------------------------------------------
         console.log(`🔍 [Paso 7] Construyendo el objeto FacturaHead...`);
         const nuevaFacturaData = {
             nofactura: nofactura,
@@ -3290,7 +3334,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             tipoidentificacion: '',
             identificacionextranjero: '',
             paisextranjero: '',
-            codicionesentrega: "En Sitio",
+            codicionesentrega: 'En Sitio',
             monedaexportacion: '',
             modenaexportanodef: '',
             tipodecambio: '',
@@ -3305,22 +3349,22 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             consignacion: 'N',
             formapago: cotiza.formapago || '02',
             descuento: parseFloat(cotiza.descuentoglob) || 0,
-            subtotal1: parseFloat(cotiza.subtotal1) || 0,
+            subtotal1: subtotalCalc,                          // ← recomputed
             cotiitbms: cotiza.cotiitbms || '',
             impuesto: parseFloat(cotiza.impuesto) || 0,
             impuesto1: 0,
             impuesto2: 0,
             impuesto3: 0,
-            subtotal2: parseFloat(cotiza.subtotal2) || 0,
-            total: parseFloat(cotiza.total) || 0,
-            saldo: parseFloat(cotiza.total) || 0,
+            subtotal2: Math.round(itbmsCalc * 100) / 100,     // ← recomputed ITBMS
+            total: totalCalc,                                 // ← recomputed
+            saldo: totalCalc,
             entregado: 0,
             cambio: 0,
-            coticonvertido: 'S',
+            // NOTE: 'coticonvertido' removed — it belongs on CotizaHead, not FacturaHead
             clasefactura: '1',
             nombreclie: cotiza.nombreclie || '',
             seriefiscal: '',
-            detallefactura: JSON.stringify(facturaDetalles),
+            // NOTE: 'detallefactura' JSON blob removed — details live in FacturaDetalle
             fechadgiauto: '',
             autorizandgi: '',
             imagen: '',
@@ -3334,24 +3378,115 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             fechaActualizacion: fechasistema
         };
 
-        const nuevaFacturaDoc = new FacturaHead(nuevaFacturaData);
-        await nuevaFacturaDoc.save({ session });
-        console.log(`✅ [Paso 7 Éxito] FacturaHead guardada exitosamente en la sesión.`);
+        facturaGuardada = await new FacturaHead(nuevaFacturaData).save();
+        console.log(`✅ [Paso 7 Éxito] FacturaHead guardada. _id: ${facturaGuardada._id}`);
 
+        // ---------------------------------------------------------------
         // 8. INSERTAR DETALLES
-        console.log(`🔍 [Paso 8] Insertando FacturaDetalle en la sesión...`);
+        // ---------------------------------------------------------------
+        console.log(`🔍 [Paso 8] Insertando ${facturaDetalles.length} FacturaDetalle...`);
         if (facturaDetalles.length > 0) {
-            await FacturaDetalle.insertMany(facturaDetalles, { session });
-            console.log(`✅ [Paso 8 Éxito] FacturaDetalle insertado exitosamente.`);
+            await FacturaDetalle.insertMany(facturaDetalles, { ordered: true });
+            console.log(`✅ [Paso 8 Éxito] FacturaDetalle insertado.`);
+        }
+
+        // ---------------------------------------------------------------
+        // 9. LLAMAR A THE FACTORY  (AWAIT — the fix)
+        // ---------------------------------------------------------------
+        console.log(`🔍 [Paso 9] Llamando a convertirEnviarThefactory("${nofactura}")...`);
+        const resultadoproceso = await convertirEnviarThefactory(nofactura, res);
+        console.log(`✅ [Paso 9 Retorno] TheFactory:`, resultadoproceso);
+
+        // Re-read the header to see the estado TheFactory wrote
+        const facturaEncontrada = await FacturaHead.findOne({ nofactura: nofactura });
+        if (!facturaEncontrada) {
+            console.log(`❌ [Paso 9 Fallo] Factura "${nofactura}" no encontrada tras llamada a TheFactory.`);
+            return res.status(404).json({ success: false, message: 'Factura no encontrada tras envío a TheFactory' });
+        }
+
+        // ---------------------------------------------------------------
+        // 10. ACTUALIZAR COTIZACIÓN SOLO SI THEFACTORY ACEPTÓ
+        // ---------------------------------------------------------------
+        if (facturaEncontrada.estado !== 'Rechazada') {
+            console.log(`🔍 [Paso 10] Marcando CotizaHead como convertida...`);
+            cotizaActualizada = await CotizaHead.findOneAndUpdate(
+                { nocotiza: nocotizaUpper },
+                {
+                    $set: {
+                        coticonvertido: 'S',
+                        nofactura: nofactura,
+                        fechaconvertido: fechasistema,
+                        fechaActualizacion: fechasistema
+                    }
+                },
+                { new: true }
+            );
+
+            if (!cotizaActualizada) {
+                // Should not happen — we already found it in Paso 1 — but don't crash the response.
+                console.log(`⚠️ [Paso 10 Aviso] No se pudo actualizar CotizaHead tras conversión.`);
+            } else {
+                console.log(`✅ [Paso 10 Éxito] CotizaHead actualizada (coticonvertido='S').`);
+            }
+
+            console.log(`🎉 [ÉXITO TOTAL] Factura ${nofactura} creada desde Cotización ${nocotizaUpper}`);
+
+            return res.status(201).json({
+                success: true,
+                message: `Cotización ${nocotizaUpper} convertida a Factura ${nofactura}`,
+                data: cotizaActualizada,
+                factura: {
+                    _id: facturaEncontrada._id,
+                    nofactura: nofactura,
+                    fechaFactura: fechasistema,
+                    total: totalCalc,
+                    cliente: cotiza.nombreclie || '',
+                    estado: facturaEncontrada.estado
+                }
+            });
+        } else {
+            // TheFactory rejected — do NOT mark cotización converted.
+            console.log(`⚠️ [Paso 10] Factura ${nofactura} rechazada por TheFactory.`);
+            console.log(`                 CotizaHead NO se marca como convertida; el usuario puede reintentar.`);
+
+            return res.status(400).json({
+                success: false,
+                message: `Factura ${nofactura} rechazada por TheFactory`,
+                data: null,
+                factura: {
+                    _id: facturaEncontrada._id,
+                    nofactura: nofactura,
+                    estado: facturaEncontrada.estado
+                }
+            });
         }
 
     } catch (error) {
-        await session.abortTransaction();
         console.error('❌ ==================================================');
         console.error(`❌ ERROR CRÍTICO AL CONVERTIR COTIZACIÓN "${nocotiza}":`);
         console.error(`❌ Mensaje: ${error.message}`);
         console.error(`❌ Stack Trace:\n`, error.stack || error);
         console.error('❌ ==================================================');
+
+        // Best-effort cleanup — do not let a cleanup error mask the real one.
+        try {
+            if (facturaGuardada && !error._facturaCleanupDone) {
+                await FacturaHead.findByIdAndDelete(facturaGuardada._id);
+                await FacturaDetalle.deleteMany({ nofactura: nofactura });
+                console.log(`🧹 [Cleanup] FacturaHead + FacturaDetalle de "${nofactura}" eliminados.`);
+            }
+        } catch (cleanupErr) {
+            console.error('⚠️ [Cleanup Fallo]', cleanupErr.message);
+        }
+
+        try {
+            if (empresa && countFactura != null) {
+                await EmpresaConfig.findByIdAndUpdate(empresa._id, { $inc: { countfactura: -1 } });
+                console.log(`🧹 [Cleanup] countfactura revertido.`);
+            }
+        } catch (cleanupErr) {
+            console.error('⚠️ [Cleanup Fallo] No se pudo revertir countfactura:', cleanupErr.message);
+        }
 
         return res.status(500).json({
             success: false,
@@ -3359,72 +3494,7 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
             error: error.message || String(error)
         });
     } finally {
-        session.endSession();
-//***************//
-var  resultadoproceso = convertirEnviarThefactory(nofactura,res);
-
-console.log("Retorno de funcion Enviar a Thefactory  ",resultadoproceso);
-var facturaseacrh = nofactura;
-//***********************************************************//
-
-        // 9. ACTUALIZAR COTIZACIÓN ORIGINAL
-        console.log(`🔍 [Paso 9] Actualizando marca de conversión en CotizaHead...`);
-        const facturaEncontrada =  await FacturaHead.findOne({ nofactura: facturaseacrh });
-        if (!facturaEncontrada) {
-        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: null } };
-        }
-        if (facturaEncontrada.estado !== "Rechazada"){
-        const cotizaActualizada = await CotizaHead.findOneAndUpdate(
-            { nocotiza: nocotizaUpper },
-            {
-                $set: {
-                    coticonvertido: 'S',
-                    nofactura: nofactura,
-                    fechaconvertido: fechasistema,
-                    fechaActualizacion: fechasistema
-                }
-            },
-            { new: true, session }
-        );
-
-        if (!cotizaActualizada) {
-            throw new Error("No se pudo actualizar la cotización tras la conversión");
-        }
-        console.log(`✅ [Paso 9 Éxito] CotizaHead actualizada a coticonvertido = 'S'.`);
-          }
-          else{
-            console.log(`✅ [Paso 9 Fallo] Factura Rechazada por Thefactory en conversion paso 9 regreso de la funcion.`);
-          }
-        // 10. ACTUALIZAR EMPRESACONFIG
-        console.log(`🔍 [Paso 10] Actualizando contador de factura en EmpresaConfig a ${countFactura}...`);
-        await EmpresaConfig.findByIdAndUpdate(
-            empresa._id,
-            { $set: { countfactura: String(countFactura) } },
-            { session }
-        );
-        console.log(`✅ [Paso 10 Éxito] EmpresaConfig actualizada.`);
-
-        // COMMIT DE LA TRANSACCIÓN
-        console.log(`🔍 [Paso Final] Ejecutando commitTransaction...`);
-        await session.commitTransaction();
-
-        console.log(`🎉 [ÉXITO TOTAL] Factura ${nofactura} creada exitosamente desde Cotización ${nocotizaUpper}`);
-
-        return res.status(201).json({
-            success: true,
-            message: `Cotización ${nocotizaUpper} convertida a Factura ${nofactura}`,
-            data: cotizaActualizada,
-            factura: {
-                nofactura: nofactura,
-                fechaFactura: fechasistema,
-                total: cotiza.total || 0,
-                cliente: cotiza.nombreclie || ''
-            }
-        });
-
-
-//**************//
-        console.log(`🔚 [FIN SESIÓN] Sesión Mongoose cerrada para la conversión de "${nocotiza}".\n`);
+        console.log(`🔚 [FIN] Proceso de conversión para "${nocotiza}" terminado.\n`);
     }
 });
 
@@ -8372,7 +8442,6 @@ async function convertirEnviarThefactory(nofactura,res) {
 console.log("Obtener datos de mongo atlas factura en la funcion convertirEnviarTheFactory  ");
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
-        console.log("Retorno Factura ",factura);
         if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
 console.log("Obtener datos de mongo atlas detallefactura ");
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
