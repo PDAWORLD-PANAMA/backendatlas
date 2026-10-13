@@ -8362,13 +8362,16 @@ async function convertirEnviarThefactory(nofactura) {
 
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura =  await FacturaHead.findOne({ nofactura: nofacturaUpper });
-        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+        if (!factura) 
+        return { status: 404, body: { success: false, message: 'Factura no encontrada', data: facturaActualizada } };
 
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
-        if (!detalles || detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
+        if (!detalles || detalles.length === 0) 
+return { status: 400, body: { success: false,message: 'La factura no tiene detalles', data: facturaActualizada } };
 
         const empresa = await EmpresaConfig.findOne({});
-        if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+        if (!empresa) return
+return { status: 403, body: { success: false, message: 'Configuración de empresa no encontrada' ,data: facturaActualizada } };
 
         const tablaUbicacion = await Ubicacion.find({});
 
@@ -8377,7 +8380,7 @@ async function convertirEnviarThefactory(nofactura) {
             if (!unsafe) return '';
             return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
         };
-
+console.log("Preparando datos de factura en funcion ");
         const wkimptocontrol = factura.impuesto || 0;
         const fechaEmision = factura.fechaEmision;
         const fechaSalida =  factura.fechaSalida;
@@ -8412,7 +8415,7 @@ async function convertirEnviarThefactory(nofactura) {
         let fesucursalemisor = empresa.codigosucemisor || "001";
         let fetokenempresa = (empresa.tokenempresa || "").trim();
         let fetokenclave = (empresa.tokenclave || "").trim();
-
+console.log("Construyendo SOAP XML ")
         // 3. CONSTRUIR XML SOAP (Sintaxis XML corregida)
         let xmlniv1 = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
@@ -8443,6 +8446,7 @@ async function convertirEnviarThefactory(nofactura) {
         let xmlenviarlist = "";
         let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
 
+        console.log("Cargando detalle de factura al SOAP ")
         for (let det of detalles) {
             let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : new Date().toISOString().slice(0, 10);
             let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : new Date().toISOString().slice(0, 10);
@@ -8526,6 +8530,8 @@ async function convertirEnviarThefactory(nofactura) {
             xmlenviarlist += `</ser:item>\n`;
         }
 
+        console.log("Viendo condiciones de pago ");
+
        let xmlfinitems = `</ser:listaItems>`;
         var fefechavenceplazo = "x";
         var fecuotadepagocre = 0;
@@ -8555,7 +8561,7 @@ async function convertirEnviarThefactory(nofactura) {
                 fecuotadepagocre = fevalorcuota;
             }
         }
-
+console.log("Cargando Subtotales al SOAP ");
         var xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
 <ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
@@ -8575,7 +8581,7 @@ async function convertirEnviarThefactory(nofactura) {
 
         let xmltotcierre = `\n</ser:totalesSubTotales></tem:documento></tem:Enviar></soapenv:Body></soapenv:Envelope>`;
         let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
-
+console.log("Ejecutar la llamada al SOAP");
         // 4. EJECUTAR LLAMADA SOAP (CORREGIDO: La promesa ahora resuelve correctamente)
       let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
     
@@ -8631,11 +8637,7 @@ async function convertirEnviarThefactory(nofactura) {
         );
            await descontarFolioPAC();
         // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
-        return res.status(200).json({
-            success: true,
-            message: 'Factura electrónica aceptada por TheFactory',
-            data: facturaActualizada 
-        });
+         return { status: 200, body: { success: true, message: 'Factura electrónica aceptada por TheFactory',data: facturaActualizada } };
     }    // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
@@ -8651,17 +8653,13 @@ async function convertirEnviarThefactory(nofactura) {
                     ),  { returnDocument: 'after' }
                 }
             }
-            
-            return res.status(400).json({
-                success: false,
-                message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,
-                data: null
-            });
+            return { status: 400, body: { success: false, message: `Rechazada por TheFactory: ${resultadoSOAP.msgHandle}`,data: null } };
         }
+        return;
     }
  catch (error) {
     console.error('❌ error en conversion en rutina creando factura en funcion enviar-Thefactory:', error);
-    return res.status(500).json({ success: false, message: 'Error interno funcion convertir cotizacion a factura  ', error: error.message });
+   return { status: 500, body: { success: false, message:  'Error interno funcion convertir cotizacion a factura  ', error: error.message ,data: null } };
 }
 }
 
