@@ -3163,29 +3163,83 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
                 : `⚠️ [Cliente No Encontrado] Se usarán datos por defecto de la cotización.`
         );
 
-        // ---------------------------------------------------------------
-        // 3. GENERAR NÚMERO DE FACTURA (ATÓMICO)
-        // ---------------------------------------------------------------
-        console.log(`🔍 [Paso 3] Reservando siguiente número de factura (atómico)...`);
-        const empresa = await EmpresaConfig.findOneAndUpdate(
-            {},
-            { $inc: { countfactura: 1 } },
-            { new: true }
-        );
-        if (!empresa) {
-            console.log(`❌ [Paso 3 Fallo] Configuración de empresa no encontrada.`);
-            return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
-        }
+       // ---------------------------------------------------------------
+// 3. GENERAR NÚMERO DE FACTURA (ATÓMICO, STRING-SAFE)
+// ---------------------------------------------------------------
+console.log(`🔍 [Paso 3] Reservando siguiente número de factura (atómico)...`);
 
-        countFactura = parseInt(empresa.countfactura, 10);
-        if (!Number.isFinite(countFactura)) {
-            // Recover from a corrupt counter — reset to 1.
-            console.log(`⚠️ [Paso 3 Aviso] countfactura inválido ("${empresa.countfactura}"), reiniciando a 1.`);
-            countFactura = 1;
-            await EmpresaConfig.findByIdAndUpdate(empresa._id, { $set: { countfactura: '1' } });
+const empresa = await EmpresaConfig.findOneAndUpdate(
+    {},
+    [
+        {
+            $set: {
+                countfactura: {
+                    $toString: {
+                        $add: [
+                            {
+                                $convert: {
+                                    input:  '$countfactura',
+                                    to:     'int',
+                                    onError: 0,     // corrupt value → treat as 0
+                                    onNull:  0      // missing value  → treat as 0
+                                }
+                            },
+                            1
+                        ]
+                    }
+                }
+            }
         }
-        nofactura = String(countFactura).padStart(10, '0');
-        console.log(`✅ [Paso 3 Éxito] Nuevo número de factura reservado: "${nofactura}"`);
+    ],
+    { new: true, returnDocument: 'after' }
+);
+
+if (!empresa) {
+    console.log(`❌ [Paso 3 Fallo] Configuración de empresa no encontrada.`);
+    return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
+}
+
+// empresa.countfactura is already the *new* string value
+countFactura = parseInt(empresa.countfactura, 10);
+
+if (!Number.isFinite(countFactura)) {
+    // Extremely unlikely now, because $convert + $add guarantees a number,
+    // but keep a defensive fallback anyway.
+    console.log(`⚠️ [Paso 3 Aviso] countfactura inválido ("${empresa.countfactura}"), reiniciando a 1.`);
+    countFactura = 1;
+    await EmpresaConfig.findByIdAndUpdate(
+    empresa._id,
+    [
+        {
+            $set: {
+                countfactura: {
+                    $toString: {
+                        $max: [
+                            0,
+                            {
+                                $add: [
+                                    {
+                                        $convert: {
+                                            input:  '$countfactura',
+                                            to:     'int',
+                                            onError: 0,
+                                            onNull:  0
+                                        }
+                                    },
+                                    -1
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+);
+}
+
+nofactura = String(countFactura).padStart(10, '0');
+console.log(`✅ [Paso 3 Éxito] Nuevo número de factura reservado: "${nofactura}"`);
 
         // ---------------------------------------------------------------
         // 4. OBTENER DETALLES DE LA COTIZACIÓN
@@ -3195,7 +3249,35 @@ app.post('/api/ventas/cotizaciones/convertir/:nocotiza', async (req, res) => {
         if (!cotizaDetalles || cotizaDetalles.length === 0) {
             console.log(`❌ [Paso 4 Fallo] Sin líneas de detalle para "${nocotizaUpper}".`);
             // Release the reserved counter since we're not creating a factura
-            await EmpresaConfig.findByIdAndUpdate(empresa._id, { $inc: { countfactura: -1 } });
+            await EmpresaConfig.findByIdAndUpdate(
+    empresa._id,
+    [
+        {
+            $set: {
+                countfactura: {
+                    $toString: {
+                        $max: [
+                            0,
+                            {
+                                $add: [
+                                    {
+                                        $convert: {
+                                            input:  '$countfactura',
+                                            to:     'int',
+                                            onError: 0,
+                                            onNull:  0
+                                        }
+                                    },
+                                    -1
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+);
             return res.status(400).json({ success: false, message: 'La cotización no tiene detalles' });
         }
         console.log(`✅ [Paso 4 Éxito] Se encontraron ${cotizaDetalles.length} detalle(s).`);
