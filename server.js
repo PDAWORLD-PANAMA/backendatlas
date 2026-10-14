@@ -3293,7 +3293,7 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
 
         console.log(`✅ [Paso 6 Éxito] Mapeo completado para ${facturaDetalles.length} líneas.`);
 
-         const detallecotiJson = JSON.stringify(facturadetalle.map(d => ({
+         const detallecotiJson = JSON.stringify(facturadetalles.map(d => ({
                 codproducto: d.codproducto,
                 cantidad: d.cantidad,
                 descripcion: d.descripcion,
@@ -5044,7 +5044,7 @@ console.log(" Cargar el SOAP ");
         let xmlistseg = "\n<ser:listaItems>\n";
         let xmlenviarlist = "";
         let wtotalprecioneto = 0, wtotalitbms = 0, wtotalisc = 0, wtotaldescuento = 0, wtotaldefactura = 0;
-
+console.log("Iniciando el for de los detalles de la factura ");
         for (let det of detalles) {
             let wfechafabricafinal = det.fechafabricacion?.length > 5 ? det.fechafabricacion : new Date().toISOString().slice(0, 10);
             let wfechaexpirafinal = det.fechaexpiracion?.length > 5 ? det.fechaexpiracion : new Date().toISOString().slice(0, 10);
@@ -5085,7 +5085,6 @@ console.log(" Cargar el SOAP ");
             if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
             let wentrega = wpormayor * wcantidaditem;
             wtotaldefactura += wtotlinitem;
-console.log("Cargar el detalle del SAOP ");
             xmlenviarlist += `<ser:item>
 <ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${escapeXml(det.codproducto)}</ser:codigo><ser:unidadMedida>und</ser:unidadMedida>
