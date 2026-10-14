@@ -2741,7 +2741,7 @@ var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccli
                 const error = new Error(`SOAP Error ${resultadoSOAP.codigoHandle}`);
                 error.codigo = resultadoSOAP.codigoHandle;
                 error.mensaje = resultadoSOAP.resproceso;
-                resultadoSOAP.resrazonSocial = req.body.clientenombre + " ** No Contribuyente";
+                resultadoSOAP.resrazonSocial = req.body.clientenombre + " **";
                 resultadoSOAP.resdv = "00";
         }
 var clientebusqueda = nuevoCliente.idcliente;
@@ -6039,7 +6039,7 @@ for (let det of itemsParaSoap) {
     xmlenviarlist += `<ser:item>
 <ser:descripcion>${det.descripcion}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${det.codproducto}</ser:codigo>
-<ser:unidadMedida>${det.unidad}</ser:unidadMedida>
+<ser:unidadMedida>um</ser:unidadMedida>
 <ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
 <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
 <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>
@@ -6544,7 +6544,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                 cantidad: 1,
                 descripcion: motivo || 'Nota de Débito por Monto',
                 precio: montoTotal || 0,
-                unidad: 'UND',
+                unidad: 'um',
                 hora: new Date().toLocaleTimeString()
             });
         }
@@ -6652,7 +6652,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                 impuesto1: factura.impuesto1 || 7,
                 impuesto2: factura.impuesto2 || 0,
                 impuesto3: factura.impuesto3 || 0,
-                unidad: 'UND',
+                unidad: 'um',
                 modelo: '',
                 acabados: '',
                 fechafabricacion: fechasistema,
@@ -6671,7 +6671,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                 impuesto1: factura.impuesto1 || 7,
                 impuesto2: factura.impuesto2 || 0,
                 impuesto3: factura.impuesto3 || 0,
-                unidad: d.unidad || 'UND',
+                unidad: d.unidad || 'um',
                 modelo: '',
                 acabados: '',
                 fechafabricacion: fechasistema,
@@ -6724,7 +6724,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
             xmlenviarlist += `<ser:item>
 <ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${escapeXml(det.codproducto)}</ser:codigo>
-<ser:unidadMedida>${det.unidad || 'und'}</ser:unidadMedida>
+<ser:unidadMedida>um</ser:unidadMedida>
 <ser:cantidad>${wcantidaditem.toFixed(2)}</ser:cantidad>
 <ser:fechaFabricacion>${wfechafabricafinal}</ser:fechaFabricacion>
 <ser:fechaCaducidad>${wfechaexpirafinal}</ser:fechaCaducidad>\n`;
