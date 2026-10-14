@@ -3446,6 +3446,9 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
             console.log(`❌ [Paso 9 Fallo] Factura "${nofactura}" no encontrada tras llamada a TheFactory.`);
             return res.status(404).json({ success: false, message: 'Factura no encontrada tras envío a TheFactory' });
         }
+console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factura ");
+//*******//
+        var resultadoesperado =  await convertirEnviarThefactory(nofactura,res);
 
     } catch (error) {
         console.error('❌ ==================================================');
