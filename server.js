@@ -3448,7 +3448,7 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         }
 console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factura ");
 //*******//
-        var resultadoesperado =  await convertirEnviarThefactory(nofactura,res);
+        var resultadoesperado =  await convertirEnviarThefactory(nofactura,res,nocotizaUpper);
 
     } catch (error) {
         console.error('❌ ==================================================');
@@ -8436,7 +8436,7 @@ function formatPanamaDate(date = new Date()) {
 
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}-05:00`;
 }
-async function convertirEnviarThefactory(nofactura,res) {
+async function convertirEnviarThefactory(nofactura,res,nocotizaUpper) {
     try {
         const nofacturaUpper = nofactura.toUpperCase();
 console.log("Obtener datos de mongo atlas factura en la funcion convertirEnviarTheFactory  ");
@@ -8708,10 +8708,20 @@ console.log("Ejecutar la llamada al SOAP");
                     fechaActualizacion: new Date().toISOString()
                 } 
             }, { returnDocument: 'after' })
+//******//
+await CotizaHead.findOneAndUpdate(
+                        { nocotiza: nocotizaUpper },
+                        { $set: { coticonvertido: "S",
+                            activo : "A"
+                         } 
+                          }
+                    ),  { returnDocument: 'after' }
+
+//********//
 console.log("CodigoHandle = 200  convirtiendo cotizacion a factura ");
            await descontarFolioPAC();
         // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
-         return { status: 200, body: { success: true, message: 'Factura electrónica aceptada por TheFactory',data: facturaActualizada } };
+         return { status: 200, body: { success: true, message: 'Factura electrónica aceptada por TheFactory',data: null } };
     }    // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
