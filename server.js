@@ -3293,6 +3293,37 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
 
         console.log(`✅ [Paso 6 Éxito] Mapeo completado para ${facturaDetalles.length} líneas.`);
 
+         const detallecotiJson = JSON.stringify(facturadetalle.map(d => ({
+                codproducto: d.codproducto,
+                cantidad: d.cantidad,
+                descripcion: d.descripcion,
+                precio: d.precio,
+                descuento: d.descuento,
+                impuesto:  parseFloat(d.impuesto),
+                impuesto1: parseFloat(d.impuesto1),
+                impuesto2: parseFloat(d.impuesto2),
+                impuesto3: parseFloat(d.impuesto3),
+                codtasaisc: d.codtasaisc,
+                tasaisc:    d.tasaisc,
+                ancho: 0,
+                alto: 0,
+                numerolote: '',
+                cantiprodlote: '0',
+                unidad: 'UNIDAD',
+                mercancia: '1',
+                modelo: d.modelo,
+                fechafabricacion:today,
+                fechaexpiracion:today,
+                codigobienes: d.codigobienes,
+                codigoabrev: '',
+                valorisc: String(d.valorisc),
+                tasaoti: '0',
+                hora: new Date().toISOString().slice(11, 19),  // stable HH:MM:SS
+                acabados: d.acabados,
+                pormayor: parseInt(d.pormayor),
+                detventa: '1'
+      })));
+
         // ---------------------------------------------------------------
         // 7. ENCABEZADO DE FACTURA
         // ---------------------------------------------------------------
@@ -3376,6 +3407,7 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
             clasefactura: '1',
             nombreclie: cotiza.nombreclie || '',
             seriefiscal: '',
+            detallefactura : detallecotiJson,
             // NOTE: 'detallefactura' JSON blob removed — details live in FacturaDetalle
             fechadgiauto: '',
             autorizandgi: '',
