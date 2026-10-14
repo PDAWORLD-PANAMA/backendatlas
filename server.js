@@ -3437,73 +3437,14 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         // ---------------------------------------------------------------
         // 9. LLAMAR A THE FACTORY  (AWAIT — the fix)
         // ---------------------------------------------------------------
-        console.log(`🔍 [Paso 9] Llamando a convertirEnviarThefactory("${nofactura}")...`);
-        const resultadoproceso = await convertirEnviarThefactory(nofactura, res);
-
-     //********   console.log(`✅ [Paso 9 Retorno] TheFactory:`, resultadoproceso);  *************//
-
         // Re-read the header to see the estado TheFactory wrote
+        //**************************************************************//
+        //   En esta parte solo se convierte la cotización a factura. Luego retorna al FrontEnd
+        // Para llamar via viemodel a enviar.thefactory para crear la factura electrónica //
         const facturaEncontrada = await FacturaHead.findOne({ nofactura: nofactura });
         if (!facturaEncontrada) {
             console.log(`❌ [Paso 9 Fallo] Factura "${nofactura}" no encontrada tras llamada a TheFactory.`);
             return res.status(404).json({ success: false, message: 'Factura no encontrada tras envío a TheFactory' });
-        }
-
-        // ---------------------------------------------------------------
-        // 10. ACTUALIZAR COTIZACIÓN SOLO SI THEFACTORY ACEPTÓ
-        // ---------------------------------------------------------------
-        if (facturaEncontrada.estado !== 'Rechazada') {
-            console.log(`🔍 [Paso 10] Marcando CotizaHead como convertida...`);
-            cotizaActualizada = await CotizaHead.findOneAndUpdate(
-                { nocotiza: nocotizaUpper },
-                {
-                    $set: {
-                        coticonvertido: 'S',
-                        nofactura: nofactura,
-                        fechaconvertido: fechasistema,
-                        fechaActualizacion: fechasistema
-                    }
-                },
-                { new: true }
-            );
-
-            if (!cotizaActualizada) {
-                // Should not happen — we already found it in Paso 1 — but don't crash the response.
-                console.log(`⚠️ [Paso 10 Aviso] No se pudo actualizar CotizaHead tras conversión.`);
-            } else {
-                console.log(`✅ [Paso 10 Éxito] CotizaHead actualizada (coticonvertido='S').`);
-            }
-
-            console.log(`🎉 [ÉXITO TOTAL] Factura ${nofactura} creada desde Cotización ${nocotizaUpper}`);
-
-            return res.status(201).json({
-                success: true,
-                message: `Cotización ${nocotizaUpper} convertida a Factura ${nofactura}`,
-                data: cotizaActualizada,
-                factura: {
-                    _id: facturaEncontrada._id,
-                    nofactura: nofactura,
-                    fechaFactura: fechasistema,
-                    total: totalCalc,
-                    cliente: cotiza.nombreclie || '',
-                    estado: facturaEncontrada.estado
-                }
-            });
-        } else {
-            // TheFactory rejected — do NOT mark cotización converted.
-            console.log(`⚠️ [Paso 10] Factura ${nofactura} rechazada por TheFactory.`);
-            console.log(`                 CotizaHead NO se marca como convertida; el usuario puede reintentar.`);
-
-            return res.status(400).json({
-                success: false,
-                message: `Factura ${nofactura} rechazada por TheFactory`,
-                data: null,
-                factura: {
-                    _id: facturaEncontrada._id,
-                    nofactura: nofactura,
-                    estado: facturaEncontrada.estado
-                }
-            });
         }
 
     } catch (error) {
@@ -3514,30 +3455,6 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         console.error('❌ ==================================================');
 
         // Best-effort cleanup — do not let a cleanup error mask the real one.
-        try {
-            if (facturaGuardada && !error._facturaCleanupDone) {
-                await FacturaHead.findByIdAndDelete(facturaGuardada._id);
-                await FacturaDetalle.deleteMany({ nofactura: nofactura });
-                console.log(`🧹 [Cleanup] FacturaHead + FacturaDetalle de "${nofactura}" eliminados.`);
-            }
-        } catch (cleanupErr) {
-            console.error('⚠️ [Cleanup Fallo]', cleanupErr.message);
-        }
-
-        try {
-            if (empresa && countFactura != null) {
-                await EmpresaConfig.findByIdAndUpdate(empresa._id, { $inc: { countfactura: -1 } });
-                console.log(`🧹 [Cleanup] countfactura revertido.`);
-            }
-        } catch (cleanupErr) {
-            console.error('⚠️ [Cleanup Fallo] No se pudo revertir countfactura:', cleanupErr.message);
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Error al convertir cotización a factura',
-            error: error.message || String(error)
-        });
     } finally {
         console.log(`🔚 [FIN] Proceso de conversión para "${nocotiza}" terminado.\n`);
     }
@@ -5043,11 +4960,12 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
     try {
         const { nofactura } = req.params;
         const nofacturaUpper = nofactura.toUpperCase();
-
+console.log("Entrando a ENviar-Thefactory en Ventas /api/ventas/facturas/enviar-thefactory ");
+console.log(" Cargarr Cabecera de la factura creada ")
         // 1. OBTENER DATOS DESDE ATLAS DB
         const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
         if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
-
+console.log("Cargar detalle de la factura creada ");
         const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
         if (!detalles || detalles.length === 0) return res.status(400).json({ success: false, message: 'La factura no tiene detalles' });
 
@@ -5055,13 +4973,13 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 
         const tablaUbicacion = await Ubicacion.find({});
-
+Consoloe.log("Cargar Tabla de Ubicación ");
         // 2. PREPARAR VARIABLES (Mapeo desde tu Schema de Mongoose)
         const escapeXml = (unsafe) => {
             if (!unsafe) return '';
             return String(unsafe).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
         };
-
+console.log(" Almacenar las variables de la factura electronica a enviar ");
         const wkimptocontrol = factura.impuesto || 0;
         const fechaEmision = factura.fechaEmision;
         const fechaSalida =  factura.fechaSalida;
@@ -5096,7 +5014,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         let fesucursalemisor = empresa.codigosucemisor || "001";
         let fetokenempresa = (empresa.tokenempresa || "").trim();
         let fetokenclave = (empresa.tokenclave || "").trim();
-
+console.log(" Cargar el SOAP ");
         // 3. CONSTRUIR XML SOAP (Sintaxis XML corregida)
         let xmlniv1 = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ObjComprobante.v1_0">
@@ -5167,7 +5085,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
             if (det.detventa === "1" || det.detventa === 1) wpormayor = 1;
             let wentrega = wpormayor * wcantidaditem;
             wtotaldefactura += wtotlinitem;
-
+console.log("Cargar el detalle del SAOP ");
             xmlenviarlist += `<ser:item>
 <ser:descripcion>${escapeXml(det.descripcion)}  Empaque(${wentrega})</ser:descripcion>
 <ser:codigo>${escapeXml(det.codproducto)}</ser:codigo><ser:unidadMedida>und</ser:unidadMedida>
@@ -5239,7 +5157,7 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                 fecuotadepagocre = fevalorcuota;
             }
         }
-
+console.log("Cargar los valores de Subtotales para generar la factura ");
         var xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
 <ser:totalITBMS>${wtotalitbms.toFixed(2)}</ser:totalITBMS>
@@ -5291,7 +5209,8 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
         fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
         protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
     };
-
+console.log("Conseguir la respuesta del SOAP ",resultadoSOAP);
+console.log("Codigo Handle >>>>>>>>>  ",resultadoSOAP.codigoHandle )
     // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
     if (resultadoSOAP.codigoHandle === "200") {
         const today = new Date().toISOString().slice(0, 10);
@@ -5311,8 +5230,9 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
                     fechaActualizacion: new Date().toISOString()
                 }
             },
-            { new: true } // Devuelve el documento ya actualizado
+             { returnDocument: 'after' } // Devuelve el documento ya actualizado
         );
+        console.log("LLamar a descontar el folio ");
            await descontarFolioPAC();
         // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
         return res.status(200).json({
@@ -5323,7 +5243,9 @@ app.post('/api/ventas/facturas/enviar-Thefactory/:nofactura', async (req, res) =
     }    // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
-            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } });
+            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } },
+             { returnDocument: 'after' }
+            );
             
             // 🔹 REVERTIR INVENTARIO (Al ser rechazada, no se debe descontar nada)
             for (const det of detalles) {
