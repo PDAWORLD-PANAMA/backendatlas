@@ -3293,7 +3293,7 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
 
         console.log(`✅ [Paso 6 Éxito] Mapeo completado para ${facturaDetalles.length} líneas.`);
 
-         const detallecotiJson = JSON.stringify(facturadetalles.map(d => ({
+         const detallecotiJson = JSON.stringify(facturaDetalles.map(d => ({
                 codproducto: d.codproducto,
                 cantidad: d.cantidad,
                 descripcion: d.descripcion,
