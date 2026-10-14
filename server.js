@@ -4973,7 +4973,7 @@ console.log("Cargar detalle de la factura creada ");
         if (!empresa) return res.status(400).json({ success: false, message: 'Configuración de empresa no encontrada' });
 
         const tablaUbicacion = await Ubicacion.find({});
-Consoloe.log("Cargar Tabla de Ubicación ");
+console.log("Cargar Tabla de Ubicación ");
         // 2. PREPARAR VARIABLES (Mapeo desde tu Schema de Mongoose)
         const escapeXml = (unsafe) => {
             if (!unsafe) return '';
@@ -5243,6 +5243,7 @@ console.log("Codigo Handle >>>>>>>>>  ",resultadoSOAP.codigoHandle )
     }    // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
+            console.log(" Entrando a Rechaza por codigo no 200 ");
             await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } },
              { returnDocument: 'after' }
             );
