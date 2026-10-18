@@ -8730,7 +8730,9 @@ console.log("Ejecutar la llamada al SOAP");
 await CotizaHead.findOneAndUpdate(
                         { nocotiza: nocotizaUpper },
                         { $set: { coticonvertido: "S",
-                            activo : "A"
+                            activo : "A",
+                            nofactura : nofacturaUpper,
+                            fechaActualizacion: new Date().toISOString()
                          } 
                           }
                     ),  { returnDocument: 'after' }
