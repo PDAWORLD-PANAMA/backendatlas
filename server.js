@@ -33,10 +33,12 @@ const Dashboard = mongoose.model("Dashboard", {
   ventasAyer: Number,
   facturasAyer: Number,
   ventasMes: Number,
+  metadia : Number,
   mesactual: Number,
   crecimiento: Number,
   cotizacionesTotal: Number,
   cotizacionesConvertidas: Number,
+  foliosdisponibles: Number,
   cotizacionesNoConvertidas: Number,
   porcentajeConversion: Number,
   totalCotizado: Number,
@@ -1017,13 +1019,21 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     // 🔹 1. CALCULAR DATOS REALES DE COTIZACIONES
     // ═══════════════════════════════════════════════════════
+    const parmadicional = await Adicional.find({});
+    var  registroparm = parmadicional.length;
+    const laempresa = await EmpresaConfig.find({});
     const todasCotizaciones = await CotizaHead.find({ activo: { $eq: "A" } });
     const cotizacionesTotal = todasCotizaciones.length;
-
+    var metalcanzar = 0.0;
+    if (registroparm > 0 ){
+        var campo1 = parseFloat(parmadicional[0].costomensual) / 26;
+        metalcanzar = parseFloat(campo1.toFixed(2));
+    }
+    
     const cotizacionesConvertidasArr = todasCotizaciones.filter(c => c.coticonvertido === 'S');
     const cotizacionesConvertidas = cotizacionesConvertidasArr.length;
     const cotizacionesNoConvertidas = cotizacionesTotal - cotizacionesConvertidas;
-
+    
     let porcentajeConversion = 0;
     if (cotizacionesTotal > 0) {
       porcentajeConversion = (cotizacionesConvertidas / cotizacionesTotal) * 100;
@@ -1136,7 +1146,9 @@ if (mesActual >= 1 && mesActual <= 12) {
       totalCotizado: parseFloat(totalCotizado.toFixed(2)),
       totalConvertido: parseFloat(totalConvertido.toFixed(2)),
       mesactual: mesActual,               // ✅ FIXED: lowercase 'a' to match Kotlin data class
-      ventasMensuales: ventasMensuales
+      ventasMensuales: ventasMensuales,
+      foliosdisponibles : parseInt(laempresa[0].nofoliospac),
+      metadia : parseFloat(metalcanzar)
     } : {
       ventasHoy: 0, facturasHoy: 0,
       ventasAyer: 0, facturasAyer: 0,
@@ -1145,10 +1157,12 @@ if (mesActual >= 1 && mesActual <= 12) {
       cotizacionesConvertidas: 0,
       cotizacionesNoConvertidas: 0,
       porcentajeConversion: 0,
+      foliosdisponibles : 0,
       totalCotizado: 0,
       totalConvertido: 0,
       mesactual: mesActual,               // ✅ FIXED: lowercase 'a'
-      ventasMensuales: Array(12).fill(0)
+      ventasMensuales: Array(12).fill(0),
+      metadia : 0.0
     };
 
     // ═══════════════════════════════════════════════════════
@@ -3460,6 +3474,7 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
         // Best-effort cleanup — do not let a cleanup error mask the real one.
     } finally {
         console.log(`🔚 [FIN] Proceso de conversión para "${nocotiza}" terminado.\n`);
+        return;
     }
 });
 
