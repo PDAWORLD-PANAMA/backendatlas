@@ -3298,15 +3298,18 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         });
 
         // Recompute header totals from the detail rows (single source of truth)
-        const subtotalCalc   = facturaDetalles.reduce((s, d) => s + (d.subtotal || 0), 0);
-        const itbmsCalc      = facturaDetalles.reduce((s, d) => {
-            const rate = (d.impuesto1 || 0) / 100;
-            return s + (d.subtotal * rate);
-        }, 0);
-        const totalCalc      = Math.round((subtotalCalc + itbmsCalc) * 100) / 100;
+//         const subtotalCalc   = facturaDetalles.reduce((s, d) => s + (d.subtotal || 0), 0);
+//        const itbmsCalc      = facturaDetalles.reduce((s, d) => {
+//            const rate = (d.impuesto1 || 0) / 100;
+//            return s + (d.subtotal * rate);
+//        }, 0);
+//        const totalCalc      = Math.round((subtotalCalc + itbmsCalc) * 100) / 100;
 
+        var saldocredito = 0.0;      
+        if (cotiza.condiciones != '1'){
+            saldocredito =  parseFloat(cotiza.total) || 0;
+        }
         console.log(`✅ [Paso 6 Éxito] Mapeo completado para ${facturaDetalles.length} líneas.`);
-
          const detallecotiJson = JSON.stringify(facturaDetalles.map(d => ({
                 codproducto: d.codproducto,
                 cantidad: d.cantidad,
@@ -3406,15 +3409,15 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
             consignacion: 'N',
             formapago: cotiza.formapago || '02',
             descuento: parseFloat(cotiza.descuentoglob) || 0,
-            subtotal1: subtotalCalc,                          // ← recomputed
+            subtotal1: parseFloat(cotiza.subtotal1) || 0,                         // ← recomputed
             cotiitbms: cotiza.cotiitbms || '',
             impuesto: parseFloat(cotiza.impuesto) || 0,
             impuesto1: 0,
             impuesto2: 0,
             impuesto3: 0,
-            subtotal2: Math.round(itbmsCalc * 100) / 100,     // ← recomputed ITBMS
-            total: totalCalc,                                 // ← recomputed
-            saldo: totalCalc,
+            subtotal2: parseFloat(cotiza.subtotal2) || 0,    // ← recomputed ITBMS
+            total:  parseFloat(cotiza.total) || 0,                                 // ← recomputed
+            saldo:  parseFloat(saldocredito) || 0,
             entregado: 0,
             cambio: 0,
             // NOTE: 'coticonvertido' removed — it belongs on CotizaHead, not FacturaHead
