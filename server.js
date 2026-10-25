@@ -145,7 +145,7 @@ const Schemadelinventariosede = new mongoose.Schema({
   componentes: [],
   sugerencias: []
 });
-
+Schemadelinventariosede.index({ idinventario: 1 }, { unique: true });
 const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
 
 const Schemadeadicional = new mongoose.Schema({
@@ -1022,7 +1022,7 @@ var Schematrancxcobrar = new mongoose.Schema({
 const TranCxCobrar = mongoose.model('Schemarectrancxcobrar',Schematrancxcobrar);
 app.get("/api/dashboard", async (req, res) => {
   try {
-    Inventariosede.index({ idinventario: 1 }, { unique: true });
+
     // ═══════════════════════════════════════════════════════
     // 🔹 1. CALCULAR DATOS REALES DE COTIZACIONES
     // ═══════════════════════════════════════════════════════
