@@ -1991,9 +1991,18 @@ return res.status(200).json({
     rejectedDetails: rechazados.slice(0, 20)   // primeros 20 para depurar
   }
 });
+
+ } catch (error) {
+    console.error('❌ Error en POST /api/inventario/bulk:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al procesar carga masiva en MongoDB Atlas',
+      error: error.message
+    });
+  }
 });
-
-
+//
+//
 // ============================================================================
 // 🔹 REPORTE: INVENTARIO Y RENTABILIDAD
 // ============================================================================
