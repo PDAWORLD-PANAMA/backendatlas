@@ -2984,7 +2984,15 @@ app.get('/api/ventas/clientes/search', async (req, res) => {
 
 app.post('/api/ventas/clientes/bulk', async (req, res) => {
   try {
-    const clientesList = req.body;
+    // ── 1. Leer payload (acepta { clientes: [...] } o array directo) ──
+    let clientesList = [];
+    var todayDateStr = formatDate(today);
+
+    if (Array.isArray(req.body)) {
+      clientesList = req.body;
+    } else if (req.body && Array.isArray(req.body.clientes)) {
+      clientesList = req.body.clientes;
+    }
 
     if (!Array.isArray(clientesList) || clientesList.length === 0) {
       return res.status(400).json({
@@ -2993,51 +3001,123 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
       });
     }
 
-    console.log(`[BULK] Procesando ${clientesList.length} clientes en MongoDB Atlas...`);
+    const procesados = clientesList.length;
+    console.log(`[BULK] Procesando ${procesados} clientes en MongoDB Atlas...`);
 
-    const bulkOps = clientesList.map((item) => {
-      const idCli = (item.idcliente || item.codcliente || '').toString().trim();
-      const nomCli = (item.clientenombre || item.nombre || '').toString().trim();
+    // ── 2. Construir documentos + filtrar rechazos locales ────────────
+    const docsToInsert = [];
+    const seenIds      = new Set();
+    const rechazados   = [];
 
-      return {
-        updateOne: {
-          filter: { idcliente: idCli },
-          update: {
-            $set: {
-              idcliente: idCli,
-              codcliente: (item.codcliente || idCli).toString().trim(),
-              clientenombre: nomCli,
-              ruccliente: (item.ruccliente || item.ruc || '').toString().trim(),
-              digitoverificador: (item.digitoverificador || item.dv || '').toString().trim(),
-              dir1cliente: (item.dir1cliente || item.direccion || '').toString().trim(),
-              dir2cliente: (item.dir2cliente || '').toString().trim(),
-              dirconta: (item.dirconta || item.contacto || '').toString().trim(),
-              telcliente: (item.telcliente || item.telefono || '').toString().trim(),
-              emailcliente: (item.emailcliente || item.email || '').toString().trim().toLowerCase(),
-              tipocontribuyente: (item.tipocontribuyente || item.tipocontrib || '1').toString().trim(),
-              tipoclientefe: (item.tipoClienteFe || item.tipoclientefe || item.clientefe || '01').toString().trim(),
-              clasecliente: (item.claseCliente || item.clasecliente || '1').toString().trim(),
-              paiscliente: item.paiscliente || 'PA'
-            }
-          },
-          upsert: true
+    for (const item of clientesList) {
+      const idCli  = (item.codcliente ).toString().trim();
+      const nomCli = (item.nombre || 'Sin NOMBRE').toString().trim();
+
+      // Validaciones mínimas antes de tocar la DB
+      if (!idCli) {
+        rechazados.push({ codcliente: null, reason: 'Falta codcliente' });
+        continue;
+      }
+      if (seenIds.has(idCli)) {
+        rechazados.push({ codcliente: idCli, reason: 'Duplicado dentro del lote' });
+        continue;
+      }
+      seenIds.add(idCli);
+
+      docsToInsert.push({
+        idcliente :        (item.codcliente).toString().trim(),
+        clientenombre:     nomCli,
+        ruccliente:        (item.ruc).toString().trim(),
+        digitoverificador: (item.dv ).toString().trim(),
+        dir1cliente:       (item.direccion).toString().trim(),
+        dir2cliente:       (item.direccion).toString().trim(),
+        dirconta:          (item.contacto).toString().trim(),
+        telcliente:        (item.telefono).toString().trim(),
+        emailcliente:      (item.email).toString().trim().toLowerCase(),
+        tipocontribuyente: (item.tipocontribuyente || '1').toString().trim(),
+        tipoclientefe:     (item.clientefe || '01').toString().trim(),
+        clasecliente:      (item.clasecliente || '1').toString().trim(),
+        paiscliente:       'PA',
+        idglobal : "00000",
+        retenedor : "0",
+        derpar: "Compras",
+        faxcliente: "   ",
+        webcliente:  "     ",
+        ventascliente: 0.00,
+        acumulapuntos:  0,
+        tiposuscribcliente: " ",
+        fechasuscribcliente: " ",
+        fechacumplecliente: " ",
+        estadoctacliente: "A",
+        limitecredcliente: "0.00",
+         provinciacliente: "09",
+        createdAt: todayDateStr,
+        ciudadcliente: "08",
+        distrito: "01",
+        corregimiento: "06",
+        vendedorcliente: "123",
+        codigopreciocliente: " ",
+        fechaultventa: todayDateStr,
+       historialfacturas: [ ],
+  historialcotizacion: [],
+  historialabonos: [],
+  historialcambio: [], 
+  latgps: "0.00",
+  lnggps: "0.00",
+  webdireccion : "   "
+      });
+    }
+
+    // ── 3. insertMany con ordered:false (no aborta en el 1er duplicado) ──
+    let insertados = 0;
+
+    if (docsToInsert.length > 0) {
+      try {
+        const result = await Cliente.insertMany(docsToInsert, { ordered: false });
+        insertados = result.length ?? result.insertedCount ?? 0;
+      } catch (err) {
+        // insertMany LANZA aunque ordered:false — pero los buenos YA se guardaron.
+        // Recuperamos el conteo real y los errores por documento.
+        insertados =
+          err?.insertedDocs?.length ??
+          err?.result?.insertedCount ??
+          err?.insertedCount ??
+          0;
+
+        const writeErrors =
+          err?.writeErrors ??
+          err?.result?.getWriteErrors?.() ??
+          [];
+
+        for (const we of writeErrors) {
+          const doc = docsToInsert[we.index];
+          rechazados.push({
+            idcliente: doc?.idcliente,
+            reason: we.errmsg || we.message || 'Error de escritura en Atlas'
+          });
         }
-      };
-    });
+      }
+    }
 
-    const result = await Cliente.bulkWrite(bulkOps, { ordered: false });
-    const insertados = result.upsertedCount || 0;
-    const actualizados = result.modifiedCount || 0;
+    const totalRechazados = rechazados.length;
+
+    console.log(
+      `✅ [INSERTMANY CLIENTES] Procesados: ${procesados}, Insertados: ${insertados}, Rechazados: ${totalRechazados}`
+    );
 
     return res.status(200).json({
       success: true,
-      message: `Carga completada: ${insertados} creados, ${actualizados} actualizados.`,
-      totalProcesados: clientesList.length,
-      insertados,
-      actualizados
+      message: `Carga completada: ${procesados} procesados, ${insertados} insertados, ${totalRechazados} rechazados.`,
+      data: {
+        procesados,
+        insertados,
+        rechazados: totalRechazados,
+        detallesRechazados: rechazados.slice(0, 20)
+      }
     });
+
   } catch (error) {
-    console.error('Error en POST /bulk:', error);
+    console.error('❌ Error en POST /api/ventas/clientes/bulk:', error);
     return res.status(500).json({
       success: false,
       message: 'Error al procesar carga masiva en Atlas: ' + error.message
