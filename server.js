@@ -2986,6 +2986,7 @@ app.post('/api/ventas/clientes/bulk', async (req, res) => {
   try {
     // ── 1. Leer payload (acepta { clientes: [...] } o array directo) ──
     let clientesList = [];
+    const today = new Date();
     var todayDateStr = formatDate(today);
 
     if (Array.isArray(req.body)) {
