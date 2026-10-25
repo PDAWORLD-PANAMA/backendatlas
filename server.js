@@ -145,7 +145,7 @@ const Schemadelinventariosede = new mongoose.Schema({
   componentes: [],
   sugerencias: []
 });
-
+InventariosedeSchema.index({ idinventario: 1 }, { unique: true });
 const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
 
 const Schemadeadicional = new mongoose.Schema({
@@ -1865,6 +1865,8 @@ app.post('/api/inventario/bulk', async (req, res) => {
     const errors = [];
     const seenCodes = new Set();
     const hoyStr = new Date().toISOString().slice(0, 10);
+    const docsToInsert = [];          // ← declare before the loop
+    const rechazados  = [];           // ← declare before the loop
 
     for (let i = 0; i < inventariosExcelArray.length; i++) {
       const item = inventariosExcelArray[i];
@@ -1939,76 +1941,56 @@ app.post('/api/inventario/bulk', async (req, res) => {
   sugerencias: []
       };
 
-      if (updateExisting) {
-        // Modo Upsert atómico: Si ya existe en Mongo Atlas, actualiza stock y precio
-        bulkOperations.push({
-          updateOne: {
-            filter: { idinventario: codigotransfer },
-            update: {
-              $set: {
-                inventarionombre: doc.descripciontransfer,
-                precio1: parseFloat(parsedPrecio.toFixed(2)),
-                costo1: parseFloat(parsedCosto.toFixed(2)),
-                impuesto1: parseFloat(parsedImp.toFixed(2)),
-                fechaultima: hoyStr
-              },
-              $setOnInsert: doc
-            },
-            upsert: true
-          }
-        });
-      } else {
-        // Modo inserción simple
-        if (!seenCodes.has(codigotransfer)) {
-          bulkOperations.push({
-            insertOne: { document: doc }
-          });
-          seenCodes.add(codigotransfer);
-        }
-      }
+if (seenCodes.has(codigotransfer)) {
+     rechazados.push({ idinventario: codigotransfer, reason: 'Duplicado dentro del mismo lote' });
+  continue;                       // no lo mandamos a Mongo
+}
+seenCodes.add(codigotransfer);
+docsToInsert.push(doc);
+}
+
+const totalRecibidos = inventariosExcelArray.length;
+let totalInsertados = 0;
+if (docsToInsert.length > 0) {
+  try {
+    const result = await Inventariosede.insertMany(docsToInsert, { ordered: false });
+    totalInsertados = result.length ?? result.insertedCount ?? 0;
+  } catch (err) {
+    // insertMany throws on partial failure even with ordered:false,
+    // but the successful ones ARE saved — recover the count from the error.
+    totalInsertados =
+      err?.insertedDocs?.length ??
+      err?.result?.insertedCount ??
+      err?.insertedCount ??
+      0;
+
+    const writeErrors = err?.writeErrors ?? err?.result?.getWriteErrors?.() ?? [];
+    for (const we of writeErrors) {
+      const doc = docsToInsert[we.index];
+      rechazados.push({
+        idinventario: doc?.idinventario,
+        reason: we.errmsg || we.message || 'Error de escritura en Atlas'
+      });
     }
-
-    let insertedCount = 0;
-    let updatedCount = 0;
-
-    if (bulkOperations.length > 0) {
-      try {
-        const bulkResult = await Inventariosede.bulkWrite(bulkOperations, { ordered: false });
-        insertedCount = bulkResult.upsertedCount || bulkResult.insertedCount || 0;
-        updatedCount = bulkResult.modifiedCount || 0;
-      } catch (bulkErr) {
-        console.warn('⚠️ Advertencia parcial en bulkWrite:', bulkErr.message);
-        if (bulkErr.result) {
-          insertedCount = bulkErr.result.nUpserted || bulkErr.result.nInserted || 0;
-          updatedCount = bulkErr.result.nModified || 0;
-        }
-        errors.push(`Advertencia en Atlas: ${bulkErr.message}`);
-      }
-    }
-
-    console.log(`✅ [BULK EXITOSO] Total: ${inventariosExcelArray.length}, Insertados: ${insertedCount}, Modificados: ${updatedCount}`);
-
-    return res.status(200).json({
-      success: true,
-      message: `Carga masiva completada: ${insertedCount} creados, ${updatedCount} actualizados`,
-      data: {
-        total: inventariosExcelArray.length,
-        inserted: insertedCount,
-        updated: updatedCount,
-        duplicates: Math.max(0, bulkOperations.length - (insertedCount + updatedCount)),
-        errors: errorCount,
-        errorMessages: errors.slice(0, 10)
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error en POST /api/inventarios/bulk:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al procesar carga masiva en MongoDB Atlas',
-      error: error.message
-    });
   }
+}
+
+const totalRechazados = rechazados.length;
+
+console.log(
+  `✅ [INSERTMANY] Total: ${totalRecibidos}, Insertados: ${totalInsertados}, Rechazados: ${totalRechazados}`
+);
+
+return res.status(200).json({
+  success: true,
+  message: `Carga masiva completada: ${totalInsertados} insertados, ${totalRechazados} rechazados`,
+  data: {
+    total: totalRecibidos,
+    inserted: totalInsertados,
+    rejected: totalRechazados,
+    rejectedDetails: rechazados.slice(0, 20)   // primeros 20 para depurar
+  }
+});
 });
 
 
