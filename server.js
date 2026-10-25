@@ -1836,13 +1836,13 @@ app.post('/api/inventarios/bulk', async (req, res) => {
   try {
     console.log('📥 [BULK INVENTARIOS] Solicitud recibida desde Android');
 
-    let inventariosArray = [];
+    let inventariosExcelArray = [];
     let updateExisting = true;
 
     if (Array.isArray(req.body)) {
       inventariosArray = req.body;
     } else if (req.body && Array.isArray(req.body.inventarios)) {
-      inventariosArray = req.body.inventarios;
+      inventariosExcelArray = req.body.inventarios;
       if (typeof req.body.updateExisting === 'boolean') {
         updateExisting = req.body.updateExisting;
       }
@@ -1853,7 +1853,7 @@ app.post('/api/inventarios/bulk', async (req, res) => {
       });
     }
 
-    if (inventariosArray.length === 0) {
+    if (inventariosExcelArray.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'El lote de inventarios enviado está vacío'
@@ -1866,10 +1866,10 @@ app.post('/api/inventarios/bulk', async (req, res) => {
     const seenCodes = new Set();
     const hoyStr = new Date().toISOString().slice(0, 10);
 
-    for (let i = 0; i < inventariosArray.length; i++) {
-      const item = inventariosArray[i];
-      const rawCode = item.idinventario || item.idInventario || item.codigofisico;
-      const rawName = item.inventarionombre || item.inventarioNombre || item.descripcion;
+    for (let i = 0; i < inventariosExcelArray.length; i++) {
+      const item = inventariosExcelArray[i];
+      const rawCode = item.codigofisico;
+      const rawName = item.descripcion;
 
       // Validación de integridad: Código obligatorio
       if (!rawCode || String(rawCode).trim() === '') {
@@ -1878,55 +1878,80 @@ app.post('/api/inventarios/bulk', async (req, res) => {
         continue;
       }
 
-      const idinventario = String(rawCode).trim().toUpperCase();
-      const inventarionombre = (rawName && String(rawName).trim() !== '')
+      const codigotransfer = String(rawCode).trim().toUpperCase();
+      const descripciontransfer = (rawName && String(rawName).trim() !== '')
         ? String(rawName).trim().toUpperCase()
         : idinventario;
 
       // Saneamiento de campos numéricos (evitar NaN o valores negativos erróneos)
-      const cantidispo = Number(item.cantidispo ?? item.cantiDispo ?? item.cantidad ?? 0);
-      const precio1 = Number(item.precio1 ?? item.precio ?? 0);
-      const costo1 = Number(item.costo1 ?? item.costo ?? 0);
-      const impuesto1 = Number(item.impuesto1 ?? item.impuesto ?? 7);
+      const cantitadtransfer = Number(item.cantidad ?? 0);
+      const preciotransfer = Number(item.precio ?? 0);
+      const costotransfer = Number(item.costo ?? 0);
+      const impuestotransfer = Number(item.impuesto ?? 7);
 
-      const parsedCant = isNaN(cantidispo) || cantidispo < 0 ? 0 : cantidispo;
-      const parsedPrecio = isNaN(precio1) || precio1 < 0 ? 0 : precio1;
-      const parsedCosto = isNaN(costo1) || costo1 < 0 ? 0 : costo1;
-      const parsedImp = isNaN(impuesto1) || impuesto1 < 0 ? 7 : impuesto1;
+      const parsedCant = isNaN(cantidadtransfer) || cantidadtransfer < 0 ? 0 : cantidadtransfer;
+      const parsedPrecio = isNaN(preciotransfer) || preciotransfer < 0 ? 0 : preciotransfer;
+      const parsedCosto = isNaN(costotransfer) || costotransfer < 0 ? 0 : costotransfer;
+      const parsedImp = isNaN(impuestotransfer) || impuestotransfer < 0 ? 7 : impuestotransfer;
 
       const doc = {
-        idinventario,
-        inventarionombre,
-        cantidispo: parsedCant,
-        precio1: parsedPrecio,
-        costo1: parsedCosto,
-        impuesto1: parsedImp,
-        existenciamin: Number(item.existenciamin ?? 1),
-        precio2: Number(item.precio2 ?? 0),
-        precio3: Number(item.precio3 ?? 0),
-        precio4: Number(item.precio4 ?? 0),
-        costo2: Number(item.costo2 ?? 0),
-        categoria: (item.categoria && String(item.categoria).trim().toUpperCase()) || 'GENERAL',
-        subcategoria: (item.subcategoria && String(item.subcategoria).trim().toUpperCase()) || 'GENERAL',
-        marca: (item.marca && String(item.marca).trim().toUpperCase()) || 'GENERICA',
-        modelo: (item.modelo && String(item.modelo).trim().toUpperCase()) || 'ESTANDAR',
-        unidad: (item.unidad && String(item.unidad).trim().toUpperCase()) || 'UND',
-        fechaultima: hoyStr
+        idinventario : codigotransfer,
+        inventarionombre : descripciontransfer,
+        cantidispo: parseInt(parsedCant),
+        precio1: parseFloat(parsedPrecio.toFixed(2)),
+        costo1: parseFloat(parsedCosto.toFixed(2)),
+        impuesto1: parseFloat(parsedImp.toFixed(2)),
+        existenciamin: 1,
+        precio2: 0,
+        precio3: 0,
+        precio4: 0,
+        costo2: 0,
+        categoria: 'GENERAL',
+        subcategoria: 'GENERAL',
+        marca:  'GENERAL',
+        modelo: 'ESTANDAR',
+        unidad: '1',
+        fechaultima: hoyStr,
+        cantipormayor: 0,
+  tipoempaque: " ",
+  empaque: " ",
+  codtasaisc: " ",
+  tasaisc: " ",
+  comisionvendedor: 0,
+  tipoproducto:  "1",
+  tipoempresa: " ",
+  fechaexpiracion: " ",
+  codigoprodproveedor: " ",
+  imagenproducto: "1",
+  idproveedor: " ",
+  localizacion: "Sede Principal",
+  especificaciones: " ",
+  horasuso: 0,
+  reparaciones: 0,
+  notificacion: " ",
+  notificacionwoo: " ",
+  constancia: " ",
+  alquiler: "N",
+   shopify_id: "" ,
+  shopify_inventory_item_id: "",
+  sincronizado_online: false, 
+  componentes: [],
+  sugerencias: []
       };
 
       if (updateExisting) {
         // Modo Upsert atómico: Si ya existe en Mongo Atlas, actualiza stock y precio
         bulkOperations.push({
           updateOne: {
-            filter: { idinventario: idinventario },
+            filter: { idinventario: codigotransfer },
             update: {
               $set: {
-                inventarionombre: doc.inventarionombre,
-                cantidispo: doc.cantidispo,
-                precio1: doc.precio1,
-                costo1: doc.costo1,
-                impuesto1: doc.impuesto1,
-                fechaultima: doc.fechaultima
+                inventarionombre: doc.descripciontransfer,
+                cantidispo: parseInt(parsedCant),
+                precio1: parseFloat(parsedPrecio.toFixed(2)),
+                costo1: parseFloat(parsedCosto.toFixed(2)),
+                impuesto1: parseFloat(parsedImp.toFixed(2)),
+                fechaultima: hoyStr
               },
               $setOnInsert: doc
             },
@@ -1935,11 +1960,11 @@ app.post('/api/inventarios/bulk', async (req, res) => {
         });
       } else {
         // Modo inserción simple
-        if (!seenCodes.has(idinventario)) {
+        if (!seenCodes.has(codigotransfer)) {
           bulkOperations.push({
             insertOne: { document: doc }
           });
-          seenCodes.add(idinventario);
+          seenCodes.add(codigotransfer);
         }
       }
     }
@@ -1962,13 +1987,13 @@ app.post('/api/inventarios/bulk', async (req, res) => {
       }
     }
 
-    console.log(`✅ [BULK EXITOSO] Total: ${inventariosArray.length}, Insertados: ${insertedCount}, Modificados: ${updatedCount}`);
+    console.log(`✅ [BULK EXITOSO] Total: ${inventariosExcelArray.length}, Insertados: ${insertedCount}, Modificados: ${updatedCount}`);
 
     return res.status(200).json({
       success: true,
       message: `Carga masiva completada: ${insertedCount} creados, ${updatedCount} actualizados`,
       data: {
-        total: inventariosArray.length,
+        total: inventariosExcelArray.length,
         inserted: insertedCount,
         updated: updatedCount,
         duplicates: Math.max(0, bulkOperations.length - (insertedCount + updatedCount)),
