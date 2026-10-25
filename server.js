@@ -2,7 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require('dotenv').config();
-
+const multer = require('multer');
 const app = express();
 
 // 🔹 Middlewares
@@ -38,6 +38,7 @@ const Dashboard = mongoose.model("Dashboard", {
   ventasAyer: Number,
   facturasAyer: Number,
   ventasMes: Number,
+  ventasAnio: Number,
   metadia : Number,
   mesactual: Number,
   crecimiento: Number,
@@ -1076,9 +1077,21 @@ app.get("/api/dashboard", async (req, res) => {
       estado: { $eq: 'A' } 
     });
 
+const now = new Date();
+const currentYearActual = now.getFullYear();
+
+const startOfYear = `${currentYear}-01-01`;
+const endOfYear   = `${currentYear}-12-31`;
+
+const facturasAnio = await FacturaHead.find({
+  fechafactura: { $gte: startOfYear, $lte: endOfYear },
+  estado: 'A'
+});
+
     const ventasHoy = facturasHoy.reduce((sum, f) => sum + (f.total || 0), 0);
     const ventasAyer = facturasAyer.reduce((sum, f) => sum + (f.total || 0), 0);
     const ventasMes = facturasMes.reduce((sum, f) => sum + (f.total || 0), 0);
+    const ventasAnio = facturasAnio.reduce((sum, f) => sum + (f.total || 0), 0);
 
     const countFacturasHoy = facturasHoy.length;
     const countFacturasAyer = facturasAyer.length;
@@ -1144,6 +1157,7 @@ if (mesActual >= 1 && mesActual <= 12) {
       facturasAyer: countFacturasAyer,
       ventasMes: parseFloat(ventasMes.toFixed(2)),
       crecimiento: parseFloat(crecimiento.toFixed(2)),
+      ventasAnio : parseFloat(ventasAnio.toFixed(2)),
       cotizacionesTotal,
       cotizacionesConvertidas,
       cotizacionesNoConvertidas,
@@ -1158,6 +1172,7 @@ if (mesActual >= 1 && mesActual <= 12) {
       ventasHoy: 0, facturasHoy: 0,
       ventasAyer: 0, facturasAyer: 0,
       ventasMes: 0, crecimiento: 0,
+      ventasAnio: 0,
       cotizacionesTotal: 0,
       cotizacionesConvertidas: 0,
       cotizacionesNoConvertidas: 0,
