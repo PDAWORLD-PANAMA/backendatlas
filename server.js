@@ -1839,10 +1839,10 @@ app.post('/api/inventario/bulk', async (req, res) => {
     let inventariosExcelArray = [];
     let updateExisting = true;
 
-    if (Array.isArray(req.body)) {
-      inventariosArray = req.body;
-    } else if (req.body && Array.isArray(req.body.inventarios)) {
-      inventariosExcelArray = req.body.inventarios;
+     if (Array.isArray(req.body)) {
+      inventariosExcelArray = req.body;
+    } else if (req.body && Array.isArray(req.body.articulos)) {
+      inventariosExcelArray = req.body.articulos;
       if (typeof req.body.updateExisting === 'boolean') {
         updateExisting = req.body.updateExisting;
       }
