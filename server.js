@@ -145,8 +145,9 @@ const Schemadelinventariosede = new mongoose.Schema({
   componentes: [],
   sugerencias: []
 });
-InventariosedeSchema.index({ idinventario: 1 }, { unique: true });
+
 const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
+Inventariosede.index({ idinventario: 1 }, { unique: true });
 
 const Schemadeadicional = new mongoose.Schema({
   costomensual: { type: Number },
