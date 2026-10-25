@@ -1832,7 +1832,7 @@ app.get('/api/inventarios/report', async (req, res) => {
 // ============================================================================
 // 🔥 ENDPOINT DE CARGA MASIVA DE EXCEL: POST /api/inventarios/bulk
 // ============================================================================
-app.post('/api/inventarios/bulk', async (req, res) => {
+app.post('/api/inventario/bulk', async (req, res) => {
   try {
     console.log('📥 [BULK INVENTARIOS] Solicitud recibida desde Android');
 
