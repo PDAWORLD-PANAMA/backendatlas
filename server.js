@@ -1947,7 +1947,6 @@ app.post('/api/inventario/bulk', async (req, res) => {
             update: {
               $set: {
                 inventarionombre: doc.descripciontransfer,
-                cantidispo: parseInt(parsedCant),
                 precio1: parseFloat(parsedPrecio.toFixed(2)),
                 costo1: parseFloat(parsedCosto.toFixed(2)),
                 impuesto1: parseFloat(parsedImp.toFixed(2)),
