@@ -15,6 +15,11 @@ const ITBMS_PORCENTAJE = parseFloat(process.env.COTIZACION_PORCENTAJE_ITBMS) || 
 const VALIDEZ_DEFAULT = parseInt(process.env.COTIZACION_DIAS_VALIDEZ_DEFAULT) || 5;
 const CLIENTE_LIMIT = parseInt(process.env.CLIENTE_BUSQUEDA_LIMIT) || 200;
 const BULK_LIMIT = parseInt(process.env.CLIENTE_BULK_LIMIT) || 1000;
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 15 * 1024 * 1024 }
+});
 
 // ============================================================================
 // 🔥 CONEXIÓN A MONGODB ATLAS
@@ -1809,32 +1814,164 @@ app.get('/api/inventarios/report', async (req, res) => {
   }
 });
 
+// ============================================================================
+// 🔥 ENDPOINT DE CARGA MASIVA DE EXCEL: POST /api/inventarios/bulk
+// ============================================================================
 app.post('/api/inventarios/bulk', async (req, res) => {
   try {
-    const inventariosArray = req.body;
-    if (!Array.isArray(inventariosArray)) return res.status(400).json({ success: false, message: 'Se requiere un array de inventarios' });
-    let successCount = 0, duplicateCount = 0, errorCount = 0;
-    const errors = [];
-    for (const invData of inventariosArray) {
-      try {
-        const { idinventario, inventarionombre } = invData;
-        if (!idinventario || !inventarionombre) { errorCount++; continue; }
-        const existing = await Inventariosede.findOne({ idinventario });
-        if (existing) { duplicateCount++; continue; }
-        const nuevoInv = new Inventariosede(invData);
-        await nuevoInv.save();
-        successCount++;
-      } catch (err) { errorCount++; errors.push(`Error en ${invData.idinventario}: ${err.message}`); }
+    console.log('📥 [BULK INVENTARIOS] Solicitud recibida desde Android');
+
+    let inventariosArray = [];
+    let updateExisting = true;
+
+    if (Array.isArray(req.body)) {
+      inventariosArray = req.body;
+    } else if (req.body && Array.isArray(req.body.inventarios)) {
+      inventariosArray = req.body.inventarios;
+      if (typeof req.body.updateExisting === 'boolean') {
+        updateExisting = req.body.updateExisting;
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere un array de inventarios en el cuerpo de la petición'
+      });
     }
-    res.json({
-      success: true, message: 'Carga masiva de inventario completada',
-      data: { total: inventariosArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors }
+
+    if (inventariosArray.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El lote de inventarios enviado está vacío'
+      });
+    }
+
+    const bulkOperations = [];
+    let errorCount = 0;
+    const errors = [];
+    const seenCodes = new Set();
+    const hoyStr = new Date().toISOString().slice(0, 10);
+
+    for (let i = 0; i < inventariosArray.length; i++) {
+      const item = inventariosArray[i];
+      const rawCode = item.idinventario || item.idInventario || item.codigofisico;
+      const rawName = item.inventarionombre || item.inventarioNombre || item.descripcion;
+
+      // Validación de integridad: Código obligatorio
+      if (!rawCode || String(rawCode).trim() === '') {
+        errorCount++;
+        errors.push(`Fila ${i + 1}: Código de inventario vacío`);
+        continue;
+      }
+
+      const idinventario = String(rawCode).trim().toUpperCase();
+      const inventarionombre = (rawName && String(rawName).trim() !== '')
+        ? String(rawName).trim().toUpperCase()
+        : idinventario;
+
+      // Saneamiento de campos numéricos (evitar NaN o valores negativos erróneos)
+      const cantidispo = Number(item.cantidispo ?? item.cantiDispo ?? item.cantidad ?? 0);
+      const precio1 = Number(item.precio1 ?? item.precio ?? 0);
+      const costo1 = Number(item.costo1 ?? item.costo ?? 0);
+      const impuesto1 = Number(item.impuesto1 ?? item.impuesto ?? 7);
+
+      const parsedCant = isNaN(cantidispo) || cantidispo < 0 ? 0 : cantidispo;
+      const parsedPrecio = isNaN(precio1) || precio1 < 0 ? 0 : precio1;
+      const parsedCosto = isNaN(costo1) || costo1 < 0 ? 0 : costo1;
+      const parsedImp = isNaN(impuesto1) || impuesto1 < 0 ? 7 : impuesto1;
+
+      const doc = {
+        idinventario,
+        inventarionombre,
+        cantidispo: parsedCant,
+        precio1: parsedPrecio,
+        costo1: parsedCosto,
+        impuesto1: parsedImp,
+        existenciamin: Number(item.existenciamin ?? 1),
+        precio2: Number(item.precio2 ?? 0),
+        precio3: Number(item.precio3 ?? 0),
+        precio4: Number(item.precio4 ?? 0),
+        costo2: Number(item.costo2 ?? 0),
+        categoria: (item.categoria && String(item.categoria).trim().toUpperCase()) || 'GENERAL',
+        subcategoria: (item.subcategoria && String(item.subcategoria).trim().toUpperCase()) || 'GENERAL',
+        marca: (item.marca && String(item.marca).trim().toUpperCase()) || 'GENERICA',
+        modelo: (item.modelo && String(item.modelo).trim().toUpperCase()) || 'ESTANDAR',
+        unidad: (item.unidad && String(item.unidad).trim().toUpperCase()) || 'UND',
+        fechaultima: hoyStr
+      };
+
+      if (updateExisting) {
+        // Modo Upsert atómico: Si ya existe en Mongo Atlas, actualiza stock y precio
+        bulkOperations.push({
+          updateOne: {
+            filter: { idinventario: idinventario },
+            update: {
+              $set: {
+                inventarionombre: doc.inventarionombre,
+                cantidispo: doc.cantidispo,
+                precio1: doc.precio1,
+                costo1: doc.costo1,
+                impuesto1: doc.impuesto1,
+                fechaultima: doc.fechaultima
+              },
+              $setOnInsert: doc
+            },
+            upsert: true
+          }
+        });
+      } else {
+        // Modo inserción simple
+        if (!seenCodes.has(idinventario)) {
+          bulkOperations.push({
+            insertOne: { document: doc }
+          });
+          seenCodes.add(idinventario);
+        }
+      }
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    if (bulkOperations.length > 0) {
+      try {
+        const bulkResult = await Inventariosede.bulkWrite(bulkOperations, { ordered: false });
+        insertedCount = bulkResult.upsertedCount || bulkResult.insertedCount || 0;
+        updatedCount = bulkResult.modifiedCount || 0;
+      } catch (bulkErr) {
+        console.warn('⚠️ Advertencia parcial en bulkWrite:', bulkErr.message);
+        if (bulkErr.result) {
+          insertedCount = bulkErr.result.nUpserted || bulkErr.result.nInserted || 0;
+          updatedCount = bulkErr.result.nModified || 0;
+        }
+        errors.push(`Advertencia en Atlas: ${bulkErr.message}`);
+      }
+    }
+
+    console.log(`✅ [BULK EXITOSO] Total: ${inventariosArray.length}, Insertados: ${insertedCount}, Modificados: ${updatedCount}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `Carga masiva completada: ${insertedCount} creados, ${updatedCount} actualizados`,
+      data: {
+        total: inventariosArray.length,
+        inserted: insertedCount,
+        updated: updatedCount,
+        duplicates: Math.max(0, bulkOperations.length - (insertedCount + updatedCount)),
+        errors: errorCount,
+        errorMessages: errors.slice(0, 10)
+      }
     });
+
   } catch (error) {
-    console.error('❌ Error POST /api/inventarios/bulk:', error);
-    res.status(500).json({ success: false, message: 'Error en carga masiva', error: error.message });
+    console.error('❌ Error en POST /api/inventarios/bulk:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al procesar carga masiva en MongoDB Atlas',
+      error: error.message
+    });
   }
 });
+
 
 // ============================================================================
 // 🔹 REPORTE: INVENTARIO Y RENTABILIDAD
@@ -2816,41 +2953,156 @@ app.get('/api/ventas/clientes/search', async (req, res) => {
 
 app.post('/api/ventas/clientes/bulk', async (req, res) => {
   try {
-    const clientesArray = req.body;
-    if (!Array.isArray(clientesArray) || clientesArray.length === 0) {
-      return res.status(400).json({ success: false, message: 'Se requiere un array de clientes para carga masiva' });
+    const clientesList = req.body;
+
+    if (!Array.isArray(clientesList) || clientesList.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere una lista con al menos un cliente.'
+      });
     }
-    if (clientesArray.length > BULK_LIMIT) {
-      return res.status(400).json({ success: false, message: `Máximo ${BULK_LIMIT} registros por carga` });
-    }
-    let successCount = 0, duplicateCount = 0, errorCount = 0;
-    const errors = [];
-    const existingIds = new Set((await Cliente.find({}, 'idcliente')).map(c => c.idcliente?.toUpperCase()));
-    for (const clienteData of clientesArray) {
-      try {
-        const { idcliente, clientenombre } = clienteData;
-        var fechasistema = formatLocalYmd(new Date());
-        if (!idcliente?.trim() || !clientenombre?.trim()) { errorCount++; continue; }
-        const idNormalizado = idcliente.trim().toUpperCase();
-        if (existingIds.has(idNormalizado)) { duplicateCount++; continue; }
-        const nuevoCliente = new Cliente({
-          ...clienteData,
-          idcliente: idNormalizado,
-          clientenombre: clientenombre.trim().toUpperCase(),
-          createdAt: fechasistema
-        });
-        await nuevoCliente.save();
-        existingIds.add(idNormalizado);
-        successCount++;
-      } catch (err) { errorCount++; errors.push(`Error en ${clienteData.idcliente}: ${err.message}`); }
-    }
-    res.json({
-      success: true, message: 'Carga masiva de clientes completada',
-      data: { total: clientesArray.length, success: successCount, duplicates: duplicateCount, errors: errorCount, errorMessages: errors.slice(0, 10) }
+
+    console.log(`[BULK] Procesando ${clientesList.length} clientes en MongoDB Atlas...`);
+
+    const bulkOps = clientesList.map((item) => {
+      const idCli = (item.idcliente || item.codcliente || '').toString().trim();
+      const nomCli = (item.clientenombre || item.nombre || '').toString().trim();
+
+      return {
+        updateOne: {
+          filter: { idcliente: idCli },
+          update: {
+            $set: {
+              idcliente: idCli,
+              codcliente: (item.codcliente || idCli).toString().trim(),
+              clientenombre: nomCli,
+              ruccliente: (item.ruccliente || item.ruc || '').toString().trim(),
+              digitoverificador: (item.digitoverificador || item.dv || '').toString().trim(),
+              dir1cliente: (item.dir1cliente || item.direccion || '').toString().trim(),
+              dir2cliente: (item.dir2cliente || '').toString().trim(),
+              dirconta: (item.dirconta || item.contacto || '').toString().trim(),
+              telcliente: (item.telcliente || item.telefono || '').toString().trim(),
+              emailcliente: (item.emailcliente || item.email || '').toString().trim().toLowerCase(),
+              tipocontribuyente: (item.tipocontribuyente || item.tipocontrib || '1').toString().trim(),
+              tipoclientefe: (item.tipoClienteFe || item.tipoclientefe || item.clientefe || '01').toString().trim(),
+              clasecliente: (item.claseCliente || item.clasecliente || '1').toString().trim(),
+              paiscliente: item.paiscliente || 'PA'
+            }
+          },
+          upsert: true
+        }
+      };
+    });
+
+    const result = await Cliente.bulkWrite(bulkOps, { ordered: false });
+    const insertados = result.upsertedCount || 0;
+    const actualizados = result.modifiedCount || 0;
+
+    return res.status(200).json({
+      success: true,
+      message: `Carga completada: ${insertados} creados, ${actualizados} actualizados.`,
+      totalProcesados: clientesList.length,
+      insertados,
+      actualizados
     });
   } catch (error) {
-    console.error('❌ Error POST /api/ventas/clientes/bulk:', error);
-    res.status(500).json({ success: false, message: 'Error en carga masiva de clientes', error: error.message });
+    console.error('Error en POST /bulk:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al procesar carga masiva en Atlas: ' + error.message
+    });
+  }
+});
+
+// ============================================================================
+// 2️⃣ POST /api/ventas/clientes/upload-excel
+// Alternativa directa: lee el archivo Excel físico y guarda en Atlas
+// ============================================================================
+app.post('/upload-excel', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No se subió archivo Excel' });
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+    if (!rawRows || rawRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'El archivo Excel no tiene datos.' });
+    }
+
+    const bulkOps = [];
+    const errors = [];
+
+    rawRows.forEach((row, index) => {
+      const idCli = (row.codcliente || row.idcliente || row.codigo || '').toString().trim();
+      const nomCli = (row.nombre || row.clientenombre || '').toString().trim();
+
+      if (!idCli || !nomCli) {
+        errors.push(`Fila ${index + 2}: falta código o nombre.`);
+        return;
+      }
+
+      bulkOps.push({
+        updateOne: {
+          filter: { idcliente: idCli },
+          update: {
+            $set: {
+              idcliente: idCli,
+              codcliente: idCli,
+              clientenombre: nomCli,
+              ruccliente: (row.ruc || row.ruccliente || '').toString().trim(),
+              digitoverificador: (row.dv || row.digitoverificador || '').toString().trim(),
+              dir1cliente: (row.direccion || row.dir1cliente || '').toString().trim(),
+              dir2cliente: row.contacto ? `Contacto: ${row.contacto}` : '',
+              dirconta: (row.contacto || '').toString().trim(),
+              telcliente: (row.telefono || row.telcliente || '').toString().trim(),
+              emailcliente: (row.email || row.emailcliente || '').toString().trim().toLowerCase(),
+              tipocontribuyente: (row.tipocontrib || row.tipocontribuyente || '1').toString().trim(),
+              tipoclientefe: (row.clientefe || row.tipoclientefe || '01').toString().trim(),
+              clasecliente: (row.clasecliente || '1').toString().trim(),
+              paiscliente: 'Panamá'
+            }
+          },
+          upsert: true
+        }
+      });
+    });
+
+    if (bulkOps.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No se encontraron registros válidos.',
+        errores: errors
+      });
+    }
+
+    const result = await Cliente.bulkWrite(bulkOps, { ordered: false });
+
+    return res.status(200).json({
+      success: true,
+      message: `Excel procesado: ${result.upsertedCount || 0} creados, ${result.modifiedCount || 0} actualizados.`,
+      totalProcesados: bulkOps.length,
+      insertados: result.upsertedCount || 0,
+      actualizados: result.modifiedCount || 0,
+      errores: errors
+    });
+  } catch (error) {
+    console.error('Error en /upload-excel:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================================
+// 3️⃣ GET /api/ventas/clientes
+// ============================================================================
+app.get('/clientesrecuperados', async (req, res) => {
+  try {
+    const clientes = await Cliente.find().sort({ createdAt: -1 }).limit(200);
+    res.json({ success: true, message: 'Clientes recuperados con éxito', data: clientes });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
