@@ -1889,7 +1889,7 @@ app.post('/api/inventario/bulk', async (req, res) => {
       const costotransfer = Number(item.costo ?? 0);
       const impuestotransfer = Number(item.impuesto ?? 7);
 
-      const parsedCant = isNaN(cantidadtransfer) || cantidadtransfer < 0 ? 0 : cantidadtransfer;
+      const parsedCant = isNaN(cantitadtransfer) || cantitadtransfer < 0 ? 0 : cantitadtransfer;
       const parsedPrecio = isNaN(preciotransfer) || preciotransfer < 0 ? 0 : preciotransfer;
       const parsedCosto = isNaN(costotransfer) || costotransfer < 0 ? 0 : costotransfer;
       const parsedImp = isNaN(impuestotransfer) || impuestotransfer < 0 ? 7 : impuestotransfer;
