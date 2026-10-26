@@ -5978,6 +5978,46 @@ let xmlanular   = `
     }
 });
 
+// ───────── ANULAR FACTURA ─────────
+// ============================================================================
+// 🔹 ANULAR FACTURA ELECTRÓNICA (SOAP TheFactory HKA + INVENTARIO)
+// ============================================================================
+app.post('/api/ventas/facturas/remove/:nofactura', async (req, res) => {
+    try {
+        const { nofactura } = req.params;
+        const nofacturaUpper = nofactura;
+        // 1. OBTENER FACTURA
+        const factura = await FacturaHead.findOne({ nofactura: nofacturaUpper });
+        if (!factura) return res.status(404).json({ success: false, message: 'Factura no encontrada' });
+
+        const detalles = await FacturaDetalle.find({ nofactura: nofacturaUpper });
+        for (const det of detalles) {
+                if (det.codproducto) {
+                    await Inventariosede.findOneAndUpdate(
+                        { idinventario: det.codproducto },
+                        { $inc: { cantidispo: (det.cantidad || 0) }
+                     },
+                      { returnDocument: 'after' }  // 🔹 CAMBIO: Sumamos en lugar de restar
+                    );
+                }
+            }
+const deletedFactura = await FacturaHead.findOneAndDelete({ nofactura: nofacturaUpper, estado : "Rechazada" });
+const deleteDetalleRecords = async (nofacturaUpper) => {
+  try {
+    // Deletes all records matching the given no_factura
+    const result = await FacturaDetalle.deleteMany({ nofactura: nofacturaUpper });  
+    console.log(`${result.deletedCount} records were deleted.`);
+    return result;
+  } catch (error) {
+    console.error("Error deleting records:", error);
+  }
+};      
+} catch (error) {
+        console.error('❌ Error remover factura rechazada:', error);
+        res.status(500).json({ success: false, message: 'Error interno al remover factura', error: error.message });
+    }
+});
+
 // ============================================================================
 // 🔹 ENVIAR NOTA DE CRÉDITO A THEFACTORY CORP (SOAP)
 // 🔹 tipodocumento: "04" = Transacción, "06" = Monto
