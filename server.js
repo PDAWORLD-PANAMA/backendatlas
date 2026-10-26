@@ -5120,7 +5120,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
-            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo:0
         });
         
         const detallesPreparados = detalles.map(detalle => ({
@@ -5174,6 +5174,9 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         let existingHead = await FacturaHead.findOne({ 
             nofactura: nofacturaUpper
         });
+        if(head.condiciones !== "1"){
+          head.saldo = parseFloat(head.total).toFixed(2);  
+        }
         
         let headFinal;
         if (!existingHead) {
@@ -5201,7 +5204,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 descuento: head.descuento || 0,
                 impuesto: head.impuesto || 0,
                 subtotal2: head.subtotal2 || 0,
-                total: head.total || 0
+                total: head.total || 0,
+                saldo : head.saldo || 0
             });
         } else {
             const updateData = {
@@ -5210,6 +5214,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 impuesto: head.impuesto || 0,
                 subtotal2: head.subtotal2 || 0,
                 total: head.total || 0,
+                saldo : head.saldo || 0,
                 montoretencion: head.montoretencion || 0,
                 detallefactura: head.detallefactura || '[]',
                 fechaActualizacion: fechasistema
@@ -5812,7 +5817,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
-            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0
         });
         
         const detallesPreparados = detalles.map(detalle => ({
