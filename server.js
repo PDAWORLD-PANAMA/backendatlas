@@ -1052,17 +1052,9 @@ app.get("/api/dashboard", async (req, res) => {
     // ═══════════════════════════════════════════════════════
     // 🔹 2. CALCULAR DATOS REALES DE FACTURAS (VENTAS)
     // ═══════════════════════════════════════════════════════
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const formatDate = (date) => date.toISOString().split('T')[0];
-    const todayStr = formatDate(today);
-    const yesterdayStr = formatDate(yesterday);
-    const currentMonthStr = todayStr.substring(0, 7); // "YYYY-MM"
     
-    const currentYear = today.getFullYear();
-    const mesActual = today.getMonth() + 1; // 1 = Enero, 12 = Diciembre
+    
+     const { todayStr, yesterdayStr, currentMonthStr, currentYear, mesActual } = getDates();
 
     // Consultar facturas por fecha (excluir anuladas)
     const facturasHoy = await FacturaHead.find({ 
@@ -8691,6 +8683,34 @@ const REGEX_DGI = Object.freeze({
  * @param {string} ruc - RUC sin DV (ej: "8-765-4321", "8NT-0002-004249")
  * @returns {boolean} true si el formato es válido Y coherente con tipoRuc
  */
+
+// ============================================================
+// Returns today / yesterday / month / year in UTC-5
+// Call it anywhere: const d = getDates();
+// ============================================================
+function getDates() {
+  const TIMEZONE = 'America/Panama'; // UTC-5 all year. Use 'America/New_York' if DST.
+
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMEZONE,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()); // "YYYY-MM-DD"
+
+  // yesterday = today - 1 day (DST-safe)
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const yDate = new Date(Date.UTC(y, m - 1, d));
+  yDate.setUTCDate(yDate.getUTCDate() - 1);
+  const yesterdayStr = yDate.toISOString().slice(0, 10);
+
+  return {
+    todayStr,                                    // "2026-10-25"
+    yesterdayStr,                                // "2026-10-24"
+    currentMonthStr: todayStr.substring(0, 7),   // "2026-10"
+    currentYear: Number(todayStr.substring(0, 4)),
+    mesActual: Number(todayStr.substring(5, 7)), // 1 = Enero … 12 = Diciembre
+  };
+}
+
 function validarRucDgiDetalle(tipoRuc, ruc) {
   if (!ruc || typeof ruc !== 'string' || ruc.trim() === '') {
     return {
