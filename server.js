@@ -6011,6 +6011,7 @@ const deleteDetalleRecords = async (nofacturaUpper) => {
   } catch (error) {
     console.error("Error deleting records:", error);
   }
+  return;
 };      
 } catch (error) {
         console.error('❌ Error remover factura rechazada:', error);
