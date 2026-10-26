@@ -1888,12 +1888,13 @@ app.post('/api/inventario/bulk', async (req, res) => {
       const parsedPrecio = isNaN(preciotransfer) || preciotransfer < 0 ? 0 : preciotransfer;
       const parsedCosto = isNaN(costotransfer) || costotransfer < 0 ? 0 : costotransfer;
       const parsedImp = isNaN(impuestotransfer) || impuestotransfer < 0 ? 7 : impuestotransfer;
-
+      var  impuestotempo =  1 + (parseFloat(parsedImp) / 100);
+      var  precioimpuesto = parseFloat(parsedPrecio) * parseFloat(impuestotempo);
       const doc = {
         idinventario : codigotransfer,
         inventarionombre : descripciontransfer,
         cantidispo: parseInt(parsedCant),
-        precio1: parseFloat(parsedPrecio.toFixed(2)),
+        precio1: parseFloat(precioimpuesto.toFixed(2)),
         costo1: parseFloat(parsedCosto.toFixed(2)),
         impuesto1: parseFloat(parsedImp.toFixed(2)),
         existenciamin: 1,
