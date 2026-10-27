@@ -5547,7 +5547,16 @@ console.log("Cargar los valores de Subtotales para generar la factura ");
 <ser:totalTodosItems>${wtotaldefactura.toFixed(2)}</ser:totalTodosItems>
 <ser:listaFormaPago><ser:formaPago><ser:formaPagoFact>${factura.formapago || '01'}</ser:formaPagoFact>
 <ser:valorCuotaPagada>${wtotaldefactura.toFixed(2)}</ser:valorCuotaPagada></ser:formaPago></ser:listaFormaPago>\n`;
-
+var xmlcreditopago = "";
+if (factura.condiciones != "1"){
+   xmlcreditopago = `<ser:listaPagoPlazo>
+                  <ser:pagoPlazo>
+                     <ser:fechaVenceCuota>${fefechavenceplazo}</ser:fechaVenceCuota>
+                     <ser:valorCuota>${fecuotadepagocre}</ser:valorCuota>
+                  </ser:pagoPlazo>
+               </ser:listaPagoPlazo>\n`
+    xmltotal = xmltotal + xmlcreditopago;           
+}
         let xmlineareten = ""; let montoreten = 0;
         if (factura.retenedor && factura.retenedor !== "0") {
             let tasareten = ["1", "3"].includes(factura.retenedor) ? 100 : (["2", "4", "7"].includes(factura.retenedor) ? 50 : 0);
