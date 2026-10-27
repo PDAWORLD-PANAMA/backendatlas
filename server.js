@@ -4274,6 +4274,7 @@ app.post("/api/ventas/facturas/head", async (req, res) => {
 
     var fechasistema = formatLocalYmd(new Date()); 
     var temcondiciones = data.condiciones;
+console.log("Condiciones de venta ",temcondiciones);
 var fechavencimientotmp = fechasistema;
   if (temcondiciones == "2") {
         var fechax = new Date(fechasistema);
@@ -4314,8 +4315,9 @@ fechavencimientotmp = resul2;
     data.subtotal2 = data.subtotal2 || 0.0;
     data.impuesto = data.impuesto || 0.0;
     data.total = data.total || 0.0;
+    data.saldo = data.saldo || 0.0;
     data.descuento = data.descuento || 0.0;
-
+console.log("Cabecera de factura creada exitosamente ");
     const nuevaFacturaHead = new FacturaHead(data);
     const guardada = await nuevaFacturaHead.save();
 
