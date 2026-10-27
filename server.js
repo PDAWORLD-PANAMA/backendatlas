@@ -5517,23 +5517,28 @@ console.log("Iniciando el for de los detalles de la factura ");
         var fevalorcuota = parseFloat(wtotaldefactura).toFixed(2);
         var fevalorecibido = parseFloat(wtotaldefactura).toFixed(2);
 
-        if (factura.condiciones != "1") {
-            var addDays = (days) => {
-                var d = new Date();
-                d.setDate(d.getDate() + days);
-                return dayjs(d.toLocaleDateString("en-US"));
-            };
-            if (factura.condiciones == "2") {
-                fefechavenceplazo = addDays(30).format();
-                fecuotadepagocre = fevalorcuota;
-            } else if (factura.condiciones == "3") {
-                fefechavenceplazo = addDays(45).format();
+console.log(" Condicones es >>>>>>>>>> ",factura.condiciones);
+
+     if (factura.condiciones != "1") {
+
+    // keep the current time, just add days
+    const addDays = (days) => dayjs().add(days, 'day');
+
+    if (factura.condiciones == "2") {
+        // utcOffset takes minutes → -5 * 60 = -300
+        fefechavenceplazo = addDays(30).utcOffset(-300).format();
+        // → "2022-08-21T10:37:38-05:00"
+
+        fecuotadepagocre = fevalorcuota;
+    }
+    else if (factura.condiciones == "3") {
+                fefechavenceplazo = addDays(45).utcOffset(-300).format();
                 fecuotadepagocre = fevalorcuota;
             } else if (factura.condiciones == "4") {
-                fefechavenceplazo = addDays(60).format();
+                fefechavenceplazo = addDays(60).utcOffset(-300).format();
                 fecuotadepagocre = fevalorcuota;
             } else if (factura.condiciones == "5") {
-                fefechavenceplazo = addDays(90).format();
+                fefechavenceplazo = addDays(90).utcOffset(-300).format();
                 fecuotadepagocre = fevalorcuota;
             }
         }
