@@ -6019,7 +6019,7 @@ app.post('/api/ventas/facturas/remove/:nofactura', async (req, res) => {
                     );
                 }
             }
-const deletedFactura = await FacturaHead.findOneAndDelete({ nofactura: nofacturaUpper, estado : "Rechazada" });
+const deletedFactura = await FacturaHead.findOneAndDelete({ nofactura: nofacturaUpper });
 const deleteDetalleRecords = async (nofacturaUpper) => {
   try {
     // Deletes all records matching the given no_factura
