@@ -5384,11 +5384,7 @@ console.log(" Almacenar las variables de la factura electronica a enviar ");
         // Reemplazo de variable global gcorreo2
         if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
         let fenundocfiscal = factura.nofactura;
-        var fetiempopago = "";
-        var condicionventatmp = factura.condiciones; 
-        if (condicionventatmp !== null){
-         fetiempopago = condicionventatmp;
-        }
+        var fetiempopago = "2";
         var feubicacion = "8-8-6"; var feprovincia = "PANAMA"; var fedistrito = "PANAMA"; var fecorregimiento = "BETHANIA";
         if (fetipoclientefe === "03") {
             feubicacion = factura.ubicacionid || feubicacion;
@@ -6270,6 +6266,7 @@ console.log(`🔍 [Paso 6] Creando xml para enviar a the factory `);
      let ferazonsocialprt = factura.razonsocial || '';
      let fedireccionprt = factura.direccioncontribuyente || 'PANAMA';
      let feemailprt = factura.correocliefe;
+     var fetiempopago = "2";
      let fefechaemision = factura.fechaemision;
      if (empresa.emailempresa && empresa.emailempresa !== "00") feemailprt = empresa.emailempresa;
 
