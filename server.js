@@ -1911,16 +1911,16 @@ app.post('/api/inventario/bulk', async (req, res) => {
         cantipormayor: 0,
   tipoempaque: " ",
   empaque: " ",
-  codtasaisc: " ",
-  tasaisc: " ",
+  codtasaisc: "0000",
+  tasaisc: "0000 ",
   comisionvendedor: 0,
   tipoproducto:  "1",
-  tipoempresa: " ",
+  tipoempresa: "1",
   fechaexpiracion: " ",
   codigoprodproveedor: " ",
   imagenproducto: "1",
   idproveedor: " ",
-  localizacion: "Sede Principal",
+  localizacion: "Sede Matriz ",
   especificaciones: " ",
   horasuso: 0,
   reparaciones: 0,
@@ -3330,11 +3330,20 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 // GET /api/ventas/cotizaciones/head
 app.get("/api/ventas/cotizaciones/head", async (req, res) => {
   try {
-    const { nocotiza } = req.query;
+    const { nocotiza, fechaInicial, fechaFinal } = req.query;
     let query = { activo: { $eq: "A" } };
 
     if (nocotiza && nocotiza.trim() !== "") {
       query.nocotiza = { $regex: nocotiza.trim(), $options: "i" };
+    }
+
+    // 🔹 NEW: filter by fechacotiza range (stored as "YYYY-MM-DD" strings)
+    if (fechaInicial && fechaFinal) {
+      query.fechacotiza = { $gte: fechaInicial, $lte: fechaFinal };
+    } else if (fechaInicial) {
+      query.fechacotiza = { $gte: fechaInicial };
+    } else if (fechaFinal) {
+      query.fechacotiza = { $lte: fechaFinal };
     }
 
     const cotizaciones = await CotizaHead.find(query).sort({ fechaCreacion: -1 });
