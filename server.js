@@ -3860,7 +3860,9 @@ app.delete('/api/ventas/cotizaciones/head/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
-
+console.log("Nocotiza head a eliminar ",cleanNoCotiza);
+var resto = RegExp(`^${cleanNoCotiza}$`, 'i');
+console.log("resto ",resto)
     // Búsqueda robusta (case-insensitive y sin espacios accidentales)
     const deleted = await CotizaHead.findOneAndDelete({ 
       nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
@@ -3988,7 +3990,7 @@ app.delete('/api/ventas/cotizaciones/detalle/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
-
+console.log("Nocotiza head a eliminar ",cleanNoCotiza);
     // Eliminación robusta de todos los detalles asociados
     const eliminado = await CotizaDetalle.deleteMany({ 
       nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
