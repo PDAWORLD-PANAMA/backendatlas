@@ -3853,12 +3853,24 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
     }
 });
 
+// ============================================================================
+// 🔹 CORREGIDO: ELIMINAR CABECERA DE COTIZACIÓN
+// ============================================================================
 app.delete('/api/ventas/cotizaciones/head/:nocotiza', async (req, res) => {
   try {
-     const { nocotiza } = req.params;
-     const deleted = await CotizaHead.findOneAndDelete({nocotiza : nocotiza}); 
-    if (!deleted) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
-    res.json({ success: true, message: '🗑️ Cotización eliminada (desactivada)' });
+    const { nocotiza } = req.params;
+    const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
+
+    // Búsqueda robusta (case-insensitive y sin espacios accidentales)
+    const deleted = await CotizaHead.findOneAndDelete({ 
+      nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
+    }); 
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
+    }
+
+    res.json({ success: true, message: '🗑️ Cotización eliminada exitosamente' });
   } catch (error) {
     console.error('❌ Error DELETE /api/ventas/cotizaciones/head/:nocotiza:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar cotización', error: error.message });
@@ -3969,18 +3981,31 @@ app.put('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
   }
 });
 
+// ============================================================================
+// 🔹 CORREGIDO: ELIMINAR DETALLES DE COTIZACIÓN
+// ============================================================================
 app.delete('/api/ventas/cotizaciones/detalle/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
-    
-      const eliminado = await CotizaDetalle.deleteMany({nocotiza : nocotiza}); 
-    if (!eliminado) return res.status(404).json({ success: false, message: 'Detalles no encontrado' });
-    res.json({ success: true, message: '🗑️ Detalles eliminado' });
+    const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
+
+    // Eliminación robusta de todos los detalles asociados
+    const eliminado = await CotizaDetalle.deleteMany({ 
+      nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
+    }); 
+
+    res.json({ 
+      success: true, 
+      message: '🗑️ Detalles eliminados exitosamente', 
+      deletedCount: eliminado.deletedCount 
+    });
   } catch (error) {
     console.error('❌ Error DELETE many /api/ventas/cotizaciones/detalle/:nocotiza:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar detalle', error: error.message });
   }
 });
+
+
 app.delete('/api/ventas/cotizaciones/uno/detalle/:id', async (req, res) => {
   try {
     const { id } = req.params;
