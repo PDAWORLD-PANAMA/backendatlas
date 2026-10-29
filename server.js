@@ -3856,14 +3856,22 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
 // ============================================================================
 // 🔹 CORREGIDO: ELIMINAR CABECERA DE COTIZACIÓN
 // ============================================================================
+// ============================================================================
+// 🔹 CORREGIDO: ELIMINAR CABECERA DE COTIZACIÓN
+// ============================================================================
 app.delete('/api/ventas/cotizaciones/head/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
     const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
-console.log("Nocotiza head a eliminar ",cleanNoCotiza);
-    // Búsqueda robusta (case-insensitive y sin espacios accidentales)
-    const deleted = await CotizaHead.findOneAndDelete({ nocotiza: cleanNoCotiza  }); 
-console.log("Delete contain ",deleted)
+    console.log("Nocotiza head a eliminar (limpio):", JSON.stringify(cleanNoCotiza));
+
+    // Búsqueda usando expresión regular para evitar fallos por espacios ocultos o codificación
+    const deleted = await CotizaHead.findOneAndDelete({ 
+      nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
+    }); 
+
+    console.log("Delete contain:", deleted);
+
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     }
@@ -3872,6 +3880,32 @@ console.log("Delete contain ",deleted)
   } catch (error) {
     console.error('❌ Error DELETE /api/ventas/cotizaciones/head/:nocotiza:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar cotización', error: error.message });
+  }
+});
+
+// ============================================================================
+// 🔹 CORREGIDO: ELIMINAR DETALLES DE COTIZACIÓN
+// ============================================================================
+app.delete('/api/ventas/cotizaciones/detalle/:nocotiza', async (req, res) => {
+  try {
+    const { nocotiza } = req.params;
+    const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
+    console.log("Nocotiza detalle a eliminar (limpio):", JSON.stringify(cleanNoCotiza));
+
+    const eliminado = await CotizaDetalle.deleteMany({ 
+      nocotiza: { $regex: new RegExp(`^${cleanNoCotiza}$`, 'i') } 
+    }); 
+
+    console.log("Detalles eliminados count:", eliminado.deletedCount);
+
+    res.json({ 
+      success: true, 
+      message: '🗑️ Detalles eliminados exitosamente', 
+      deletedCount: eliminado.deletedCount 
+    });
+  } catch (error) {
+    console.error('❌ Error DELETE many /api/ventas/cotizaciones/detalle/:nocotiza:', error);
+    res.status(500).json({ success: false, message: 'Error al eliminar detalle', error: error.message });
   }
 });
 
@@ -3978,30 +4012,6 @@ app.put('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al actualizar detalle', error: error.message });
   }
 });
-
-// ============================================================================
-// 🔹 CORREGIDO: ELIMINAR DETALLES DE COTIZACIÓN
-// ============================================================================
-app.delete('/api/ventas/cotizaciones/detalle/:nocotiza', async (req, res) => {
-  try {
-    const { nocotiza } = req.params;
-    const cleanNoCotiza = nocotiza ? nocotiza.trim() : "";
-console.log("Nocotiza head a eliminar ",cleanNoCotiza);
-    // Eliminación robusta de todos los detalles asociados
-    const eliminado = await CotizaDetalle.deleteMany({ 
-      nocotiza: cleanNoCotiza }); 
-
-    res.json({ 
-      success: true, 
-      message: '🗑️ Detalles eliminados exitosamente', 
-      deletedCount: eliminado.deletedCount 
-    });
-  } catch (error) {
-    console.error('❌ Error DELETE many /api/ventas/cotizaciones/detalle/:nocotiza:', error);
-    res.status(500).json({ success: false, message: 'Error al eliminar detalle', error: error.message });
-  }
-});
-
 
 app.delete('/api/ventas/cotizaciones/uno/detalle/:id', async (req, res) => {
   try {
