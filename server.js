@@ -4290,15 +4290,31 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
 // ============================================================================
 // 🔹 RUTAS: FACTURA HEAD (ELECTRÓNICA)
 // ============================================================================
-
 app.get("/api/ventas/facturas/head", async (req, res) => {
   try {
-    const { nofactura } = req.query;
+    const { nofactura, fechaInicial, fechaFinal } = req.query;
     let query = {};
+
+    // Filtro por número de factura (opcional)
     if (nofactura) {
       query.nofactura = { $regex: nofactura, $options: "i" };
     }
+
+    // Filtro por rango de fechas (opcional)
+    // Asumiendo que el campo en tu esquema se llama 'fechafactura' (ajústalo si tiene otro nombre como 'fecha' o 'createdAt')
+    if (fechaInicial && fechaFinal) {
+      query.fechafactura = {
+        $gte: fechaInicial,
+        $lte: fechaFinal
+      };
+    } else if (fechaInicial) {
+      query.fechafactura = { $gte: fechaInicial };
+    } else if (fechaFinal) {
+      query.fechafactura = { $lte: fechaFinal };
+    }
+
     const facturas = await FacturaHead.find(query).sort({ createdAt: -1 });
+    
     res.json({
       success: true,
       message: `${facturas.length} factura(s) encontrada(s)`,
@@ -4313,6 +4329,7 @@ app.get("/api/ventas/facturas/head", async (req, res) => {
     });
   }
 });
+
 app.post("/api/ventas/facturas/head", async (req, res) => {
   try {
     const data = { ...req.body };
