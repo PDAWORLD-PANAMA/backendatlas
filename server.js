@@ -3330,14 +3330,11 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
 // GET /api/ventas/cotizaciones/head
 app.get("/api/ventas/cotizaciones/head", async (req, res) => {
   try {
-    const { nocotiza, fechaInicial, fechaFinal } = req.query;
-    let query = { activo: { $eq: "A" } };
+    const { nocotiza, nombrecliente, fechaInicial, fechaFinal } = req.query;
 
-    if (nocotiza && nocotiza.trim() !== "") {
-      query.nocotiza = { $regex: nocotiza.trim(), $options: "i" };
-    }
+    const query = { activo: { $eq: "A" } };
 
-    // 🔹 NEW: filter by fechacotiza range (stored as "YYYY-MM-DD" strings)
+    // Date range (fechacotiza stored as yyyy-mm-dd → lexicographic = chronological)
     if (fechaInicial && fechaFinal) {
       query.fechacotiza = { $gte: fechaInicial, $lte: fechaFinal };
     } else if (fechaInicial) {
@@ -3346,7 +3343,20 @@ app.get("/api/ventas/cotizaciones/head", async (req, res) => {
       query.fechacotiza = { $lte: fechaFinal };
     }
 
+    // Skipped when empty — "" is falsy
+    if (nocotiza && nocotiza.trim() !== "") {
+      query.nocotiza = { $regex: nocotiza.trim(), $options: "i" };
+    }
+
+    if (nombrecliente && nombrecliente.trim() !== "") {
+      query.nombreclie = { $regex: nombrecliente.trim(), $options: "i" };
+    }
+
+    console.log("[GET /api/ventas/cotizaciones/head] query =", JSON.stringify(query));
+
     const cotizaciones = await CotizaHead.find(query).sort({ fechaCreacion: -1 });
+
+    console.log(`[GET /api/ventas/cotizaciones/head] → ${cotizaciones.length} record(s)`);
 
     res.json({
       success: true,
@@ -3355,11 +3365,7 @@ app.get("/api/ventas/cotizaciones/head", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error GET /api/ventas/cotizaciones/head:", err);
-    res.status(500).json({
-      success: false,
-      message: "Error interno del servidor",
-      data: []
-    });
+    res.status(500).json({ success: false, message: "Error interno del servidor", data: [] });
   }
 });
 
@@ -3847,15 +3853,14 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
     }
 });
 
-app.delete('/api/ventas/cotizaciones/head/:id', async (req, res) => {
+app.delete('/api/ventas/cotizaciones/head/:nocotiza', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, message: 'ID inválido' });
-     const deleted = await CotizaHead.findByIdAndDelete(id); 
+     const { nocotiza } = req.params;
+     const deleted = await CotizaHead.findOneAndDelete({nocotiza : nocotiza}); 
     if (!deleted) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: '🗑️ Cotización eliminada (desactivada)' });
   } catch (error) {
-    console.error('❌ Error DELETE /api/ventas/cotizaciones/head/:id:', error);
+    console.error('❌ Error DELETE /api/ventas/cotizaciones/head/:nocotiza:', error);
     res.status(500).json({ success: false, message: 'Error al eliminar cotización', error: error.message });
   }
 });
