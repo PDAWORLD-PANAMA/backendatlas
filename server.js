@@ -5584,9 +5584,13 @@ console.log(" Condicones es >>>>>>>>>> ",factura.condiciones);
 
      if (factura.condiciones != "1") {
                fetiempopago = "2";
+               var addDays = (days) => {
+                var d = new Date();
+                d.setDate(d.getDate() + days);
+                return dayjs(d.toLocaleDateString("en-US"));
+            };
     // keep the current time, just add days
-    const addDays = (days) => dayjs().add(days, 'day');
-
+   
     if (factura.condiciones == "2") {
         // utcOffset takes minutes → -5 * 60 = -300
         fefechavenceplazo = addDays(30).utcOffset(-300).format();
