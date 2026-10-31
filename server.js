@@ -4,7 +4,18 @@ const cors = require("cors");
 require('dotenv').config();
 const multer = require('multer');
 const app = express();
+
 const dayjs = require("dayjs");
+const utc     = require("dayjs/plugin/utc");
+const timezone = require("dayjs/plugin/timezone");   // needed if you ever use .tz()
+dayjs.extend(utc);
+dayjs.extend(timezone);
+const CONDICIONES_DIAS = {
+  "2": 30,
+  "3": 45,
+  "4": 60,
+  "5": 90,
+};
 
 // 🔹 Middlewares
 app.use(cors());
@@ -5583,33 +5594,25 @@ console.log("Iniciando el for de los detalles de la factura ");
 
 console.log(" Condicones es >>>>>>>>>> ",factura.condiciones);
 
-     if (factura.condiciones != "1") {
-               fetiempopago = "2";
-               var addDays = (days) => {
-                var d = new Date();
-                d.setDate(d.getDate() + days);
-                return dayjs(d.toLocaleDateString("en-US"));
-            };
-    // keep the current time, just add days
-   
-    if (factura.condiciones == "2") {
-        // utcOffset takes minutes → -5 * 60 = -300
-        fefechavenceplazo = addDays(30).utcOffset(-300).format();
-        // → "2022-08-21T10:37:38-05:00"
+     if (factura.condiciones !== "1") {
+    fetiempopago = "2";
 
-        fecuotadepagocre = fevalorcuota;
+    const dias = CONDICIONES_DIAS[factura.condiciones];
+    if (dias) {
+        // base = invoice issue date, keep its time-of-day, shift the offset to Panamá
+        const base = factura.fechafactura ? dayjs(factura.fechafactura) : dayjs();
+        fefechavenceplazo = base
+            .add(dias, "day")
+            .utcOffset(-300)
+            .format();                        // "2022-08-21T10:37:38-05:00"
+        fecuotadepagocre  = fevalorcuota;
+    } else {
+        // unknown conditions value — decide what to do (log, skip, default…)
+        fefechavenceplazo = factura.fechafactura
+            ? dayjs(factura.fechafactura).utcOffset(-300).format()
+            : dayjs().utcOffset(-300).format();
     }
-    else if (factura.condiciones == "3") {
-                fefechavenceplazo = addDays(45).utcOffset(-300).format();
-                fecuotadepagocre = fevalorcuota;
-            } else if (factura.condiciones == "4") {
-                fefechavenceplazo = addDays(60).utcOffset(-300).format();
-                fecuotadepagocre = fevalorcuota;
-            } else if (factura.condiciones == "5") {
-                fefechavenceplazo = addDays(90).utcOffset(-300).format();
-                fecuotadepagocre = fevalorcuota;
-            }
-        }
+}
 console.log("Cargar los valores de Subtotales para generar la factura ");
         var xmltotal = `<ser:totalesSubTotales>
 <ser:totalPrecioNeto>${wtotalprecioneto.toFixed(2)}</ser:totalPrecioNeto>
