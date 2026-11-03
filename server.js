@@ -2782,6 +2782,42 @@ app.get('/api/inventarios/:id', async (req, res) => {
   }
 });
 
+// ⚠️ ESTA RUTA DEBE IR AL FINAL DE TODAS LAS RUTAS DE INVENTARIOS
+app.get('/api/inventarios/search/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const inventario = await Inventariosede.findById(id);
+    if (!inventario) return res.status(404).json({ success: false, message: 'Inventario no encontrado' });
+    res.json({ success: true, message: 'Inventario obtenido', data: inventario });
+  } catch (error) {
+    console.error('❌ Error GET /api/inventarios/:id:', error);
+    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+  }
+});
+// -----------------------------------------------------//
+// ============================================================================
+// 🔹 RUTAS: FACTURA HEAD (ELECTRÓNICA)
+// ============================================================================
+app.get("/api/inventarios/search", async (req, res) => {
+  try {
+    const { busqueda } = req.query;
+    let query = {};
+    query.busqueda = { $regex: busqueda.trim(), $options: "i" };
+    console.log("[GET /api/inventarios/search=", JSON.stringify(query));
+    const inventarios = await Inventariosede.find(query).sort({ inventarionombre: -1 });
+    console.log(`[GET /api/inventarios/search → ${inventarios.length} record(s)`);
+    res.json({
+      success: true,
+      message: `${inventarios.length} inventarios encontrada(s)`,
+      data: inventarios
+    });
+  } catch (err) {
+    console.error("/api/inventarios/search", err);
+    res.status(500).json({ success: false, message: "Error interno del servidor", data: [] });
+  }
+});
+
+
 app.put('/api/inventarios/:id', async (req, res) => {
   try {
     const { id } = req.params;
