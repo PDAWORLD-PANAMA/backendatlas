@@ -2863,7 +2863,8 @@ app.get('/api/ventas/clientes', async (req, res) => {
 // En tu archivo de rutas (ej: routes/ventas.js o clientes.js)
 app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
     try {
-        const { ruc, tipoRuc } = req.body;    
+        const { ruc, tipoRuc } = req.body; 
+        ruc = ruc.trim();   
         if (!ruc || ruc.trim() === "") {
             return res.status(400).json({ success: false, message: "El RUC es obligatorio" });
         }
@@ -2889,6 +2890,7 @@ app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
    </soapenv:Body>
 </soapenv:Envelope>`;
 
+console.log("******  Llamando al SOAP de THEFACTORY ")
         const soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
         const soapResponse = await fetch(soapUrl, {
             method: 'POST',
@@ -2908,9 +2910,12 @@ app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
             return match ? match[1].trim() : "";
         };
 
+        cosole.log("SAOP Respondio ");
         const codigoHandle = extractTag(bodyXml, "codigo");
         const msgHandle = extractTag(bodyXml, "mensaje");
 
+        console.log("Codigo de respuesta  ",codigoHandle);
+        console.log("Mensaje de respuesta  ",msgHandle)
         // Si el código es 102, el RUC no existe en la DGI
         if (codigoHandle === "102") {
             return res.status(200).json({
