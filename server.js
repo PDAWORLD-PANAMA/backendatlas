@@ -8769,83 +8769,111 @@ app.listen(PORT, () => {
             return `${year}-${month}-${day}`;
 }
 /**
- * Determina el código de tipo de cliente según tipoRuc y la estructura del RUC (sin DV).
+ * Determina el código de tipo de cliente según tipoRuc y la estructura del RUC.
  *
  * @param {number|string} tipoRuc - 1: Persona Natural, 2: Persona Jurídica
- * @param {string} ruc - Número de RUC sin DV (Ej: "8-765-4321", "155699999-2-2023")
+ * @param {string} ruc - Número de RUC (Ej: "8-NT-1-10284", "E-3-123-4567")
  * @returns {string} "01" Contribuyente | "02" Consumidor final | "03" Gobierno | "04" Extranjero
  */
 function determinarTipoCliente(tipoRuc, ruc) {
- const TIPO_CLIENTE = Object.freeze({
-  CONTRIBUYENTE: '01',
-  CONSUMIDOR_FINAL: '02',
-  GOBIERNO: '03',
-  EXTRANJERO: '04',
-});
+  const TIPO_CLIENTE = Object.freeze({
+    CONTRIBUYENTE: '01',
+    CONSUMIDOR_FINAL: '02',
+    GOBIERNO: '03',
+    EXTRANJERO: '04',
+  });
 
-const REGEX = Object.freeze({
-  // Persona Natural (tipoRuc = 1)
-  naturalExtranjero: /^\d{1,2}-NT-\d+-\d+$/,          // 3-NT-1-2345
-  naturalNacional:   /^(\d{1,2}|AV|PI|PA)-\d{1,5}-\d{1,6}$/, // 8-765-4321
-  naturalResidente:  /^(E|N|PE)-\d{1,2}-\d{1,6}$/,    // E-8-123456
+  const REGEX = Object.freeze({
+    // Persona Natural (tipoRuc = 1)
+    naturalExtranjero: /^(E|N|PE)-\d{1,2}-\d{4,7}$/,          // ✅ E-3-123-4567, N-8-4567
+    naturalNacional:   /^(\d{1,2}|\d{1}N|AV|PI|PA)-\d{1,5}-\d{1,6}$/, // 8-765-4321
+    naturalResidente:  /^(E|N|PE)-\d{1,2}-\d{4,7}$/,          // ✅ E-8-123456
 
-  // Persona Jurídica (tipoRuc = 2)
-  juridicaGobierno:  /^\d{1,2}NT-\d+-\d+$/,           // 8NT-0002-004249
-  juridicaExtranjera:/^\d{1,2}-NT-\d+-\d+$/,          // 3-NT-1-2345
-  juridicaModerno:   /^\d{5,12}-[1-9]-\d{4}$/,        // 155699999-2-2023
-  juridicaAntiguo:   /^\d{3,8}-\d{1,4}-\d{3,8}$/,     // 12345-67-8910
-});
+    // Persona Jurídica (tipoRuc = 2)
+    juridicaGobierno:  /^\d{1,2}-NT-\d{1,2}-\d{4,6}$/,        // ✅ 8-NT-1-10284, 8-NT-2-4866
+    juridicaExtranjera:/^(E|N|PE)-\d{1,2}-\d{4,7}$/,          // ✅ Extranjeros con formato E/N/PE
+    juridicaModerno:   /^\d{5,12}-[1-9]-\d{4}$/,              // 155699999-2-2023
+    juridicaAntiguo:   /^\d{3,8}-\d{1,4}-\d{3,8}$/,           // 12345-67-8910
+  });
 
   if (!ruc || typeof ruc !== 'string') {
-    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL; // Fallback seguro
   }
 
   const rucLimpio = ruc.trim().toUpperCase();
   const tipo = Number(tipoRuc);
 
-  // ---------------- PERSONA NATURAL ----------------
+  // ---------------- PERSONA NATURAL (tipoRuc = 1) ----------------
   if (tipo === 1) {
-    if (REGEX.naturalExtranjero.test(rucLimpio)) {
-      return TIPO_CLIENTE.EXTRANJERO;
+    if (REGEX.naturalExtranjero.test(rucLimpio) || REGEX.naturalResidente.test(rucLimpio)) {
+      return TIPO_CLIENTE.EXTRANJERO; // "04"
     }
-    if (REGEX.naturalNacional.test(rucLimpio) || REGEX.naturalResidente.test(rucLimpio)) {
-      return TIPO_CLIENTE.CONTRIBUYENTE;
+    if (REGEX.naturalNacional.test(rucLimpio)) {
+      return TIPO_CLIENTE.CONTRIBUYENTE; // "01"
     }
-    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL; // "02" (Fallback si no coincide con nada)
   }
 
-  // ---------------- PERSONA JURÍDICA ----------------
+  // ---------------- PERSONA JURÍDICA (tipoRuc = 2) ----------------
   if (tipo === 2) {
     if (REGEX.juridicaGobierno.test(rucLimpio)) {
-      return TIPO_CLIENTE.GOBIERNO;
+      return TIPO_CLIENTE.GOBIERNO; // "03" (¡Aquí cae 8-NT-1-10284!)
     }
     if (REGEX.juridicaExtranjera.test(rucLimpio)) {
-      return TIPO_CLIENTE.EXTRANJERO;
+      return TIPO_CLIENTE.EXTRANJERO; // "04"
     }
     if (REGEX.juridicaModerno.test(rucLimpio) || REGEX.juridicaAntiguo.test(rucLimpio)) {
-      return TIPO_CLIENTE.CONTRIBUYENTE;
+      return TIPO_CLIENTE.CONTRIBUYENTE; // "01"
     }
-    return TIPO_CLIENTE.CONSUMIDOR_FINAL;
+    return TIPO_CLIENTE.CONSUMIDOR_FINAL; // "02" (Fallback)
   }
 
-  // tipoRuc inválido
+  // tipoRuc inválido o no reconocido
   return TIPO_CLIENTE.CONSUMIDOR_FINAL;
 }
 
 // rucValidator.js
 // ═══════════════════════════════════════════════════════════════════
 // Valida que el RUC cumpla la estructura DGI y que coincida con el
-// tipoRuc declarado. El RUC se recibe SIN Dígito Verificador.
+// tipoRuc declarado.
 // ═══════════════════════════════════════════════════════════════════
 
 const REGEX_DGI = Object.freeze({
   naturalNacional:  /^(\d{1,2}|\d{1}N|AV|PI|PA)-\d{1,5}-\d{1,6}$/, // 8-765-4321
-  naturalResidente: /^(E|N|PE)-\d{1,2}-\d{1,6}$/,                  // E-8-123456
+  naturalResidente: /^(E|N|PE)-\d{1,2}-\d{4,7}$/,                  // ✅ E-8-123456, N-8-4567
   juridicaActual:   /^\d{5,12}-[1-9]-\d{4}$/,                      // 155699999-2-2023
   juridicaAntigua:  /^\d{3,8}-\d{1,4}-\d{3,8}$/,                   // 12345-67-8910
-  extranjera:       /^\d{1,2}-NT-\d+-\d+$/,                        // 3-NT-1-2345
-  gobierno:         /^\d{1,2}NT-\d+-\d+$/,                         // 8NT-0002-004249
+  extranjera:       /^(E|N|PE)-\d{1,2}-\d{4,7}$/,                  // ✅ E-3-123-4567
+  gobierno:         /^\d{1,2}-NT-\d{1,2}-\d{4,6}$/,                // ✅ 8-NT-1-10284, 8-NT-2-4866
 });
+
+/**
+ * Valida si un RUC es estructuralmente válido para un tipoRuc dado.
+ * @param {number|string} tipoRuc - 1 o 2
+ * @param {string} ruc - El RUC a validar
+ * @returns {boolean} true si es válido, false si no
+ */
+function validarEstructuraRuc(tipoRuc, ruc) {
+  if (!ruc || typeof ruc !== 'string') return false;
+  
+  const rucLimpio = ruc.trim().toUpperCase();
+  const tipo = Number(tipoRuc);
+
+  if (tipo === 1) {
+    return REGEX_DGI.naturalNacional.test(rucLimpio) || 
+           REGEX_DGI.naturalResidente.test(rucLimpio) || 
+           REGEX_DGI.extranjera.test(rucLimpio);
+  }
+
+  if (tipo === 2) {
+    return REGEX_DGI.juridicaActual.test(rucLimpio) || 
+           REGEX_DGI.juridicaAntigua.test(rucLimpio) || 
+           REGEX_DGI.gobierno.test(rucLimpio) || 
+           REGEX_DGI.extranjera.test(rucLimpio);
+  }
+
+  return false;
+}
 
 /**
  * Valida estructura del RUC y coherencia con tipoRuc.
