@@ -2860,91 +2860,114 @@ app.get('/api/ventas/clientes', async (req, res) => {
 
 });
 
-app.post('/api/ventas/clientes', async (req, res) => {
-  try {
-    const { idcliente, clientenombre } = req.body;
-   if (!idcliente?.trim() || !clientenombre?.trim()) {
-      return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
-    }
-    const existing = await Cliente.findOne({ idcliente });
-    if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este Codigo" });
-    const nuevoCliente = new Cliente(req.body);
-//************//
-//%%%%%%%%%%%%%%%%%%%%% CONSULTAR RUC CON LA DGI %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
- var contador  = 0;
- var restiporuc = " ";
- var resruc = " ";
- var codigoHandle = " ";
- var msgHandle = " ";
- var resdv = " ";
- var resrazonSocial = " ";
- var resproceso  = " ";
-//***********************************************//
-
-// ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────
- //**************************************************//
-const empresaconfig = await EmpresaConfig.find({});
-console.log("Ruc Enviado ",nuevoCliente.ruccliente);
-tipocontri = nuevoCliente.tipocontribuyente;
-console.log("Empresa Token ",empresaconfig[0].tokenempresa);
-console.log("Tipo Contribuyente ",tipocontri);
-console.log("llamar thefactory Consulta ");
-let xmllinea = `
+// En tu archivo de rutas (ej: routes/ventas.js o clientes.js)
+app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
+    try {
+        const { ruc, tipoRuc } = req.body;    
+        if (!ruc || ruc.trim() === "") {
+            return res.status(400).json({ success: false, message: "El RUC es obligatorio" });
+        }
+        const empresaconfig = await EmpresaConfig.find({});
+        if (!empresaconfig || empresaconfig.length === 0) {
+            return res.status(500).json({ success: false, message: "Configuración de empresa no encontrada" });
+        }
+        const tipocontri = tipoRuc || "1"; // Default a Natural si no se especifica
+        console.log("Ruc Enviado a DGI: ", ruc);
+        console.log("Tipo Contribuyente: ", tipocontri);
+        let xmllinea = `
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/" xmlns:ser="http://schemas.datacontract.org/2004/07/Services.ApiRest">
    <soapenv:Header/>
    <soapenv:Body>
       <tem:ConsultarRucDV>
-         <!--Optional:-->
          <tem:consultarRucDVRequest>
-            <!--Optional:-->
             <ser:tokenEmpresa>${empresaconfig[0].tokenempresa}</ser:tokenEmpresa>
-            <!--Optional:-->
             <ser:tokenPassword>${empresaconfig[0].tokenclave}</ser:tokenPassword>
-            <!--Optional:-->
             <ser:tipoRuc>${tipocontri}</ser:tipoRuc>
-            <!--Optional:-->
-            <ser:ruc>${nuevoCliente.ruccliente}</ser:ruc>
+            <ser:ruc>${ruc}</ser:ruc>
          </tem:consultarRucDVRequest>
       </tem:ConsultarRucDV>
    </soapenv:Body>
-</soapenv:Envelope>
-`
-let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+</soapenv:Envelope>`;
 
-const soapResponse = await fetch(soapUrl, {
-        method: 'POST',
-        body: xmllinea,
-        headers: {
-            'User-Agent': 'NODEJS-FETCH',
-            'Content-Type': 'text/xml;charset=utf-8',
-            'SOAPAction': 'http://tempuri.org/IService/ConsultarRucDV'
+        const soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+        const soapResponse = await fetch(soapUrl, {
+            method: 'POST',
+            body: xmllinea,
+            headers: {
+                'User-Agent': 'NODEJS-FETCH',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'SOAPAction': 'http://tempuri.org/IService/ConsultarRucDV'
+            }
+        });
+
+        if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+        const bodyXml = await soapResponse.text();
+        const extractTag = (xml, tag) => {
+            const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+            const match = xml.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const codigoHandle = extractTag(bodyXml, "codigo");
+        const msgHandle = extractTag(bodyXml, "mensaje");
+
+        // Si el código es 102, el RUC no existe en la DGI
+        if (codigoHandle === "102") {
+            return res.status(200).json({
+                success: false,
+                code: 102,
+                message: "No existe en la DGI como contribuyente",
+                data: null
+            });
         }
-    });
+        const resultadoSOAP = {
+            restiporuc: extractTag(bodyXml, "tipoRuc"),
+            resruc: extractTag(bodyXml, "ruc"),
+            codigoHandle: codigoHandle,
+            msgHandle: msgHandle,
+            resdv: extractTag(bodyXml, "dv"),
+            resrazonSocial: extractTag(bodyXml, "razonSocial"),
+            resproceso: extractTag(bodyXml, "resultado")
+        };
 
-if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
-const bodyXml = await soapResponse.text();
-    
-    const extractTag = (xml, tag) => {
-        const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
-        const match = xml.match(regex);
-        return match ? match[1].trim() : "";
-    };
-    const resultadoSOAP = {
-           restiporuc : extractTag(bodyXml, "tipoRuc"),
-            resruc : extractTag(bodyXml, "ruc"),
-            codigoHandle : extractTag(bodyXml, "codigo"),
-            msgHandle : extractTag(bodyXml, "mensaje"),
-            resdv : extractTag(bodyXml, "dv"),
-            resrazonSocial  : extractTag(bodyXml, "razonSocial"),
-            resproceso  : extractTag(bodyXml, "resultado")
-    };
-            console.log("Tipo de Ruc   ",resultadoSOAP.restiporuc);
-            console.log("Ruc     ", resultadoSOAP.resruc);
-            console.log("CODIGO ", resultadoSOAP.codigoHandle);
-            console.log("Resp DV ", resultadoSOAP.resdv);
-            console.log("Razon Social ", resultadoSOAP.resrazonSocial);
-            console.log("Resp Proceso ", resultadoSOAP.resproceso);
-            var mensajeregistro = "Es contribuyente y existe";
+        // Validación adicional por si la razón social viene vacía
+        if (!resultadoSOAP.resrazonSocial || resultadoSOAP.resrazonSocial === "") {
+            return res.status(200).json({
+                success: false,
+                code: 102,
+                message: "No existe en la DGI como contribuyente",
+                data: null
+            });
+        }
+
+        // Éxito: Devolver los datos encontrados
+        return res.status(200).json({
+            success: true,
+            code: 200,
+            message: "RUC encontrado exitosamente",
+            data: {
+                nombre: resultadoSOAP.resrazonSocial,
+                dv: resultadoSOAP.resdv,
+                tipoRuc: resultadoSOAP.restiporuc || tipocontri
+            }
+        });
+
+    } catch (error) {
+        console.error("Error buscando RUC en DGI:", error);
+        res.status(500).json({ success: false, message: "Error interno del servidor al consultar la DGI" });
+    }
+});
+
+app.post('/api/ventas/clientes', async (req, res) => {
+  try {
+    const { idcliente, clientenombre, ruccliente,tipocontribuyente } = req.body;
+   if (!idcliente?.trim() || !clientenombre?.trim()) {
+      return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
+    }
+    const existing = await Cliente.findOne({ ruccliente });
+    if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este  Ruc en el archivo " });
+    const nuevoCliente = new Cliente(req.body);
+var tipocontri = tipocontribuyente;
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
 const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
 if (!resultado.isValid) {
@@ -2956,39 +2979,10 @@ if (!resultado.isValid) {
 
 console.log("RUC válido:", resultado.rucNormalizado);
 var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
-
+nuevoCliente.tipoClienteFe = tipoclienteferetorno;
 //%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%//
-
-        if (resultadoSOAP.codigoHandle === "102" ) {
-            console.log("Entre a codigo 102 *********")
-                const error = new Error(`SOAP Error ${resultadoSOAP.codigoHandle}`);
-                error.codigo = resultadoSOAP.codigoHandle;
-                error.mensaje = resultadoSOAP.resproceso;
-                resultadoSOAP.resrazonSocial = req.body.clientenombre + " **";
-                resultadoSOAP.resdv = "00";
-        }
-var clientebusqueda = nuevoCliente.idcliente;
-console.log("Codigo Respuesta ",resultadoSOAP.codigoHandle);
-console.log("Razon Social     ",resultadoSOAP.resrazonSocial);
-console.log("Cliente Busqueda >>>>> ",clientebusqueda);
- if (resultadoSOAP.resdv == "00"){
-      if (tipocontri == "1"){
-       nuevoCliente.tipoclientefe = "02";
-      }else{
-          nuevoCliente.tipoclientefe = "01";
-      }   
-    }
-    if (resultadoSOAP.resdv !== "00"){
-       nuevoCliente.tipoclientefe = "01";   
-    }
-
-console.log("Tipo CLiente Fe *********  ",nuevoCliente.tipoclientefe); 
-  if (resultadoSOAP.codigoHandle === "102" || resultadoSOAP.codigoHandle === "200") {
-       nuevoCliente.clientenombre = resultadoSOAP.resrazonSocial.trim().toUpperCase();
-       nuevoCliente.digitoverificador = resultadoSOAP.resdv;
-       const guardado = nuevoCliente.save();
-         res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });
-             }
+const guardado = nuevoCliente.save();
+res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });         
         
     }
 //********************************//
@@ -3886,6 +3880,8 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
 console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factura ");
 //*******//
         var resultadoesperado =  await convertirEnviarThefactory(nofactura,res,nocotizaUpper);
+
+        console.log("Resultado Esperado de COnvertir COtizacion ******* ",resultadoesperado)
 
     } catch (error) {
         console.error('❌ ==================================================');
