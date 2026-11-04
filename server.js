@@ -2929,7 +2929,13 @@ app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
             resrazonSocial: extractTag(bodyXml, "razonSocial"),
             resproceso: extractTag(bodyXml, "resultado")
         };
-
+        console.log(" Respuesta Tipocontribuyente  ",resultadoSOAP.restiporuc);
+        console.log(" Respuesta RucCliente ",resultadoSOAP.resruc);
+        console.log(" Respuesta Message   ",resultadoSOAP.msgHandle);
+        console.log(" Respuesta DigitoVerificador  ",resultadoSOAP.resdv);
+        console.log(" Respuesta RazonSocial   ",resultadoSOAP.resrazonSocial);
+        console.log(" Respuesta Proceso   ",resultadoSOAP.resproceso);
+        
         // Validación adicional por si la razón social viene vacía
         if (!resultadoSOAP.resrazonSocial || resultadoSOAP.resrazonSocial === "") {
             return res.status(200).json({
