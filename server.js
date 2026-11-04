@@ -2945,7 +2945,7 @@ app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
                 data: null
             });
         }
-
+var tipoclienteferetorno = determinarTipoCliente(resultadoSOAP.restiporuc, resultadoSOAP.resruc);
         // Éxito: Devolver los datos encontrados
         return res.status(200).json({
             success: true,
@@ -2954,7 +2954,8 @@ app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
             data: {
                 nombre: resultadoSOAP.resrazonSocial,
                 dv: resultadoSOAP.resdv,
-                tipoRuc: resultadoSOAP.restiporuc || tipocontri
+                tipoRuc: resultadoSOAP.restiporuc || tipocontri,
+                tipoidentifica : tipoclienteferetorno
             }
         });
 
