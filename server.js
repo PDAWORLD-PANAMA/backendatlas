@@ -2909,7 +2909,7 @@ console.log("******  Llamando al SOAP de THEFACTORY ")
             return match ? match[1].trim() : "";
         };
 
-        cosole.log("SAOP Respondio ");
+        console.log("SAOP Respondio ");
         const codigoHandle = extractTag(bodyXml, "codigo");
         const msgHandle = extractTag(bodyXml, "mensaje");
 
