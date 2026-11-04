@@ -2863,8 +2863,7 @@ app.get('/api/ventas/clientes', async (req, res) => {
 // En tu archivo de rutas (ej: routes/ventas.js o clientes.js)
 app.post('/api/ventas/clientes/buscaruc', async (req, res) => {
     try {
-        const { ruc, tipoRuc } = req.body; 
-        ruc = ruc.trim();   
+        const { ruc, tipoRuc } = req.body;  
         if (!ruc || ruc.trim() === "") {
             return res.status(400).json({ success: false, message: "El RUC es obligatorio" });
         }
