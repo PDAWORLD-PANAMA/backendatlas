@@ -2975,22 +2975,23 @@ app.post('/api/ventas/clientes', async (req, res) => {
    if (!idcliente?.trim() || !clientenombre?.trim()) {
       return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
     }
+    console.log("Busca si cliente ya existe");
     const existing = await Cliente.findOne({ ruccliente });
     if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este  Ruc en el archivo " });
     const nuevoCliente = new Cliente(req.body);
 var tipocontri = tipocontribuyente;
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
-// const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
-// if (!resultado.isValid) {
-//   return res.status(400).json({
-//     success: false,
-//     message: resultado.message
-//   });
-// }
+ const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
+ if (!resultado.isValid) {
+   return res.status(400).json({
+     success: false,
+     message: resultado.message
+   });
+ }
 
 // console.log("RUC válido:", resultado.rucNormalizado);
 // var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
-console.log(" Tipo CLiente Fe o Identificacion ",nuevoCliente.tipoClienteFe);
+console.log(" Tipo Cliente Fe o Identificacion ",nuevoCliente.tipoClienteFe);
 //%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%//
 const guardado = nuevoCliente.save();
 res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });         
