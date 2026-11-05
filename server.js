@@ -2980,17 +2980,17 @@ app.post('/api/ventas/clientes', async (req, res) => {
     const nuevoCliente = new Cliente(req.body);
 var tipocontri = tipocontribuyente;
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
-const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
-if (!resultado.isValid) {
-  return res.status(400).json({
-    success: false,
-    message: resultado.message
-  });
-}
+// const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
+// if (!resultado.isValid) {
+//   return res.status(400).json({
+//     success: false,
+//     message: resultado.message
+//   });
+// }
 
-console.log("RUC válido:", resultado.rucNormalizado);
-var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
-nuevoCliente.tipoClienteFe = tipoclienteferetorno;
+// console.log("RUC válido:", resultado.rucNormalizado);
+// var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
+console.log(" Tipo CLiente Fe o Identificacion ",nuevoCliente.tipoClienteFe);
 //%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%//
 const guardado = nuevoCliente.save();
 res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });         
