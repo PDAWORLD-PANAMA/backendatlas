@@ -60,7 +60,15 @@ const Dashboard = mongoose.model("Dashboard", {
   cotizacionesNoConvertidas: Number,
   porcentajeConversion: Number,
   totalCotizado: Number,
-  totalConvertido: Number
+  totalConvertido: Number,
+  lastUpdated: String,
+  ventasMensuales:[Number],
+
+    // ✅ NEW: Cotizaciones per month (Index 0 = Ene, Index 11 = Dic)
+  cotizacionesEmitidasMes: [Number],
+  cotizacionesConvertidasMes: [Number],
+  cotizacionesTotalDolarMes: [Number],
+  cotizacionesConvertidoDolarMes: [Number],
 });
 
 const empresaSchema = new mongoose.Schema({
@@ -1147,6 +1155,38 @@ ventasPorMes.forEach(item => {
 if (mesActual >= 1 && mesActual <= 12) {
   ventasMensuales[mesActual - 1] = parseFloat(ventasMes.toFixed(2));
 }
+
+    // ✅ COTIZACIONES POR MES (emitidas, convertidas y montos) - ADDITIVE
+    // NOTE: adjust "fechacotiza" below if your CotizaHead date field has another name
+    const cotizacionesPorMes = await CotizaHead.aggregate([
+      { $match: { activo: { $eq: "A" } } },
+      { $addFields: { fechaStr: { $toString: "$fechacotiza" } } },
+      { $match: { fechaStr: { $regex: `^${currentYear}` } } },
+      {
+        $group: {
+          _id: { $substr: ["$fechaStr", 5, 2] },
+          emitidas: { $sum: 1 },
+          convertidas: { $sum: { $cond: [{ $eq: ["$coticonvertido", "S"] }, 1, 0] } },
+          totalCotizado: { $sum: { $ifNull: ["$total", 0] } },
+          totalConvertido: { $sum: { $cond: [{ $eq: ["$coticonvertido", "S"] }, { $ifNull: ["$total", 0] }, 0] } }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]);
+
+    const cotizacionesEmitidasMes = Array(12).fill(0);
+    const cotizacionesConvertidasMes = Array(12).fill(0);
+    const cotizacionesTotalDolarMes = Array(12).fill(0);
+    const cotizacionesConvertidoDolarMes = Array(12).fill(0);
+    cotizacionesPorMes.forEach(item => {
+      const monthIndex = parseInt(item._id, 10) - 1;
+      if (monthIndex >= 0 && monthIndex < 12) {
+        cotizacionesEmitidasMes[monthIndex] = item.emitidas;
+        cotizacionesConvertidasMes[monthIndex] = item.convertidas;
+        cotizacionesTotalDolarMes[monthIndex] = parseFloat(item.totalCotizado.toFixed(2));
+        cotizacionesConvertidoDolarMes[monthIndex] = parseFloat(item.totalConvertido.toFixed(2));
+      }
+    });
     // ═══════════════════════════════════════════════════════
     // 🔹 3. VERIFICAR SI HAY DATOS REALES
     // ═══════════════════════════════════════════════════════
@@ -1172,7 +1212,11 @@ if (mesActual >= 1 && mesActual <= 12) {
       mesactual: mesActual,               // ✅ FIXED: lowercase 'a' to match Kotlin data class
       ventasMensuales: ventasMensuales,
       foliosdisponibles : parseInt(laempresa[0].nofoliospac),
-      metadia : parseFloat(metalcanzar)
+      metadia : parseFloat(metalcanzar),
+      cotizacionesEmitidasMes: cotizacionesEmitidasMes,
+      cotizacionesConvertidasMes: cotizacionesConvertidasMes,
+      cotizacionesTotalDolarMes: cotizacionesTotalDolarMes,
+      cotizacionesConvertidoDolarMes: cotizacionesConvertidoDolarMes
     } : {
       ventasHoy: 0, facturasHoy: 0,
       ventasAyer: 0, facturasAyer: 0,
@@ -1187,7 +1231,11 @@ if (mesActual >= 1 && mesActual <= 12) {
       totalConvertido: 0,
       mesactual: mesActual,               // ✅ FIXED: lowercase 'a'
       ventasMensuales: Array(12).fill(0),
-      metadia : 0.0
+      metadia : 0.0,
+      cotizacionesEmitidasMes: Array(12).fill(0),
+      cotizacionesConvertidasMes: Array(12).fill(0),
+      cotizacionesTotalDolarMes: Array(12).fill(0),
+      cotizacionesConvertidoDolarMes: Array(12).fill(0)
     };
 
     // ═══════════════════════════════════════════════════════
