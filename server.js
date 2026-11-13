@@ -3024,12 +3024,14 @@ app.post('/api/ventas/clientes', async (req, res) => {
       return res.status(400).json({ success: false, message: 'ID Cliente y Nombre son campos obligatorios' });
     }
     console.log("Busca si cliente ya existe");
+    console.log("Ruc buscado ",ruccliente);
     const existing = await Cliente.findOne({ ruccliente });
     if (existing) return res.status(409).json({ success: false, message: "Ya existe un cliente con este  Ruc en el archivo " });
     const nuevoCliente = new Cliente(req.body);
 var tipocontri = tipocontribuyente;
 //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%//
  const resultado = validarRucDgiDetalle(tipocontri, nuevoCliente.ruccliente);
+ console.log(" RESULTADO DE TIPO DE CLIENTE ",resultado);
  if (!resultado.isValid) {
    return res.status(400).json({
      success: false,
@@ -3939,9 +3941,8 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
         }
 console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factura ");
 //*******//
-        var resultadoesperado =  await convertirEnviarThefactory(nofactura,res,nocotizaUpper);
-
-        console.log("Resultado Esperado de COnvertir COtizacion ******* ",resultadoesperado)
+                var resultadoesperado = await convertirEnviarThefactory(nofactura, res, nocotizaUpper);
+        console.log("Resultado Esperado de Convertir Cotizacion ******* ", resultadoesperado);
 
     } catch (error) {
         console.error('❌ ==================================================');
@@ -3950,10 +3951,27 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
         console.error(`❌ Stack Trace:\n`, error.stack || error);
         console.error('❌ ==================================================');
 
-        // Best-effort cleanup — do not let a cleanup error mask the real one.
+        resultadoesperado = {
+            status: 500,
+            body: {
+                success: false,
+                message: 'Error crítico al convertir cotización',
+                error: error.message
+            }
+        };
     } finally {
         console.log(`🔚 [FIN] Proceso de conversión para "${nocotiza}" terminado.\n`);
-        return;
+        // ❌ QUITAMOS el `return;` para que el flujo llegue a enviar la respuesta
+    }
+
+    // ✅ GARANTIZAMOS SIEMPRE UNA RESPUESTA HTTP
+    if (!res.headersSent) {
+        const status = resultadoesperado?.status || 500;
+        const body = resultadoesperado?.body || {
+            success: false,
+            message: 'No se recibió respuesta del proceso de conversión'
+        };
+        return res.status(status).json(body);
     }
 });
 
@@ -9347,37 +9365,43 @@ console.log("Ejecutar la llamada al SOAP");
     };
 
     // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
-    if (resultadoSOAP.codigoHandle === "200") {
-       
-        // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
-         await FacturaHead.findByIdAndUpdate(factura._id,
-            { $set: 
-                {
-                    facturaelectronica: resultadoSOAP.cufeHandle,
-                    facturaqr: resultadoSOAP.qrHandle,
-                    fechadgiauto: resultadoSOAP.fecharecepHandle,
-                    autorizandgi: resultadoSOAP.protocoloHandle,
-                    estado: 'A',
-                    fechaActualizacion: new Date().toISOString()
-                } 
-            }, { returnDocument: 'after' })
-//******//
-await CotizaHead.findOneAndUpdate(
-                        { nocotiza: nocotizaUpper },
-                        { $set: { coticonvertido: "S",
-                            activo : "A",
-                            nofactura : nofacturaUpper,
-                            fechaActualizacion: new Date().toISOString()
-                         } 
-                          }
-                    ),  { returnDocument: 'after' }
+  if (resultadoSOAP.codigoHandle === "200") {
+    await FacturaHead.findByIdAndUpdate(
+        factura._id,
+        { $set: {
+            facturaelectronica: resultadoSOAP.cufeHandle,
+            facturaqr: resultadoSOAP.qrHandle,
+            fechadgiauto: resultadoSOAP.fecharecepHandle,
+            autorizandgi: resultadoSOAP.protocoloHandle,
+            estado: 'A',
+            fechaActualizacion: new Date().toISOString()
+        }},
+        { returnDocument: 'after' }
+    );
 
-//********//
-console.log("CodigoHandle = 200  convirtiendo cotizacion a factura ");
-           await descontarFolioPAC();
-        // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
-         return { status: 200, body: { success: true, message: 'Factura electrónica aceptada por TheFactory',data: null } };
-    }    // Si TheFactory la rechaza
+    // ✅ opciones dentro del call (antes estaban afuera por un `,` mal puesto)
+    const cotizaActualizada = await CotizaHead.findOneAndUpdate(
+        { nocotiza: nocotizaUpper },
+        { $set: {
+            coticonvertido: "S",
+            activo: "A",
+            nofactura: nofacturaUpper,
+            fechaActualizacion: new Date().toISOString()
+        }},
+        { returnDocument: 'after' }
+    );
+
+    await descontarFolioPAC();
+
+    return {
+        status: 200,
+        body: {
+            success: true,
+            message: 'Factura electrónica aceptada por TheFactory',
+            data: cotizaActualizada   // ✅ ya NO es null → Kotlin lo acepta
+        }
+    };
+}   // Si TheFactory la rechaza
        else {
             // Si TheFactory la rechaza
             await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' }},
