@@ -5873,6 +5873,22 @@ if (factura.condiciones != "1"){
         
         console.error('❌ Error enviar-Thefactory:', error);
         return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
+    } 
+
+     } catch (error) {
+        clearTimeout(timeoutId); // ✅ 4. Limpiar timeout también en caso de error
+        
+        // ✅ Manejo específico del error de Timeout
+        if (error.name === 'AbortError') {
+            console.error('⏰ TIMEOUT: TheFactory tardó más de 120 segundos en responder');
+            return res.status(504).json({ 
+                success: false, 
+                message: 'Timeout: TheFactory no respondió en 120 segundos. Por favor, intente nuevamente.' 
+            });
+        }
+        
+        console.error('❌ Error enviar-Thefactory:', error);
+        return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
     }
  
 });
