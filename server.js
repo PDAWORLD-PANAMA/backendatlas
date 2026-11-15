@@ -353,9 +353,12 @@ const Schemaheadcotiza = new mongoose.Schema({
   entrega: { type: String },
   referencia: { type: String },
   ruccliente: { type: String },
+  digitoverifica : {type : String}, 
+  contacto: {type: String },
   validez: { type: Number },
   detallecoti: { type: String },
   activo : { type: String },
+  comenta : { type: String },
   fechaCreacion: { type: String, default: () => new Date().toISOString() },
   fechaActualizacion: { type: String, default: () => new Date().toISOString() }
 });
@@ -1302,7 +1305,7 @@ app.put("/api/empresa/:id", async (req, res) => {
     delete updateData._id;
     delete updateData.createdAt;
     const updated = await EmpresaConfig.findByIdAndUpdate(id, updateData,
-    { new: true, runValidators: true, context: 'query' });
+    { returnDocument: 'after', runValidators: true, context: 'query' });
     if (!updated) return res.status(404).json({ success: false, message: "Configuración no encontrada" });
     res.json({ success: true, message: "✅ Configuración actualizada exitosamente", data: updated });
   } catch (err) {
@@ -1362,7 +1365,7 @@ app.put('/api/adicionales/:id', async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
     delete updateData._id;
-    const actualizado = await Adicional.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Adicional.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Configuración adicional no encontrada' });
     res.json({ success: true, message: 'Configuración adicional actualizada', data: actualizado });
   } catch (error) {
@@ -1426,7 +1429,7 @@ app.put('/api/bienes/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { descripbienes } = req.body;
-    const actualizado = await BienServicio.findByIdAndUpdate(id, { descripbienes }, { new: true, runValidators: true });
+    const actualizado = await BienServicio.findByIdAndUpdate(id, { descripbienes }, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Bien no encontrado' });
     res.json({ success: true, message: 'Bien actualizado', data: actualizado });
   } catch (error) {
@@ -1693,7 +1696,7 @@ app.put('/api/ubicaciones/:id', async (req, res) => {
     const updateData = { ...req.body };
     delete updateData.ubicacionid;
     delete updateData._id;
-    const actualizado = await Ubicacion.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Ubicacion.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Ubicación no encontrada' });
     res.json({ success: true, message: 'Ubicación actualizada', actualizado });
   } catch (error) {
@@ -2505,7 +2508,7 @@ app.put('/api/compras/proveedores/:id', async (req, res) => {
         delete updateData.idprov; // No permitir cambiar el ID
         delete updateData._id;
         
-        const actualizado = await Proveedor.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        const actualizado = await Proveedor.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
         if (!actualizado) return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
         
         res.json({ success: true, message: '✅ Proveedor actualizado', data: actualizado });
@@ -2557,7 +2560,7 @@ app.put('/api/inventarios/categorias/:id', async (req, res) => {
     delete updateData._id; delete updateData.fechaCreacion;
     if (updateData.categoria) updateData.categoria = updateData.categoria.trim().toUpperCase();
     updateData.fechaActualizacion = new Date().toISOString();
-    const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Categoria.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Categoría no encontrada' });
     res.json({ success: true, message: '✅ Categoría actualizada', data: actualizado });
   } catch (error) {
@@ -2603,7 +2606,7 @@ app.put('/api/inventarios/subcategorias/:id', async (req, res) => {
     delete updateData._id; delete updateData.fechaCreacion;
     if (updateData.subCategoria) updateData.subCategoria = updateData.subCategoria.trim().toUpperCase();
     updateData.fechaActualizacion = new Date().toISOString();
-    const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await SubCategoria.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Subcategoría no encontrada' });
     res.json({ success: true, message: '✅ Subcategoría actualizada', data: actualizado });
   } catch (error) {
@@ -2649,7 +2652,7 @@ app.put('/api/inventarios/marcas/:id', async (req, res) => {
     delete updateData._id; delete updateData.fechaCreacion;
     if (updateData.marca) updateData.marca = updateData.marca.trim().toUpperCase();
     updateData.fechaActualizacion = new Date().toISOString();
-    const actualizado = await Marca.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Marca.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Marca no encontrada' });
     res.json({ success: true, message: '✅ Marca actualizada', data: actualizado });
   } catch (error) {
@@ -2696,7 +2699,7 @@ app.put('/api/inventarios/modelos/:id', async (req, res) => {
     delete updateData._id; delete updateData.fechaCreacion;
     if (updateData.modelo) updateData.modelo = updateData.modelo.trim().toUpperCase();
     updateData.fechaActualizacion = fechasistema;
-    const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Modelo.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Modelo no encontrado' });
     res.json({ success: true, message: '✅ Modelo actualizado', data: actualizado });
   } catch (error) {
@@ -2750,7 +2753,7 @@ app.put('/api/vendedor/:id', async (req, res) => {
        updateData.telvende = updateData.telvende.trim().toUpperCase();
        updateData.emailvende = updateData.emailvende.trim().toUpperCase();
 // 
-    const actualizado = await Vendedor.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const actualizado = await Vendedor.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Vendedor no encontrado' });
     res.json({ success: true, message: '✅ Vendedor actualizada', data: actualizado });
   } catch (error) {
@@ -2871,7 +2874,7 @@ app.put('/api/inventarios/:id', async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
     delete updateData.idinventario; delete updateData._id; delete updateData.createdAt;
-    const actualizado = await Inventariosede.findByIdAndUpdate(id, updateData, { new: true, runValidators: true, context: 'query' });
+    const actualizado = await Inventariosede.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true, context: 'query' });
     if (!actualizado) return res.status(404).json({ success: false, message: "Inventario no encontrado" });
     res.json({ success: true, message: "✅ Inventario actualizado exitosamente", data: actualizado });
   } catch (err) {
@@ -3379,7 +3382,7 @@ app.put('/api/ventas/clientes/:id', async (req, res) => {
         if (req.body.sucursales && Array.isArray(req.body.sucursales)) {
             updateData.sucursales = req.body.sucursales;
         }
-        const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        const actualizado = await Cliente.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: '✅ Cliente actualizado exitosamente', data: actualizado });
   } catch (error) {
@@ -3418,7 +3421,7 @@ app.put('/api/ventas/clientes/:id/historial/:tipo', async (req, res) => {
     const actualizado = await Cliente.findByIdAndUpdate(
       id,
       { $addToSet: { [campoHistorial]: referencia.trim().toUpperCase() }, $set: { fechaActualizacion: new Date().toISOString() } },
-      { new: true }
+      { returnDocument: 'after' }
     );
     if (!actualizado) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: `✅ Registro agregado al historial de ${tipo}`, data: { id: actualizado._id, idcliente: actualizado.idcliente, historialActualizado: actualizado[campoHistorial] } });
@@ -3542,7 +3545,7 @@ app.put('/api/ventas/cotizaciones/head/:id', async (req, res) => {
     if (updateData.ruccliente) updateData.ruccliente = updateData.ruccliente;
     if (updateData.codvendedor) updateData.codvendedor = updateData.codvendedor;
     updateData.fechaActualizacion = fechasistema;
-    const updated = await CotizaHead.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
+    const updated = await CotizaHead.findByIdAndUpdate(id, { $set: updateData }, { returnDocument: 'after', runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: 'Cotización no encontrada' });
     res.json({ success: true, message: '✅ Cotización actualizada', data: updated });
   } catch (error) {
@@ -3564,7 +3567,7 @@ app.put('/api/ventas/cotizaciones/editar/:id', async (req, res) => {
         const updatedCotizacion = await CotizaHead.findByIdAndUpdate(
             id,
             { $set: updateBody },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (!updatedCotizacion) {
@@ -4125,7 +4128,7 @@ app.put('/api/ventas/cotizaciones/detalle/:id', async (req, res) => {
         updateData.subtotal = parseFloat((bruto - (bruto * (descuento / 100))).toFixed(2));
       }
     }
-    const actualizado = await CotizaDetalle.findByIdAndUpdate(id, { $set: updateData }, { new: true, runValidators: true });
+    const actualizado = await CotizaDetalle.findByIdAndUpdate(id, { $set: updateData }, { returnDocument: 'after', runValidators: true });
     if (!actualizado) return res.status(404).json({ success: false, message: 'Detalle no encontrado' });
     await actualizarTotalesCabecera(actualizado.nocotiza);
     res.json({ success: true, message: '✅ Detalle actualizado', data: actualizado });
@@ -4292,7 +4295,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
       headFinal = await CotizaHead.findByIdAndUpdate(
         existingHead._id,
         { $set: updateData },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
       );
     }
     
@@ -4886,7 +4889,7 @@ app.post('/api/ventas/cxc/abono', async (req, res) => {
         await FacturaHead.findOneAndUpdate(
             { nofactura: nofactura.trim() },
             { $set: { saldo: nuevoSaldo, fechaActualizacion: new Date().toISOString() } },
-            { new: true, session }
+            { returnDocument: 'after', session }
         );
 
         await session.commitTransaction();
@@ -5195,7 +5198,7 @@ if ( diffInDays <= 5 ) {
             const updatedFacturaAnular = await FacturaHead.findByIdAndUpdate(
                  id,
                  { $set: { estado : "E" }},
-                 { new: true, runValidators: true }
+                 { returnDocument: 'after', runValidators: true }
              );
              
             // 🔹 REVERTIR INVENTARIO LOCALMENTE
@@ -5754,73 +5757,88 @@ if (factura.condiciones != "1"){
         let xmlenviar = xmlniv1 + xmlistseg + xmlenviarlist + `</ser:listaItems>` + xmltotal + xmlineareten + xmltotcierre;
 
         // 4. EJECUTAR LLAMADA SOAP (CORREGIDO: La promesa ahora resuelve correctamente)
-      let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
+     // 4. EJECUTAR LLAMADA SOAP (CON TIMEOUT DE 120s PARA EVITAR HEADERS TIMEOUT)
+    let soapUrl = 'https://demoemision.thefactoryhka.com.pa/ws/obj/v1.0/Service.svc';
     
-    const soapResponse = await fetch(soapUrl, {
-        method: 'POST',
-        body: xmlenviar,
-        headers: {
-            'User-Agent': 'NODEJS-FETCH',
-            'Content-Type': 'text/xml;charset=utf-8',
-            'SOAPAction': 'http://tempuri.org/IService/Enviar'
-        }
-    });
+    // ✅ 1. Crear AbortController con timeout de 120 segundos (TheFactory puede ser lento)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 segundos
 
-    if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
-
-    const bodyXml = await soapResponse.text();
-    
-    const extractTag = (xml, tag) => {
-        const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
-        const match = xml.match(regex);
-        return match ? match[1].trim() : "";
-    };
-
-    const resultadoSOAP = {
-        cufeHandle: extractTag(bodyXml, "cufe"),
-        qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
-        codigoHandle: extractTag(bodyXml, "codigo"),
-        msgHandle: extractTag(bodyXml, "mensaje"),
-        fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
-        protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
-    };
-console.log("Conseguir la respuesta del SOAP ",resultadoSOAP);
-console.log("Codigo Handle >>>>>>>>>  ",resultadoSOAP.codigoHandle )
-    // 4. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
-    if (resultadoSOAP.codigoHandle === "200") {
-        const today = new Date().toISOString().slice(0, 10);
-        
-        // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
-        const facturaActualizada = await FacturaHead.findByIdAndUpdate(
-            factura._id,
-            {
-                $set: {
-                    facturaelectronica: resultadoSOAP.cufeHandle,
-                    facturaqr: resultadoSOAP.qrHandle,
-                    fechaEmision: today,
-                    fechaSalida: today,
-                    fechadgiauto: resultadoSOAP.fecharecepHandle,
-                    autorizandgi: resultadoSOAP.protocoloHandle,
-                    estado: 'A',
-                    fechaActualizacion: new Date().toISOString()
-                }
+    try {
+        const soapResponse = await fetch(soapUrl, {
+            method: 'POST',
+            body: xmlenviar,
+            headers: {
+                'User-Agent': 'NODEJS-FETCH',
+                'Content-Type': 'text/xml;charset=utf-8',
+                'SOAPAction': 'http://tempuri.org/IService/Enviar'
             },
-             { returnDocument: 'after' } // Devuelve el documento ya actualizado
-        );
-        console.log("LLamar a descontar el folio ");
-           await descontarFolioPAC();
-        // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
-        return res.status(200).json({
-            success: true,
-            message: 'Factura electrónica aceptada por TheFactory',
-            data: facturaActualizada 
+            signal: controller.signal // ✅ 2. Pasar la señal al fetch para poder cancelarlo
         });
-    }    // Si TheFactory la rechaza
-       else {
+
+        clearTimeout(timeoutId); // ✅ 3. Limpiar el timeout si la respuesta llegó a tiempo
+
+        if (!soapResponse.ok) throw new Error(`SOAP failed with status ${soapResponse.status}`);
+
+        const bodyXml = await soapResponse.text();
+        
+        const extractTag = (xml, tag) => {
+            const regex = new RegExp(`<a?:${tag}>([\\s\\S]*?)</a?:${tag}>`, 'i');
+            const match = xml.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const resultadoSOAP = {
+            cufeHandle: extractTag(bodyXml, "cufe"),
+            qrHandle: extractTag(bodyXml, "qr").replace(/amp;/g, ''),
+            codigoHandle: extractTag(bodyXml, "codigo"),
+            msgHandle: extractTag(bodyXml, "mensaje"),
+            fecharecepHandle: extractTag(bodyXml, "fechaRecepcionDGI"),
+            protocoloHandle: extractTag(bodyXml, "nroProtocoloAutorizacion")
+        };
+        
+        console.log("Conseguir la respuesta del SOAP ", resultadoSOAP);
+        console.log("Codigo Handle >>>>>>>>>  ", resultadoSOAP.codigoHandle);
+
+        // 5. VALIDAR, GUARDAR EN ATLAS DB Y RESPONDER A KOTLIN
+        if (resultadoSOAP.codigoHandle === "200") {
+            const today = new Date().toISOString().slice(0, 10);
+            
+            // ✅ GUARDAR CAE, QR Y ESTADO EN MONGODB ATLAS
+            const facturaActualizada = await FacturaHead.findByIdAndUpdate(
+                factura._id,
+                {
+                    $set: {
+                        facturaelectronica: resultadoSOAP.cufeHandle,
+                        facturaqr: resultadoSOAP.qrHandle,
+                        fechaEmision: today,
+                        fechaSalida: today,
+                        fechadgiauto: resultadoSOAP.fecharecepHandle,
+                        autorizandgi: resultadoSOAP.protocoloHandle,
+                        estado: 'A',
+                        fechaActualizacion: new Date().toISOString()
+                    }
+                },
+                { returnDocument: 'after' } // Devuelve el documento ya actualizado
+            );
+            
+            console.log("LLamar a descontar el folio ");
+            await descontarFolioPAC();
+            
+            // ✅ DEVOLVER LA FACTURA COMPLETA (Kotlin mapeará esto a FacturaHead automáticamente)
+            return res.status(200).json({
+                success: true,
+                message: 'Factura electrónica aceptada por TheFactory',
+                data: facturaActualizada 
+            });
+            
+        } else {
             // Si TheFactory la rechaza
             console.log(" Entrando a Rechaza por codigo no 200 ");
-            await FacturaHead.findByIdAndUpdate(factura._id, { $set: { estado: 'Rechazada' } },
-             { returnDocument: 'after' }
+            await FacturaHead.findByIdAndUpdate(
+                factura._id, 
+                { $set: { estado: 'Rechazada' } },
+                { returnDocument: 'after' }
             );
             
             // 🔹 REVERTIR INVENTARIO (Al ser rechazada, no se debe descontar nada)
@@ -5828,9 +5846,9 @@ console.log("Codigo Handle >>>>>>>>>  ",resultadoSOAP.codigoHandle )
                 if (det.codproducto) {
                     await Inventariosede.findOneAndUpdate(
                         { idinventario: det.codproducto },
-                        { $inc: { cantidispo: (det.cantidad || 0) } 
-                    } // Sumamos lo que se había restado
-                    ),  { returnDocument: 'after' }
+                        { $inc: { cantidispo: (det.cantidad || 0) } }, // ✅ Sumamos lo que se había restado
+                        { returnDocument: 'after' }
+                    );
                 }
             }
             
@@ -5840,11 +5858,22 @@ console.log("Codigo Handle >>>>>>>>>  ",resultadoSOAP.codigoHandle )
                 data: null
             });
         }
+        
+    } catch (error) {
+        clearTimeout(timeoutId); // ✅ 4. Limpiar timeout también en caso de error
+        
+        // ✅ Manejo específico del error de Timeout
+        if (error.name === 'AbortError') {
+            console.error('⏰ TIMEOUT: TheFactory tardó más de 120 segundos en responder');
+            return res.status(504).json({ 
+                success: false, 
+                message: 'Timeout: TheFactory no respondió en 120 segundos. Por favor, intente nuevamente.' 
+            });
+        }
+        
+        console.error('❌ Error enviar-Thefactory:', error);
+        return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
     }
- catch (error) {
-    console.error('❌ Error enviar-Thefactory:', error);
-    return res.status(500).json({ success: false, message: 'Error interno', error: error.message });
-}
  
 });
 
@@ -6145,7 +6174,7 @@ let xmlanular   = `
             const facturaActualizada = await FacturaHead.findByIdAndUpdate(
                 factura._id, 
                 { $set: { estado: 'E' } }, 
-                { new: true }
+                { returnDocument: 'after' }
             );
              await descontarFolioPAC();
             return res.status(200).json({
@@ -6838,7 +6867,7 @@ console.log(`🔍 [Paso 11] Cierre de los comandos del Soap de enviar la nota de
                         fechaActualizacion: new Date().toISOString()
                     }
                 },
-                { new: true }
+                { returnDocument: 'after' }
             );
             
             // 🔹 SUMAR INVENTARIO SI ES NOTA DE CRÉDITO POR UNIDADES (tipoNota === "1")
@@ -7447,7 +7476,7 @@ const fetipodocumento = tipoNota === "1" ? "05" : "07";
                         fechaActualizacion: new Date().toISOString()
                     }
                 },
-                { new: true }
+                { returnDocument: 'after' }
             );
 
             // Agregar al historial de la factura original
@@ -7655,7 +7684,7 @@ app.put('/api/compras/gastos/head/:id', async (req, res) => {
         delete updateData._id;
         delete updateData.codigogasto;
 
-        const actualizado = await GastoHead.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        const actualizado = await GastoHead.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
         if (!actualizado) return res.status(404).json({ success: false, message: 'Gasto no encontrado' });
 
         res.json({ success: true, message: '✅ Gasto actualizado', data: actualizado });
@@ -8175,7 +8204,7 @@ app.put('/api/compras/completa/:nodocumento', async (req, res) => {
         const headActualizada = await ComprasHead.findOneAndUpdate(
             { nodocumento },
             { $set: head },
-            { new: true, session }
+            { returnDocument: 'after', session }
         );
 
         // Reemplazar detalles
@@ -8480,7 +8509,7 @@ app.post('/api/ventas/notascredito/aplicar/:nocredito', async (req, res) => {
                     fechaActualizacion: new Date().toISOString()
                 }
             },
-            { new: true, session }
+            { returnDocument: 'after', session }
         );
 
         await session.commitTransaction();
@@ -8659,7 +8688,7 @@ app.put('/api/config/formapago/:id', async (req, res) => {
         updateData.fechaActualizacion = new Date().toISOString();
         if (updateData.descripcion) updateData.descripcion = updateData.descripcion.trim().toUpperCase();
 
-        const actualizado = await FormaPago.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+        const actualizado = await FormaPago.findByIdAndUpdate(id, updateData, { returnDocument: 'after', runValidators: true });
         if (!actualizado) return res.status(404).json({ success: false, message: 'Forma de pago no encontrada' });
         
         res.json({ success: true, message: '✅ Forma de pago actualizada', data: actualizado });
