@@ -3318,7 +3318,7 @@ app.get('/clientesrecuperados', async (req, res) => {
   }
 });
 
-app.get('/api/ventas/clientes/id/:idcliente', async (req, res) => {
+app.get('/api/ventas/clientes/:idcliente', async (req, res) => {
   try {
     const { idcliente } = req.params;
     const cliente = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase()});
