@@ -3321,8 +3321,9 @@ app.get('/clientesrecuperados', async (req, res) => {
 app.get('/api/ventas/clientes/:idcliente', async (req, res) => {
   try {
     const { idcliente } = req.params;
-    console.log("Codigo cliente a buscar ",idcliente);
-        const cliente = await Cliente.findOne({ idcliente: idcliente.trim().toUpperCase()});
+    var clientebuscar =  idcliente;
+    console.log("Codigo cliente a buscar ",clientebuscar );
+        const cliente = await Cliente.findOne({ idcliente: clientebuscar });
     console.log("Respuesta Cliente ",cliente);
         if (!cliente) return res.status(404).json({ success: false, message: 'Cliente no encontrado' });
     res.json({ success: true, message: 'Cliente obtenido', data: cliente });
