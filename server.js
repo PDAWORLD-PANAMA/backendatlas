@@ -4273,6 +4273,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         tipocontribuyente: head.tipocontribuyente,
         detallecoti: detallecotiJson,
         activo: "A",
+        montoretenido : head.montoretenido,
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
