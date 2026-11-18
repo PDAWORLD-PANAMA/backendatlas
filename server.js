@@ -4293,6 +4293,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         descuentoglob: head.descuentoglob || 0,
         impuesto: head.impuesto || 0,
         subtotal2: head.subtotal2 || 0,
+         montoretenido : head.montoretenido || 0,
         total: head.total || 0,
         detallecoti: head.detallecoti || '[]',
         fechaActualizacion: fechasistema
