@@ -344,6 +344,7 @@ const Schemaheadcotiza = new mongoose.Schema({
   subtotal1: { type: Number },
   cotiitbms: { type: String },
   impuesto: { type: Number },
+  montoretenido: { type: Number },
   subtotal2: { type: Number },
   total: { type: Number },
   coticonvertido: { type: String },
