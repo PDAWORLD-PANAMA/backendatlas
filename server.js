@@ -8736,6 +8736,21 @@ app.delete('/api/config/formapago/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error al eliminar', error: error.message });
     }
 });
+//
+app.get('/api/ventas/formapago/:codigo', async (req, res) => {
+  try {
+    const { codigoparm } = req.params;
+    console.log("Codigo Pago a buscar ",codigoparm ); 
+     const formasPago = await FormaPago.findOne({codigo:codigoparm}).sort({ codigo: 1 });
+    console.log("Respuesta Forma Pago ",formasPago);
+        if (!formasPago) return res.status(404).json({ success: false, message: 'Forma Pago no encontrado' });
+    res.json({ success: true, message: 'Forma Pago obtenido', data: formasPago });
+  } catch (error) {
+    console.error('❌ Error GET /api/ventas/formapago/:codigo', error);
+    res.status(500).json({ success: false, message: 'Error del servidor', error: error.message });
+  }
+});
+
 // ============================================================================
 // 🔹 HELPER: FORMATO DE FECHA ESTRICTO PARA PANAMÁ (UTC-5) - VERSIÓN INFALIBLE
 // ============================================================================
