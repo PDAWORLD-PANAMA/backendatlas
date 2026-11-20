@@ -8739,9 +8739,9 @@ app.delete('/api/config/formapago/:id', async (req, res) => {
 //
 app.get('/api/ventas/formapago/:codigo', async (req, res) => {
   try {
-    const { codigoparm } = req.params;
-    console.log("Codigo Pago a buscar ",codigoparm ); 
-     const formasPago = await FormaPago.findOne({codigo:codigoparm}).sort({ codigo: 1 });
+    const { codigo } = req.params;
+    console.log("Codigo Pago a buscar ",codigo ); 
+     const formasPago = await FormaPago.findOne({codigo:codigo}).sort({ codigo: 1 });
     console.log("Respuesta Forma Pago ",formasPago);
         if (!formasPago) return res.status(404).json({ success: false, message: 'Forma Pago no encontrado' });
     res.json({ success: true, message: 'Forma Pago obtenido', data: formasPago });
