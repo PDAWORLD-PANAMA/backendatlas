@@ -3842,7 +3842,7 @@ console.log(`✅ [Paso 3 Éxito] Nuevo número de factura generado: "${nofactura
             fechaSalida: formatPanamaDate(),
             duraciondias: 0,
             retenedor: cotiza.retenedor || '0',
-            montoretencion: 0,
+            montoretencion: parseFloat(cotiza.montoretenido) || 0,
             codcliente: cotiza.codcliente || '',
             idglobalcorporp: '0000',
             globalnombre: '',
@@ -4184,7 +4184,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       activo: "A",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
-      subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0
+      subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0, montoretencion : 0
     });
     const detallesPreparados = detalles.map(detalle => ({
       ...detalle,
@@ -4230,9 +4230,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
 // ============================================================================
 // 🔹 ACTUALIZAR COTIZACIÓN COMPLETA (para finalizar/fijar)
 // ============================================================================
-// ============================================================================
-// 🔹 GUARDAR / ACTUALIZAR COTIZACIÓN COMPLETA (UPSERT - Finalizar y Guardar)
-// ============================================================================
+
 app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
   try {
     const { nocotiza } = req.params;
@@ -4274,7 +4272,8 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         tipocontribuyente: head.tipocontribuyente,
         detallecoti: detallecotiJson,
         activo: "A",
-        montoretenido : head.montoretenido,
+        retenedor : head.retenedor,
+        montoretenido : head.montoretenido || 0,
         fechaCreacion: fechasistema,
         fechaActualizacion: fechasistema,
         subtotal1: head.subtotal1 || 0,
@@ -4364,9 +4363,6 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
       }
     }
     
-    // Recalcular totales finales desde los detalles guardados
-   //  await actualizarTotalesCabecera(nocotizaUpper);
-    
     // Obtener el estado final
     const headActualizada = await CotizaHead.findById(headFinal._id);
     const detallesFinales = await CotizaDetalle.find({ 
@@ -4445,7 +4441,7 @@ app.get("/api/ventas/facturas/head", async (req, res) => {
       query.fechafactura = { $lte: fechaFinal };
     }
 
-    const facturas = await FacturaHead.find(query).sort({ createdAt: -1 });
+    const facturas = await FacturaHead.find(query).sort({ fechafactura: -1 });
     
     res.json({
       success: true,
@@ -5313,12 +5309,13 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             nombreclie: head.nombreclie,
             ruccliente: head.ruccliente,
             codvendedor: head.codvendedor,
+            retenedor : head.retenedor,
             tipocontribuyente: head.tipocontribuyente,
             detallefactura: detallefacturaJson,
             estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
-            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo:0
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo:0, montoretencion : 0
         });
         
         const detallesPreparados = detalles.map(detalle => ({
@@ -5398,6 +5395,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 estado: 'A',
                 fechaCreacion: fechasistema,
                 fechaActualizacion: fechasistema,
+                retenedor : head.retenedor,
                 montoretencion : head.montoretencion || 0,
                 subtotal1: head.subtotal1 || 0,
                 descuento: head.descuento || 0,
@@ -6065,7 +6063,7 @@ app.post('/api/ventas/facturas/completa', async (req, res) => {
             estado: 'A',
             fechaCreacion: fechasistema,
             fechaActualizacion: fechasistema,
-            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0
+            subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0, montoretencion : 0
         });
         
         const detallesPreparados = detalles.map(detalle => ({
