@@ -3466,7 +3466,7 @@ app.get("/api/ventas/cotizaciones/head", async (req, res) => {
 
     console.log("[GET /api/ventas/cotizaciones/head] query =", JSON.stringify(query));
 
-    const cotizaciones = await CotizaHead.find(query).sort({ fechaCreacion: -1 });
+    const cotizaciones = await CotizaHead.find(query).sort({ fechacotiza: -1 });
 
     console.log(`[GET /api/ventas/cotizaciones/head] → ${cotizaciones.length} record(s)`);
 
@@ -4509,6 +4509,7 @@ fechavencimientotmp = resul2;
     data.subtotal1 = data.subtotal1 || 0.0;
     data.subtotal2 = data.subtotal2 || 0.0;
     data.impuesto = data.impuesto || 0.0;
+    data.montoretencion = data.montoretencion || 0.0;
     data.total = data.total || 0.0;
     data.saldo = data.saldo || 0.0;
     data.descuento = data.descuento || 0.0;
