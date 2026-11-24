@@ -4184,7 +4184,7 @@ app.post('/api/ventas/cotizaciones/completa', async (req, res) => {
       activo: "A",
       fechaCreacion: fechasistema,
       fechaActualizacion: fechasistema,
-      subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0, montoretencion : 0
+      subtotal1: 0, impuesto: 0, subtotal2: 0, total: 0, saldo : 0, montoretenido : 0
     });
     const detallesPreparados = detalles.map(detalle => ({
       ...detalle,
@@ -4294,6 +4294,7 @@ app.put('/api/ventas/cotizaciones/completa/:nocotiza', async (req, res) => {
         subtotal2: head.subtotal2 || 0,
          montoretenido : head.montoretenido || 0,
         total: head.total || 0,
+        montoretenido : head.montoretenido || 0,
         detallecoti: head.detallecoti || '[]',
         fechaActualizacion: fechasistema
       };
@@ -4403,7 +4404,7 @@ app.get('/api/ventas/cotizaciones/pdf/:nocotiza', async (req, res) => {
         codproducto: d.codproducto, descripcion: d.descripcion, cantidad: d.cantidad,
         unidad: d.unidad, precio: d.precio, descuento: d.descuento, subtotal: d.subtotal
       })),
-      totales: { subtotal: head.subtotal1, descuento: head.descuentoglob, impuesto: head.impuesto, total: head.total },
+      totales: { subtotal: head.subtotal1, descuento: head.descuentoglob, impuesto: head.impuesto, total: head.total, montoretenido : head.montoretenido },
       metadata: { generado: fechasistema, empresa: process.env.EMPRESA_NOMBRE || 'ERP Bipymes' }
     };
     res.json({ success: true, message: 'Datos para generación de PDF', data: pdfData });
