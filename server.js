@@ -5398,6 +5398,7 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 estado: 'A',
                 fechaCreacion: fechasistema,
                 fechaActualizacion: fechasistema,
+                montoretencion : head.montoretencion || 0,
                 subtotal1: head.subtotal1 || 0,
                 descuento: head.descuento || 0,
                 impuesto: head.impuesto || 0,
@@ -5406,7 +5407,8 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
                 saldo : head.saldo || 0
             });
         } else {
-            const updateData = {
+            const updateData = { 
+                 montoretencion : head.montoretencion || 0,
                 subtotal1: head.subtotal1 || 0,
                 descuento: head.descuento || 0,
                 impuesto: head.impuesto || 0,
