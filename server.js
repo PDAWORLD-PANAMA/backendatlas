@@ -5939,7 +5939,8 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
             fechacredito: formatLocalYmd(new Date()),
             estado: 'A',
             tipoNota: tipoNota,
-            total: tipoNota === '2' ? (montoTotal || 0) : head.total
+            total: tipoNota === '2' ? (montoTotal || 0) : head.total,
+            saldo : head.total
         });
 
         if (tipoNota === '1' && detalles && detalles.length > 0) {
@@ -6981,7 +6982,8 @@ await EmpresaConfig.findByIdAndUpdate(empresa._id, {
             fechacredito: formatLocalYmd(new Date()),
             estado: 'A',
             tipoNota: tipoNota,
-            total: tipoNota === '2' ? (montoTotal || 0) : head.total
+            total: tipoNota === '2' ? (montoTotal || 0) : head.total,
+            saldo : head.total
         });
 
         if (tipoNota === '1' && detalles && detalles.length > 0) {
@@ -7097,10 +7099,6 @@ const regexPanamaDate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-05:00$/;
 if (!regexPanamaDate.test(fechaEmisiontmp)) {
     console.error("❌ EL FORMATO DE FECHA ES INCORRECTO:", fechaEmisiontmp);
 }
-
-
-
-
 const fetipodocumento = tipoNota === "1" ? "05" : "07";
 
         // 3. CREAR REGISTROS EN BD - NOTA DEBITO HEAD
