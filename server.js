@@ -6429,7 +6429,7 @@ var resultado = totalNC - impuestoNC
          impuesto: impuestoNC,
          subtotal2: resultado,
          total: totalNC,
-         saldo: 0,
+         saldo: totalNC,
          nombreclie: factura.nombreclie,
          asignadoa: "",
          cedulasignadoa:  " ",
