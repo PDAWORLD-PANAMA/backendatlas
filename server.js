@@ -3047,8 +3047,9 @@ var tipocontri = tipocontribuyente;
 // var tipoclienteferetorno = determinarTipoCliente(tipocontri, nuevoCliente.ruccliente);
 console.log(" Tipo Cliente Fe o Identificacion ",nuevoCliente.tipoClienteFe);
 //%%%%%%%%%%%%%%%%%%%%%%%%%%% FIN DE VALIDACION RUC CLIENTE DGI %%%%%%%%%%%%%%%%%%%// 
- var todayDateStr = formatDate(today);
-  nuevoCliente.createdAt = todayDateStr;
+   const today = new Date();
+   const todayDateStr = formatDate(today); // Ensure formatDate is imported/defined
+   nuevoCliente.createdAt = todayDateStr;
 const guardado = nuevoCliente.save();
 res.status(201).json({ success: true, message: "✅ Cliente creado exitosamente", data: guardado });         
         
