@@ -16,8 +16,9 @@ const CONDICIONES_DIAS = {
   "4": 60,
   "5": 90,
 };
-const whatsappRoutes = require('./controllers/whatsapp'); 
-app.use('/api/whatsapp', whatsappRoutes);
+const whatsappcontroller = require('./controllers/whatsapp'); 
+whatsappcontroller(app);
+app.use('/api/whatsapp',whatsappcontroller);
 // 🔹 Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

@@ -15,6 +15,7 @@ const upload = whatsappService.uploadMiddleware;
 // ------------------------------------------------------------------------
 // CONEXIÓN Y ESTADO
 // ------------------------------------------------------------------------
+module.exports = function(app){
 app.post('/conectar', async (req, res) => {
   try {
     if (whatsappService.isConnected()) {
@@ -245,5 +246,4 @@ app.post('/register-token', async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-module.exports = router;
+}
