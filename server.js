@@ -4,7 +4,7 @@ const cors = require("cors");
 require('dotenv').config();
 const multer = require('multer');
 const app = express();
-
+const path = require('path'); // 👈 ADD THIS LINE
 const dayjs = require("dayjs");
 const utc     = require("dayjs/plugin/utc");
 const timezone = require("dayjs/plugin/timezone");   // needed if you ever use .tz()
@@ -16,11 +16,26 @@ const CONDICIONES_DIAS = {
   "4": 60,
   "5": 90,
 };
-
+const whatsappRoutes = require('./controllers/whatsapp'); 
+app.use('/api/whatsapp', whatsappRoutes);
 // 🔹 Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true })); 
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
+
+app.use((req, res) => {
+    res.status(404).json({ success: false, message: `Endpoint no encontrado: ${req.method} ${req.originalUrl}` });
+});
+
+app.use((err, req, res, next) => {
+    console.error("❌ Error no manejado:", err);
+    res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
 
 // Configuración
 const ITBMS_PORCENTAJE = parseFloat(process.env.COTIZACION_PORCENTAJE_ITBMS) || 7;
@@ -1041,9 +1056,13 @@ var Schematrancxcobrar = new mongoose.Schema({
     montotran: { type : Number },
     estadotrans: { type : String },
     comentario:{ type : String }
-});
+}); 
 
-const TranCxCobrar = mongoose.model('Schemarectrancxcobrar',Schematrancxcobrar);
+const TranCxCobrar = mongoose.model('Schemarectrancxcobrar',Schematrancxcobrar); 
+
+
+//***********************************************************//
+
 app.get("/api/dashboard", async (req, res) => {
   try {
 
@@ -3985,10 +4004,6 @@ console.log("LLamar a la funcion convertirEnviarThefactory en convertir a factur
         return res.status(status).json(body);
     }
 });
-
-// ============================================================================
-// 🔹 CORREGIDO: ELIMINAR CABECERA DE COTIZACIÓN
-// ============================================================================
 // ============================================================================
 // 🔹 CORREGIDO: ELIMINAR CABECERA DE COTIZACIÓN
 // ============================================================================
@@ -5606,6 +5621,16 @@ app.put('/api/ventas/facturas/completa/:nofactura', async (req, res) => {
         console.error('❌ Error PUT /api/ventas/facturas/completa:', error);
         res.status(500).json({ success: false, message: 'Error al guardar factura', error: error.message });
     }
+}); 
+
+// Backend Express.js
+app.post('/api/quick-replies/:id/use', async (req, res) => {
+  try {
+    await QuickReply.findByIdAndUpdate(req.params.id, { $inc: { usoCount: 1 } });
+    res.json({ success: true }); // ← Solo devuelve success, no data
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 // ───────── ENVIAR A FACTTORY CORP (SOAP - Placeholder) ─────────

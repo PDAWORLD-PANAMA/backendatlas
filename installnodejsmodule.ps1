@@ -74,7 +74,11 @@ npm install pdf-to-printer qrcode pdf-lib --save
 npm install p-queue@latest --save
 npm install chartjs-node-canvas --save
 npm install moment --save
-npm install pdf2pic --save
+npm install pdf2pic --save 
+npm install baileys @whiskeysockets/baileys qrcode pino
+npm install --save-dev @types/node 
+npm install multer sharp --save
+npm install firebase-admin --save
 
 
 
