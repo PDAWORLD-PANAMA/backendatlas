@@ -11,8 +11,8 @@ const SucursalSchema = new mongoose.Schema({
     contacto: { type: String },
     esPrincipal: { type: Boolean, default: false }
 }, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
-
-const Sucursal = mongoose.model('Sucursal', SucursalSchema);
+ 
+module.exports = mongoose.model('Sucursal', SucursalSchema);;
 
 const SchemadelCliente = new mongoose.Schema({
   idcliente: { type: String },
@@ -61,4 +61,4 @@ const SchemadelCliente = new mongoose.Schema({
  
 });
 
-const Cliente = mongoose.model('Cliente', SchemadelCliente);
+module.exports = mongoose.model('Cliente', SchemadelCliente);

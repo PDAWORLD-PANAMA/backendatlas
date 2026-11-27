@@ -50,4 +50,4 @@ const Schemadelinventariosede = new mongoose.Schema({
   sugerencias: []
 });
 Schemadelinventariosede.index({ idinventario: 1 }, { unique: true });
-const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
+module.exports = mongoose.model('Inventariosede', Schemadelinventariosede);

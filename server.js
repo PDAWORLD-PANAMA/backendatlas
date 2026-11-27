@@ -15,7 +15,9 @@ const CONDICIONES_DIAS = {
   "3": 45,
   "4": 60,
   "5": 90,
-};
+}; 
+const Inventariosede = require('../controllers/InventoryItemschema'); 
+const Cliente = require('../controllers/Clienteschema');
 const whatsappcontroller = require('./controllers/whatsapp'); 
 whatsappcontroller(app);
 app.use('/api/whatsapp',whatsappcontroller);
@@ -133,56 +135,6 @@ const empresaSchema = new mongoose.Schema({
 
 const EmpresaConfig = mongoose.model('EmpresaConfig', empresaSchema);
 
-const Schemadelinventariosede = new mongoose.Schema({
-  idinventario: { type: String, required: true },
-  inventarionombre: { type: String, uppercase: true },
-  categoria: { type: String, uppercase: true },
-  subcategoria: { type: String, uppercase: true },
-  marca: { type: String, uppercase: true },
-  modelo: { type: String, uppercase: true },
-  cantidispo: { type: Number },
-  existenciamin: { type: Number },
-  precio1: { type: Number },
-  precio2: { type: Number },
-  precio3: { type: Number },
-  precio4: { type: Number },
-  costo1: { type: Number },
-  costo2: { type: Number },
-  costoadicional: { type: Number },
-  cantipormayor: { type: Number },
-  tipoempaque: { type: String },
-  empaque: { type: String },
-  unidad: { type: String },
-  impuesto1: { type: Number },
-  impuesto2: { type: Number },
-  impuesto3: { type: Number },
-  codtasaisc: { type: String },
-  tasaisc: { type: String },
-  pormayor : { type : Number },
-  comisionvendedor: { type: Number },
-  tipoproducto: { type: String },
-  tipoempresa: { type: String },
-  fechaexpiracion: { type: String },
-  codigoprodproveedor: { type: String },
-  imagenproducto: { type: String },
-  idproveedor: { type: String },
-  localizacion: { type: String },
-  especificaciones: { type: String },
-  horasuso: { type: Number },
-  reparaciones: { type: Number },
-  fechaultima: { type: String },
-  notificacion: { type: String },
-  notificacionwoo: { type: String },
-  constancia: { type: String },
-  alquiler: { type: String },
-  shopify_id: { type: String, default: "" },
-  shopify_inventory_item_id: { type: String, default: "" },
-  sincronizado_online: { type: Boolean, default: false },
-  componentes: [],
-  sugerencias: []
-});
-Schemadelinventariosede.index({ idinventario: 1 }, { unique: true });
-const Inventariosede = mongoose.model('Inventariosede', Schemadelinventariosede);
 
 const Schemadeadicional = new mongoose.Schema({
   costomensual: { type: Number },
@@ -274,55 +226,6 @@ const SucursalSchema = new mongoose.Schema({
 }, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
 
 const Sucursal = mongoose.model('Sucursal', SucursalSchema);
-
-const SchemadelCliente = new mongoose.Schema({
-  idcliente: { type: String },
-  clientenombre: { type: String, uppercase: true },
-  idglobal: { type: String },
-  ruccliente: { type: String },
-  digitoverificador: { type: String },
-  retenedor: { type: String, uppercase: true },
-  dir1cliente: { type: String, uppercase: true },
-  dir2cliente: { type: String, uppercase: true },
-  dirconta: { type: String, uppercase: true },
-  derpar: { type: String, uppercase: true },
-  telcliente: { type: String },
-  emailcliente: { type: String },
-  faxcliente: { type: String },
-  webcliente: { type: String },
-  tipocontribuyente: { type: String },
-  tipoclientefe: { type: String },
-  ventascliente: { type: Number },
-  acumulapuntos: { type: Number },
-  tiposuscribcliente: { type: String },
-  fechasuscribcliente: { type: String },
-  fechacumplecliente: { type: String },
-  estadoctacliente: { type: String },
-  limitecredcliente: { type: String },
-  paiscliente: { type: String },
-  provinciacliente: { type: String },
-  clasecliente: { type: String },
-  createdAt: { type: String },
-  ciudadcliente: { type: String },
-  distrito: { type: String },
-  corregimiento: { type: String },
-  vendedorcliente: { type: String },
-  codigopreciocliente: { type: String },
-  fechaultventa: { type: String },
-  historialfacturas: [String],
-  historialcotizacion: [String],
-  historialabonos: [String],
-  historialcambio: [String], 
-  latgps: { type: String },
-  lnggps: { type: String},
-  webdireccion : { type: String},
- sucursales: [SucursalSchema] 
-  
-  // The GeoJSON field for Google Maps
- 
-});
-
-const Cliente = mongoose.model('Cliente', SchemadelCliente);
 
 
 var Vendedorschema = mongoose.Schema;
