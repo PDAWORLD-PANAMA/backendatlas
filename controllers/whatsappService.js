@@ -5,7 +5,7 @@ const fs = require('fs');
 const multer = require('multer');
 // const sharp = require('sharp'); // Keep if you plan to process images later
 
-const Conversacion = require('../controllers/Conversacion');
+const Conversacion = require('../controllers/Conversacionschema');
 const Cliente = require('../controllers/Clienteschema');
 const InventoryItem = require('../controllers/InventoryItemschema');
 
