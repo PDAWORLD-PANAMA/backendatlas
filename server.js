@@ -16,8 +16,8 @@ const CONDICIONES_DIAS = {
   "4": 60,
   "5": 90,
 }; 
-const Inventariosede = require('../controllers/InventoryItemschema'); 
-const Cliente = require('../controllers/Clienteschema');
+const Inventariosede = require('./controllers/InventoryItemschema'); 
+const Cliente = require('./controllers/Clienteschema');
 const whatsappcontroller = require('./controllers/whatsapp'); 
 whatsappcontroller(app);
 app.use('/api/whatsapp',whatsappcontroller);
