@@ -229,6 +229,26 @@ module.exports = function(app) {
         } catch (error) {
             res.status(500).json({ success: false, message: error.message });
         }
+    }); 
+
+        // ------------------------------------------------------------------------
+    // 🔹 RESET AUTENTICACIÓN (eliminar auth_info para nuevo escaneo QR)
+    // ------------------------------------------------------------------------
+    app.delete('/api/whatsapp/auth', async (req, res) => {
+        try {
+            console.log('🔄 [ENDPOINT] Solicitud de reseteo de autenticación recibida');
+            const result = await whatsappService.resetAuth();
+            res.json({ 
+                success: true, 
+                message: '✅ Autenticación reseteada. Ahora puedes escanear un nuevo código QR.' 
+            });
+        } catch (error) {
+            console.error('❌ [ENDPOINT] Error reseteando autenticación:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error al resetear autenticación: ' + error.message 
+            });
+        }
     });
 
     console.log('✅ Rutas WhatsApp ARM registradas correctamente en app');

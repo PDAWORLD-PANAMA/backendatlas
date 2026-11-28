@@ -8867,6 +8867,22 @@ app.use((err, req, res, next) => {
 
 
 const PORT = process.env.PORT || 3000;
+// ============================================================================
+// 🔹 AUTO-CONEXIÓN WHATSAPP AL INICIAR EL SERVIDOR
+// ============================================================================
+const whatsappService = require('./controllers/whatsappService');
+
+// Intentar conectar automáticamente al iniciar
+(async () => {
+    try {
+        console.log('🔄 Intentando conectar WhatsApp automáticamente...');
+        await whatsappService.whatsappService.connect();
+        console.log('✅ WhatsApp conectado automáticamente');
+    } catch (error) {
+        console.error('❌ Error conectando WhatsApp automáticamente:', error.message);
+        console.log('⚠️ Deberás conectar manualmente desde la app Android');
+    }
+})();
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📡 Endpoints activos: /api/health, /api/dashboard, /api/empresa, /api/inventarios/categorias`);

@@ -54,78 +54,109 @@ class WhatsAppService {
   }
 
   async connect() {
-    const { state, saveCreds } = await useMultiFileAuthState(this.authFolder);
+    // Evitar múltiples intentos de conexión simultáneos
+    if (this.connecting) {
+      console.log('⚠️ [BAILEYS] Ya se está intentando conectar, esperando...');
+      return;
+    }
+    this.connecting = true;
 
-    this.sock = makeWASocket({
-      auth: state,
-      printQRInTerminal: true,
-      logger: pino({ level: 'silent' }),
-      browser: ['ERP BIPYMES', 'Chrome', '10.0']
-    });
+    try {
+      const { state, saveCreds } = await useMultiFileAuthState(this.authFolder);
 
-    // Save credentials when they change
-    this.sock.ev.on('creds.update', saveCreds);
+      this.sock = makeWASocket({
+        auth: state,
+        printQRInTerminal: true,
+        logger: pino({ level: 'silent' }),
+        browser: ['ERP BIPYMES', 'Chrome', '10.0'],
+        // ✅ OPTIMIZACIONES CRÍTICAS PARA RENDER (Evita caídas por memoria)
+        syncFullHistory: false,
+        markOnlineOnConnect: false,
+        defaultQueryTimeoutMs: 30000
+      });
 
-    // Connection updates
-    this.sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      console.log('📱 WhatsApp Connection:', connection);
+      this.sock.ev.on('creds.update', saveCreds);
 
-      if (qr) {
-        this.qrCode = qr;
-        console.log('🔐 New QR Code generated - scan with WhatsApp');
-      }
+      this.sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, qr } = update;
+        console.log('📱 WhatsApp Connection:', connection);
 
-      if (connection === 'open') {
-        this.connected = true;
-        this.qrCode = null;
-        console.log('✅ WhatsApp connected successfully');
-      }
-
-      if (connection === 'close') {
-        this.connected = false;
-        const statusCode = lastDisconnect?.error?.output?.statusCode;
-        if (statusCode !== DisconnectReason.loggedOut) {
-          console.log('🔄 Reconnecting...');
-          setTimeout(() => this.connect(), 3000);
-        } else {
-          console.log('❌ Logged out. Delete auth_info folder and scan QR again.');
-          fs.rmSync(this.authFolder, { recursive: true, force: true });
+        if (qr) {
+          this.qrCode = qr;
+          console.log('🔐 New QR Code generated - scan with WhatsApp');
         }
-      }
-    });
 
-    // Handle incoming messages
-    this.sock.ev.on('messages.upsert', async (m) => {
-      if (m.type === 'notify' && m.messages[0]) {
-        const msg = m.messages[0];
-        if (!msg.message) return;
-        if (msg.key.fromMe) return; // Ignore our own messages
+        if (connection === 'open') {
+          this.connected = true;
+          this.connecting = false;
+          this.qrCode = null;
+          console.log('✅ WhatsApp connected successfully');
+        }
 
-        await this.handleIncomingMessage(msg);
-      }
-    });
+        if (connection === 'close') {
+          this.connected = false;
+          this.connecting = false;
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          console.log('❌ WhatsApp closed. Reason code:', statusCode);
+          
+          if (statusCode === DisconnectReason.loggedOut) {
+            console.log('❌ Logged out. Deleting auth_info folder...');
+            fs.rmSync(this.authFolder, { recursive: true, force: true });
+            setTimeout(() => this.connect(), 3000);
+          } else if (statusCode === DisconnectReason.connectionReplaced) {
+             console.log('❌ Connection replaced (otro dispositivo inició sesión). Deleting auth...');
+             fs.rmSync(this.authFolder, { recursive: true, force: true });
+             setTimeout(() => this.connect(), 3000);
+          } else {
+            console.log('🔄 Reconnecting in 3 seconds...');
+            setTimeout(() => this.connect(), 3000);
+          }
+        }
+      });
 
-    // ✅ FIX 2: Moved presence.update INSIDE connect() so 'this.sock' is not null
-    this.sock.ev.on('presence.update', async ({ id, presences }) => {
-      const numeroLimpio = id.split('@')[0];
-      const presence = presences[id]?.type;
-      
-      if (presence === 'composing') {
-        await Conversacion.updateOne(
-          { telefono: numeroLimpio },
-          { $set: { 'metadata.clienteEscribiendo': true, 'metadata.ultimoTyping': new Date() } }
-        );
-      } else {
-        await Conversacion.updateOne(
-          { telefono: numeroLimpio },
-          { $set: { 'metadata.clienteEscribiendo': false } }
-        );
-      }
-    });
+      // ✅ LISTENER DE MENSAJES LIMPIO Y SIN DUPLICADOS
+      this.sock.ev.on('messages.upsert', async (m) => {
+        if (m.type === 'notify' && m.messages[0]) {
+          const msg = m.messages[0];
+          console.log('📥 [BAILEYS] messages.upsert event recibido');
+          
+          if (!msg.message) {
+            console.log('⚠️ [BAILEYS] Mensaje sin contenido (ej. reacción, estado), ignorando');
+            return;
+          }
+          if (msg.key.fromMe) {
+            console.log('⚠️ [BAILEYS] Mensaje propio (fromMe: true), ignorando. Usa OTRO número para probar.');
+            return;
+          }
+          
+          console.log('✅ [BAILEYS] Procesando mensaje entrante de:', msg.key.remoteJid);
+          await this.handleIncomingMessage(msg);
+        }
+      });
 
-    return this.sock;
-  } 
+      // ✅ PRESENCE UPDATE (Typing indicator)
+      this.sock.ev.on('presence.update', async ({ id, presences }) => {
+        const numeroLimpio = id.split('@')[0];
+        const presence = presences[id]?.type;
+        
+        if (presence === 'composing') {
+          await Conversacion.updateOne(
+            { telefono: numeroLimpio },
+            { $set: { 'metadata.clienteEscribiendo': true, 'metadata.ultimoTyping': new Date() } }
+          );
+        } else {
+          await Conversacion.updateOne(
+            { telefono: numeroLimpio },
+            { $set: { 'metadata.clienteEscribiendo': false } }
+          );
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error crítico en connect():', error);
+      this.connecting = false;
+    }
+  }
 
   async enviarImagen(numero, imagePath, caption = '') {
     if (!this.connected || !this.sock) {
@@ -163,6 +194,7 @@ class WhatsAppService {
   }
 
   async handleIncomingMessage(msg) {
+     console.log('🎯 [HANDLE] Iniciando handleIncomingMessage');
     try {
       const telefono = msg.key.remoteJid; 
       const numeroLimpio = telefono.split('@')[0];
@@ -325,6 +357,48 @@ class WhatsAppService {
     const jid = numero.includes('@') ? numero : `${numero}@s.whatsapp.net`;
     await this.sock.sendMessage(jid, { text: texto });
     console.log(`✅ Message sent to ${numero}`);
+  } 
+    // ============================================================================
+  // 🔹 RESET AUTH: Elimina credenciales para forzar nuevo escaneo de QR
+  // ============================================================================
+  async resetAuth() {
+    console.log('🔄 [RESET AUTH] Iniciando proceso de reseteo de autenticación...');
+    
+    try {
+      // 1. Cerrar la conexión actual si está activa
+      if (this.sock) {
+        console.log('🔌 [RESET AUTH] Cerrando socket de WhatsApp...');
+        try {
+          await this.sock.end();
+        } catch (err) {
+          console.warn('⚠️ [RESET AUTH] Error cerrando socket (continuando):', err.message);
+        }
+        this.sock = null;
+      }
+      
+      // 2. Resetear estado de conexión
+      this.connected = false;
+      this.qrCode = null;
+      
+      // 3. Eliminar la carpeta auth_info recursivamente
+      if (fs.existsSync(this.authFolder)) {
+        console.log(`🗑️ [RESET AUTH] Eliminando carpeta: ${this.authFolder}`);
+        fs.rmSync(this.authFolder, { recursive: true, force: true });
+        console.log('✅ [RESET AUTH] Carpeta auth_info eliminada correctamente');
+      } else {
+        console.log('ℹ️ [RESET AUTH] La carpeta auth_info no existía');
+      }
+      
+      // 4. Recrear la carpeta vacía para la próxima conexión
+      fs.mkdirSync(this.authFolder, { recursive: true });
+      console.log('✅ [RESET AUTH] Nueva carpeta auth_info creada');
+      
+      return { success: true, message: 'Autenticación reseteada. Escanea el nuevo QR.' };
+      
+    } catch (error) {
+      console.error('❌ [RESET AUTH] Error crítico:', error);
+      throw error;
+    }
   }
 
   getQRCode() {
