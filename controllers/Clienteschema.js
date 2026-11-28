@@ -12,7 +12,7 @@ const SucursalSchema = new mongoose.Schema({
     esPrincipal: { type: Boolean, default: false }
 }, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
  
-module.exports = mongoose.model('Sucursal', SucursalSchema);;
+module.exports = mongoose.model('Sucursalrec', SucursalSchema);;
 
 const SchemadelCliente = new mongoose.Schema({
   idcliente: { type: String },

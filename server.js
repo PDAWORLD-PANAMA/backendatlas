@@ -19,6 +19,7 @@ const CONDICIONES_DIAS = {
 const Inventariosede = require('./controllers/InventoryItemschema'); 
 const Cliente = require('./controllers/Clienteschema');
 const whatsappcontroller = require('./controllers/whatsapp'); 
+const Sucursal = require('./controllers/SucursalSchema'); 
 whatsappcontroller(app);
 app.use('/api/whatsapp',whatsappcontroller);
 // 🔹 Middlewares
@@ -211,21 +212,6 @@ descripubicacion : { type : String}
 });
 
 const Ubicacion = mongoose.model('Ubicacion', Schemageoubicacion);
-
-
-// ✅ 1. ADD THIS NEW SCHEMA FOR SUBSIDIARIES
-const SucursalSchema = new mongoose.Schema({
-    id_sucursal: { type: String, required: true },
-    nombre_sucursal: { type: String, uppercase: true },
-    direccion: { type: String, uppercase: true },
-    telefono: { type: String },
-    email: { type: String },
-    rucNit: { type: String },
-    contacto: { type: String },
-    esPrincipal: { type: Boolean, default: false }
-}, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
-
-const Sucursal = mongoose.model('Sucursal', SucursalSchema);
 
 
 var Vendedorschema = mongoose.Schema;
