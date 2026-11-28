@@ -19,7 +19,7 @@ const CONDICIONES_DIAS = {
 const Inventariosede = require('./controllers/InventoryItemschema'); 
 const Cliente = require('./controllers/Clienteschema');
 const whatsappcontroller = require('./controllers/whatsapp'); 
-const Sucursal = require('./controllers/SucursalSchema'); 
+
 whatsappcontroller(app);
 app.use('/api/whatsapp',whatsappcontroller);
 // 🔹 Middlewares
