@@ -11,5 +11,4 @@ const SucursalSchema = new mongoose.Schema({
     contacto: { type: String },
     esPrincipal: { type: Boolean, default: false }
 }, { _id: false }); // _id: false prevents Mongoose from creating a duplicat
- 
-module.exports = SucursalSchema;
+ module.exports = mongoose.model('SucursalRegistro',SucursalSchema);

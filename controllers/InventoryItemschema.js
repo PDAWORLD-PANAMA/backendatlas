@@ -49,5 +49,5 @@ const Schemadelinventariosede = new mongoose.Schema({
   componentes: [],
   sugerencias: []
 });
-Schemadelinventariosede.index({ idinventario: 1 }, { unique: true });
-module.exports = Schemadelinventariosede;
+Schemadelinventariosede.index({ idinventario: 1 }, { unique: true }); 
+module.exports = mongoose.model('InventarioRegistro',Schemadelinventariosede);

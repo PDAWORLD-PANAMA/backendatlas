@@ -8,4 +8,4 @@ const quickReplySchema = new mongoose.Schema({
   usoCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 }); 
-module.exports = quickReplySchema;
+module.exports = mongoose.model('quickReplySchemaRegistro',quickReplySchema);

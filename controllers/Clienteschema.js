@@ -49,4 +49,4 @@ const SchemadelCliente = new mongoose.Schema({
  
 });
 
-module.exports = SchemadelCliente;
+module.exports = mongoose.model('Cliente',SchemadelCliente);
