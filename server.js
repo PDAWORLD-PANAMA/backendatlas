@@ -18,10 +18,11 @@ const CONDICIONES_DIAS = {
 }; 
 const Inventariosede = require('./controllers/InventoryItemschema'); 
 const Cliente = require('./controllers/Clienteschema');
-const whatsappcontroller = require('./controllers/whatsapp'); 
-
-whatsappcontroller(app);
-app.use('/api/whatsapp',whatsappcontroller);
+// ============================================================================
+// 🔹 RUTAS: WHATSAPP ARM (registradas directamente en app)
+// ============================================================================
+const whatsappcontroller = require('./controllers/whatsapp');
+whatsappcontroller(app);  // ✅ 
 // 🔹 Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));

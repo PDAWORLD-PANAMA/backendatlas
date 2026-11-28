@@ -7,6 +7,5 @@ const quickReplySchema = new mongoose.Schema({
   categoria: { type: String, default: 'general' }, // general, saludo, precio, despedida
   usoCount: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
-});
-
-const Recrespuesta = mongoose.model('QuickReply', quickReplySchema);
+}); 
+module.exports = quickReplySchema;
