@@ -1,16 +1,16 @@
 const path = require('path');
-const whatsappService = require('./whatsappService');
-const Conversacion = require('./Conversacionschema');
-const QuickReply = require('./QuickReplyschema');
 const QRCode = require('qrcode');
 
-const upload = whatsappService.uploadMiddleware;
+// ✅ CORRECCIÓN CLAVE: Desestructuramos correctamente el objeto exportado
+const { whatsappService, uploadMiddleware } = require('./whatsappService');
 
-// ============================================================================
-// 🔹 EXPORTAMOS UNA FUNCIÓN QUE RECIBE `app` Y REGISTRA TODAS LAS RUTAS
-// ============================================================================
+const Conversacion = require('./Conversacionschema');
+const QuickReply = require('./QuickReplyschema');
+
+// Usamos el middleware extraído
+const upload = uploadMiddleware;
+
 module.exports = function(app) {
-
     // ------------------------------------------------------------------------
     // CONEXIÓN Y ESTADO
     // ------------------------------------------------------------------------
@@ -231,5 +231,5 @@ module.exports = function(app) {
         }
     });
 
-    console.log('✅ Rutas WhatsApp ARM registradas en app');
+    console.log('✅ Rutas WhatsApp ARM registradas correctamente en app');
 };
