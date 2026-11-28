@@ -28,9 +28,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================================================
 const whatsappController = require('./controllers/whatsapp');
 whatsappController(app);  // ← Esto registra todas las rutas /api/whatsapp/* 
-app.use((req, res) => {
-    res.status(404).json({ success: false, message: `Endpoint no encontrado: ${req.method} ${req.originalUrl}` });
-});
 
 app.use((err, req, res, next) => {
     console.error("❌ Error no manejado:", err);
