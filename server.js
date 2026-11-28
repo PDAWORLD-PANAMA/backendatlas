@@ -18,17 +18,16 @@ const CONDICIONES_DIAS = {
 }; 
 const Inventariosede = require('./controllers/InventoryItemschema'); 
 const Cliente = require('./controllers/Clienteschema');
-// ============================================================================
-// 🔹 RUTAS: WHATSAPP ARM (registradas directamente en app)
-// ============================================================================
-const whatsappcontroller = require('./controllers/whatsapp');
-whatsappcontroller(app);  // ✅ 
-// 🔹 Middlewares
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true })); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); 
 
+// ============================================================================
+// 🔹 RUTAS: WHATSAPP ARM (registradas directamente en app)
+// ============================================================================
+const whatsappController = require('./controllers/whatsapp');
+whatsappController(app);  // ← Esto registra todas las rutas /api/whatsapp/* 
 app.use((req, res) => {
     res.status(404).json({ success: false, message: `Endpoint no encontrado: ${req.method} ${req.originalUrl}` });
 });

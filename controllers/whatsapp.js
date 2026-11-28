@@ -7,7 +7,7 @@ const QRCode = require('qrcode');
 const upload = whatsappService.uploadMiddleware;
 
 // ============================================================================
-// 🔹 EXPORTAMOS UNA FUNCIÓN QUE RECIBE `app` Y REGISTRA LAS RUTAS
+// 🔹 EXPORTAMOS UNA FUNCIÓN QUE RECIBE `app` Y REGISTRA TODAS LAS RUTAS
 // ============================================================================
 module.exports = function(app) {
 
