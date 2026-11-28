@@ -1,4 +1,6 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); 
+
+const SucursalSchema = require('./Sucursalschema');
 
 const SchemadelCliente = new mongoose.Schema({
   idcliente: { type: String },
@@ -42,9 +44,9 @@ const SchemadelCliente = new mongoose.Schema({
   lnggps: { type: String},
   webdireccion : { type: String},
  sucursales: [SucursalSchema] 
-  
+
   // The GeoJSON field for Google Maps
  
 });
 
-module.exports = mongoose.model('Cliente', SchemadelCliente);
+module.exports = SchemadelCliente;

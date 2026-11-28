@@ -30,5 +30,4 @@ const conversacionSchema = new mongoose.Schema({
     ultimoTyping: { type: Date, default: null }
   }
 }, { timestamps: true });
-
-module.exports = mongoose.model('Conversacion', conversacionSchema);
+module.exports = conversacionSchema;
